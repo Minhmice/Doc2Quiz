@@ -20,21 +20,21 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 03 — question-review (plan next)
+**Current focus:** Phase 03 — question-review (execute next)
 
 ## Current Status
 
 - Phase 1 (PDF Ingestion): Complete
 - Phase 2 (AI Question Parsing): Complete
-- Phase 3 (Question Review): Discuss complete — `03-CONTEXT.md` locked
+- Phase 3 (Question Review): Planned — `03-01` … `03-03` PLAN.md ready
 - Phase 4 (Practice Engine): Not started
 - Phase 5 (Score & Repeat): Not started
 
 ## Last Session
 
-**Stopped at:** Phase 03 context gathered
+**Stopped at:** Phase 03 planned (3 plans)
 **Date:** 2026-04-05
-**Resume file:** .planning/phases/03-question-review/03-CONTEXT.md
+**Resume file:** `.planning/phases/03-question-review/03-01-PLAN.md`
 
 ## Config
 
