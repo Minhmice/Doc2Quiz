@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: Ready to plan
 stopped_at: Phase 02 context gathered
-last_updated: "2026-04-05T13:26:53.351Z"
+last_updated: "2026-04-05T13:41:46.382Z"
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 3
-  percent: 43
+  completed_plans: 7
+  percent: 100
 ---
 
 # Doc2Quiz — State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 01 — pdf-ingestion
+**Current focus:** Phase 02 — ai-question-parsing
 
 ## Current Status
 
