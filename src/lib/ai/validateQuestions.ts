@@ -13,13 +13,22 @@ function extractQuestionsArray(raw: unknown): unknown[] {
   return [];
 }
 
+export type ValidateQuestionsOptions = {
+  /** When true, reuse `id` from each item if it is a non-empty string (draft round-trip). */
+  preserveIds?: boolean;
+};
+
 /**
  * Validates model JSON (top-level `{ questions: [...] }` or a raw array per D-12)
- * and returns only well-formed MCQs with new ids.
+ * and returns only well-formed MCQs with new ids unless `preserveIds` is set for draft load.
  */
-export function validateQuestionsFromJson(raw: unknown): Question[] {
+export function validateQuestionsFromJson(
+  raw: unknown,
+  options?: ValidateQuestionsOptions,
+): Question[] {
   const items = extractQuestionsArray(raw);
   const out: Question[] = [];
+  const preserveIds = options?.preserveIds === true;
 
   for (const item of items) {
     if (item === null || typeof item !== "object") {
@@ -52,8 +61,16 @@ export function validateQuestionsFromJson(raw: unknown): Question[] {
       continue;
     }
 
+    const existingId = rec.id;
+    const id =
+      preserveIds &&
+      typeof existingId === "string" &&
+      existingId.trim().length > 0
+        ? existingId.trim()
+        : crypto.randomUUID();
+
     out.push({
-      id: crypto.randomUUID(),
+      id,
       question: question.trim(),
       options: [
         (options[0] as string).trim(),

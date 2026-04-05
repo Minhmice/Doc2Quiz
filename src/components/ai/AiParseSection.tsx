@@ -30,7 +30,10 @@ function loadDraftQuestions(): Question[] {
       return [];
     }
     const data = JSON.parse(raw) as { questions?: unknown };
-    return validateQuestionsFromJson({ questions: data.questions });
+    return validateQuestionsFromJson(
+      { questions: data.questions },
+      { preserveIds: true },
+    );
   } catch {
     return [];
   }
@@ -153,7 +156,11 @@ export function AiParseSection({ extractedText }: AiParseSectionProps) {
       }
       setSummary(parts.join(". ") + ".");
 
-      if (!controller.signal.aborted) {
+      if (result.fatalError) {
+        setError(result.fatalError);
+      }
+
+      if (!controller.signal.aborted && !result.fatalError) {
         try {
           localStorage.setItem(
             LS_DRAFT_QUESTIONS,
@@ -354,7 +361,7 @@ export function AiParseSection({ extractedText }: AiParseSectionProps) {
         </p>
       ) : null}
 
-      {!error && summary ? (
+      {summary ? (
         <p className="mt-3 text-sm text-neutral-700" aria-live="polite">
           {summary}
         </p>

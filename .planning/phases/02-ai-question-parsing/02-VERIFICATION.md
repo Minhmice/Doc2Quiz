@@ -28,3 +28,4 @@ verified: 2026-04-05
 ## Notes
 
 - Execution used **four sequential subagents** (typescript-specialist ×3 waves, frontend-developer ×1) per orchestrator routing.
+- Post **code-reviewer** handoff: `runSequentialParse` returns `fatalError` instead of throwing so **partial questions survive 401/429**; draft hydrate uses `validateQuestionsFromJson(..., { preserveIds: true })`; `isAbortError` accepts `Error` with `name === "AbortError"`.

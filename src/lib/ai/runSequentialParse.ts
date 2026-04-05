@@ -18,7 +18,12 @@ export async function runSequentialParse(options: {
   chunks: string[];
   signal: AbortSignal;
   onProgress?: (p: { current: number; total: number }) => void;
-}): Promise<{ questions: Question[]; failedChunks: number }> {
+}): Promise<{
+  questions: Question[];
+  failedChunks: number;
+  /** Set when a chunk hit 401/429 etc. — earlier chunks remain in `questions`. */
+  fatalError?: string;
+}> {
   const { provider, apiKey, chunks, signal, onProgress } = options;
   const questions: Question[] = [];
   let failedChunks = 0;
@@ -48,7 +53,12 @@ export async function runSequentialParse(options: {
         break;
       } catch (e) {
         if (e instanceof FatalParseError) {
-          throw e;
+          onProgress?.({ current: i + 1, total });
+          return {
+            questions,
+            failedChunks,
+            fatalError: e.message,
+          };
         }
         if (isAbortError(e)) {
           break;

@@ -17,7 +17,11 @@ export function isFatalParseError(e: unknown): e is FatalParseError {
 }
 
 export function isAbortError(e: unknown): boolean {
-  return (
-    e instanceof DOMException && e.name === "AbortError"
-  );
+  if (e instanceof DOMException && e.name === "AbortError") {
+    return true;
+  }
+  if (e instanceof Error && e.name === "AbortError") {
+    return true;
+  }
+  return false;
 }
