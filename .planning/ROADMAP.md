@@ -6,11 +6,11 @@
 
 ---
 
-## Phase 1: PDF Ingestion ✓
+## Phase 1: PDF Ingestion
 
 **Goal:** User can upload a PDF, extract its text, and see it displayed.
 
-**Status:** Complete
+**Status:** Pending
 
 **Requirements covered:** PDF-01, PDF-02, PDF-03, PDF-04
 
@@ -131,7 +131,7 @@
 
 | Phase | Requirements | Status |
 |-------|-------------|--------|
-| 1 | PDF-01–04 | ✓ Complete |
+| 1 | PDF-01–04 | Pending |
 | 2 | AI-01–05 | Pending |
 | 3 | REVIEW-01–04 | Pending |
 | 4 | PRAC-01–06 | Pending |

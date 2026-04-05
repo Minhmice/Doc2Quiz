@@ -7,10 +7,10 @@
 
 ### PDF Ingestion
 
-- [x] **PDF-01**: User can upload a PDF file (.pdf only, max 10MB)
-- [x] **PDF-02**: System extracts text from text-based PDFs via pdf.js
-- [x] **PDF-03**: System displays extracted text in scrollable viewer
-- [x] **PDF-04**: System shows clear error for scanned/empty PDFs ("This PDF may be scanned. Text extraction failed.")
+- [ ] **PDF-01**: User can upload a PDF file (.pdf only, max 10MB)
+- [ ] **PDF-02**: System extracts text from text-based PDFs via pdf.js
+- [ ] **PDF-03**: System displays extracted text in scrollable viewer
+- [ ] **PDF-04**: System shows clear error for scanned/empty PDFs ("This PDF may be scanned. Text extraction failed.")
 
 ### AI Question Parsing
 
@@ -77,10 +77,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PDF-01 | Phase 1 | Complete |
-| PDF-02 | Phase 1 | Complete |
-| PDF-03 | Phase 1 | Complete |
-| PDF-04 | Phase 1 | Complete |
+| PDF-01 | Phase 1 | Pending |
+| PDF-02 | Phase 1 | Pending |
+| PDF-03 | Phase 1 | Pending |
+| PDF-04 | Phase 1 | Pending |
 | AI-01 | Phase 2 | Pending |
 | AI-02 | Phase 2 | Pending |
 | AI-03 | Phase 2 | Pending |
