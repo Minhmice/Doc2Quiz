@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+stopped_at: Phase 01 context gathered
+last_updated: "2026-04-05T13:09:17.941Z"
+progress:
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+---
+
 # Doc2Quiz — State
 
 ## Project Reference
@@ -5,11 +19,11 @@
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 2 — AI Question Parsing
+**Current focus:** Phase 1
 
 ## Current Status
 
-- Phase 1 (PDF Ingestion): ✓ Complete
+- Phase 1 (PDF Ingestion): Not started
 - Phase 2 (AI Question Parsing): Not started
 - Phase 3 (Question Review): Not started
 - Phase 4 (Practice Engine): Not started
@@ -17,9 +31,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Project initialized — PROJECT.md, REQUIREMENTS.md, ROADMAP.md created
+**Stopped at:** Phase 01 context gathered
 **Date:** 2026-04-05
-**Resume file:** `.planning/ROADMAP.md`
+**Resume file:** .planning/phases/01-pdf-ingestion/01-CONTEXT.md
 
 ## Config
 
