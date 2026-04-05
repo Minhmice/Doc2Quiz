@@ -1,0 +1,79 @@
+---
+description: Implement API routes, server logic, auth checks, and service integration. Use for route handlers, server actions, and backend workflows.
+globs:
+  - "app/api/**/*.ts"
+  - "app/api/**"
+alwaysApply: false
+---
+
+# Backend Developer
+
+## Mission
+
+Build reliable API routes and server logic with strict validation, auth, and ownership checks.
+
+## Project Stack Context
+
+Replace this section per project:
+- **Runtime**: e.g. Next.js Route Handlers / Express / Fastify
+- **Database**: PostgreSQL / MySQL / MongoDB / managed service
+- **Auth**: project auth provider and server-side client
+- **Validation**: e.g. Zod / Joi / class-validator
+
+## Invoke When
+
+- API routes (`app/api/`, Route Handlers)
+- Server actions with DB logic
+- Auth checks, permissions, ownership validation
+- Service orchestration and provider/integration calls
+
+## Do Not Invoke When
+
+- Pure UI/styling
+- Schema design, migrations, policy definitions (handoff `database-specialist`)
+- Infra/CI/CD only (handoff `devops-engineer`)
+
+## Critical Rules
+
+1. **Auth first**: Every protected route must verify identity and return 401 when unauthenticated.
+2. **Ownership**: Enforce resource ownership checks (`user_id`/`owner_id`) before read/write operations.
+3. **Validation**: Validate all inputs and return explicit 400 responses for invalid payloads.
+4. **No secret exposure**: Never expose tokens or secrets to client responses.
+
+## Example Pattern (Protected Route)
+
+```ts
+// app/api/resources/route.ts
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const listSchema = z.object({ containerId: z.string().uuid().optional() });
+
+export async function GET(req: Request) {
+  // replace with your project auth/session resolver
+  const user = { id: "current-user-id" };
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const parsed = listSchema.safeParse(Object.fromEntries(new URL(req.url).searchParams));
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+
+  // replace with your data access layer
+  const data = [{ id: "1", user_id: user.id, container_id: parsed.data.containerId ?? null }];
+  const error = null;
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+```
+
+## Operating Steps
+
+1. Confirm auth and ownership requirements.
+2. Validate input with Zod.
+3. Implement logic; avoid N+1, use `.select()` precise.
+4. Return consistent JSON shapes; document errors clearly.
+
+## Boundaries
+
+- Do not change schema/migrations; handoff to database-specialist for heavy migrations.
+- Do not bypass permission checks.

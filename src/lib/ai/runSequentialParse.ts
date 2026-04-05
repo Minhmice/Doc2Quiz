@@ -3,6 +3,7 @@
  */
 
 import type { AiProvider, Question } from "@/types/question";
+import { dedupeQuestionsByStem } from "@/lib/ai/dedupeQuestions";
 import { FatalParseError, isAbortError } from "@/lib/ai/errors";
 import { parseChunkOnce } from "@/lib/ai/parseChunk";
 
@@ -15,6 +16,10 @@ export type ParseProgress = {
 export async function runSequentialParse(options: {
   provider: AiProvider;
   apiKey: string;
+  /** Full chat/messages URL; omit or empty for vendor default (Custom requires URL). */
+  apiUrl?: string;
+  /** Model id; empty uses defaults for OpenAI/Anthropic; required for Custom. */
+  model?: string;
   chunks: string[];
   signal: AbortSignal;
   onProgress?: (p: { current: number; total: number }) => void;
@@ -24,7 +29,8 @@ export async function runSequentialParse(options: {
   /** Set when a chunk hit 401/429 etc. — earlier chunks remain in `questions`. */
   fatalError?: string;
 }> {
-  const { provider, apiKey, chunks, signal, onProgress } = options;
+  const { provider, apiKey, apiUrl, model, chunks, signal, onProgress } =
+    options;
   const questions: Question[] = [];
   let failedChunks = 0;
   const total = chunks.length;
@@ -45,6 +51,8 @@ export async function runSequentialParse(options: {
         const qs = await parseChunkOnce({
           provider,
           apiKey,
+          apiUrl,
+          model,
           chunkText: chunks[i]!,
           signal,
         });
@@ -55,7 +63,7 @@ export async function runSequentialParse(options: {
         if (e instanceof FatalParseError) {
           onProgress?.({ current: i + 1, total });
           return {
-            questions,
+            questions: dedupeQuestionsByStem(questions),
             failedChunks,
             fatalError: e.message,
           };
@@ -77,5 +85,5 @@ export async function runSequentialParse(options: {
     onProgress?.({ current: i + 1, total });
   }
 
-  return { questions, failedChunks };
+  return { questions: dedupeQuestionsByStem(questions), failedChunks };
 }

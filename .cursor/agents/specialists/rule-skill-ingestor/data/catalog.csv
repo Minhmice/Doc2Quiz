@@ -1,0 +1,2 @@
+item_id,topic,rule_type,title,guidance,do,dont,severity,tags,source_ref,source_section
+agent-system-ingest,agent-system,pattern,Ingest rules and skills safely,Ingestion should preserve system invariants and keep validations passing,Update mappings and catalogs atomically with the content change,Do not add new content without updating the relevant CSV mappings and catalogs,high,"agent-system,ingest,automation",agents/specialists/rule-skill-ingestor/SKILL.md,CLI

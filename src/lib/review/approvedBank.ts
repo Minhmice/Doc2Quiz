@@ -2,7 +2,7 @@ import type { ApprovedBank, Question } from "@/types/question";
 import { LS_APPROVED_BANK } from "@/types/question";
 import { allMcqsComplete, isMcqComplete } from "@/lib/review/validateMcq";
 
-function isApprovedBankShape(raw: unknown): raw is ApprovedBank {
+export function isApprovedBankShape(raw: unknown): raw is ApprovedBank {
   if (raw === null || typeof raw !== "object") {
     return false;
   }

@@ -12,10 +12,11 @@ The practice loop must feel faster and more effective than reading the PDF direc
 
 ### Validated
 
-- ✓ PDF upload and text extraction (Phase 1)
+(None yet — ship to validate)
 
 ### Active
 
+- [ ] PDF upload and text extraction
 - [ ] AI-powered question parsing — user supplies their own API key, calls made client-side
 - [ ] Question review/edit interface before saving to bank
 - [ ] Keyboard-first practice engine — 1/2/3/4 keys map to A/B/C/D
@@ -27,7 +28,7 @@ The practice loop must feel faster and more effective than reading the PDF direc
 
 - Cloud sync / backend — no own server in v1; AI calls go direct to provider
 - Teacher/institutional features — student-only v1
-- OCR for scanned PDFs — text-based PDFs only; pdf.js cannot OCR
+- Built-in offline OCR (e.g. Tesseract) — not in v1; scanned PDFs may use optional **AI vision** (user’s multimodal API, client-rendered page images) instead of local OCR
 - Multi-user / sharing — single-user local tool
 - Analytics dashboards — score + wrong-answer loop is enough for v1
 

@@ -1,33 +1,90 @@
 /**
- * Browser fetch to vendor APIs (no backend proxy).
+ * AI calls go through `POST /api/ai/forward` (same-origin) so the real HTTPS
+ * request runs on the server and avoids vendor CORS blocking browser fetch.
  *
- * Models (defaults):
- * - OpenAI: gpt-4o-mini — POST https://api.openai.com/v1/chat/completions
- * - Anthropic: claude-3-5-haiku-20241022 — POST https://api.anthropic.com/v1/messages
- *   Header: anthropic-version: 2023-06-01
+ * Providers:
+ * - OpenAI / Custom: chat completions shape (Bearer), optional `response_format`.
+ * - Anthropic: messages API (`x-api-key`, `anthropic-version`).
+ * - Custom: OpenAI-compatible URL + model from UI (URL required).
  */
 
 import { FatalParseError } from "@/lib/ai/errors";
+import {
+  forwardAiPost,
+  parseProxyForwardErrorBody,
+} from "@/lib/ai/sameOriginForward";
+import {
+  describeBadAiResponse,
+  responseLooksLikeHtml,
+} from "@/lib/ai/upstreamErrors";
+import { normalizeOpenAiChatCompletionsUrl } from "@/lib/ai/openAiEndpoint";
+import { MCQ_EXTRACTION_SYSTEM_PROMPT } from "@/lib/ai/prompts/mcqExtractionPrompts";
 import { validateQuestionsFromJson } from "@/lib/ai/validateQuestions";
 import type { AiProvider, Question } from "@/types/question";
 
-const OPENAI_MODEL = "gpt-4o-mini";
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+export { MCQ_EXTRACTION_SYSTEM_PROMPT };
 
-const ANTHROPIC_MODEL = "claude-3-5-haiku-20241022";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+export const OPENAI_MODEL = "gpt-4o-mini";
+export const DEFAULT_OPENAI_CHAT_URL =
+  "https://api.openai.com/v1/chat/completions";
 
-const SYSTEM_PROMPT = `You extract multiple-choice questions from the user's document excerpt.
-Respond with JSON only. The top-level object must have a "questions" array.
-Each element: { "question": string, "options": [string, string, string, string], "correctIndex": 0|1|2|3 }.
-Use exactly four non-empty options. If there are no suitable MCQs, return { "questions": [] }.`;
+export const ANTHROPIC_MODEL = "claude-3-5-haiku-20241022";
+export const DEFAULT_ANTHROPIC_MESSAGES_URL =
+  "https://api.anthropic.com/v1/messages";
+
+export function questionsFromAssistantContent(content: string): Question[] {
+  const parsed = parseJsonFromModelText(content);
+  return validateQuestionsFromJson(parsed);
+}
 
 export type ParseChunkOnceParams = {
   provider: AiProvider;
   apiKey: string;
+  /** Full endpoint URL; empty uses vendor default except Custom (required). */
+  apiUrl?: string;
+  /** Model id; empty uses built-in default for OpenAI/Anthropic; required for Custom. */
+  model?: string;
   chunkText: string;
   signal: AbortSignal;
 };
+
+export function resolveChatApiUrl(
+  provider: AiProvider,
+  apiUrl: string | undefined,
+): string {
+  const t = (apiUrl ?? "").trim();
+  if (t) {
+    if (provider === "openai" || provider === "custom") {
+      return normalizeOpenAiChatCompletionsUrl(t);
+    }
+    return t;
+  }
+  if (provider === "custom") {
+    throw new FatalParseError(
+      "Enter your API base URL (e.g. https://host/v1) or full …/chat/completions URL.",
+    );
+  }
+  return provider === "openai"
+    ? DEFAULT_OPENAI_CHAT_URL
+    : DEFAULT_ANTHROPIC_MESSAGES_URL;
+}
+
+export function resolveModelId(
+  provider: AiProvider,
+  modelInput: string | undefined,
+): string {
+  const t = (modelInput ?? "").trim();
+  if (provider === "custom") {
+    if (!t) {
+      throw new FatalParseError("Enter a model name for Custom API.");
+    }
+    return t;
+  }
+  if (t) {
+    return t;
+  }
+  return provider === "openai" ? OPENAI_MODEL : ANTHROPIC_MODEL;
+}
 
 function parseJsonFromModelText(text: string): unknown {
   const trimmed = text.trim();
@@ -61,25 +118,29 @@ function parseJsonFromModelText(text: string): unknown {
 
 async function parseOpenAI(
   apiKey: string,
+  endpoint: string,
+  model: string,
   chunkText: string,
   signal: AbortSignal,
+  forwardProvider: "openai" | "custom",
 ): Promise<Question[]> {
-  const res = await fetch(OPENAI_URL, {
-    method: "POST",
+  const res = await forwardAiPost({
+    provider: forwardProvider,
+    targetUrl: endpoint,
+    apiKey,
     signal,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
+    body: {
+      model,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: MCQ_EXTRACTION_SYSTEM_PROMPT },
         { role: "user", content: chunkText },
       ],
       response_format: { type: "json_object" },
-    }),
+      stream: false,
+    },
   });
+
+  const text = await res.text();
 
   if (res.status === 401) {
     throw new FatalParseError(
@@ -92,41 +153,56 @@ async function parseOpenAI(
     );
   }
   if (!res.ok) {
-    throw new Error(`OpenAI request failed: ${res.status}`);
+    const proxyMsg =
+      res.status === 502 ? parseProxyForwardErrorBody(text) : null;
+    if (proxyMsg) {
+      throw new Error(proxyMsg);
+    }
+    throw new Error(describeBadAiResponse(res.status, text));
   }
 
-  const data = (await res.json()) as {
+  let data: {
     choices?: Array<{ message?: { content?: string } }>;
   };
+  try {
+    data = JSON.parse(text) as typeof data;
+  } catch {
+    if (responseLooksLikeHtml(text)) {
+      throw new Error(
+        "API returned HTML instead of JSON — check the chat-completions URL.",
+      );
+    }
+    throw new Error("Invalid JSON from chat API");
+  }
   const content = data.choices?.[0]?.message?.content;
   if (typeof content !== "string" || content.trim().length === 0) {
     throw new Error("Empty OpenAI message content");
   }
 
-  const parsed = parseJsonFromModelText(content);
-  return validateQuestionsFromJson(parsed);
+  return questionsFromAssistantContent(content);
 }
 
 async function parseAnthropic(
   apiKey: string,
+  endpoint: string,
+  model: string,
   chunkText: string,
   signal: AbortSignal,
 ): Promise<Question[]> {
-  const res = await fetch(ANTHROPIC_URL, {
-    method: "POST",
+  const res = await forwardAiPost({
+    provider: "anthropic",
+    targetUrl: endpoint,
+    apiKey,
     signal,
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
+    body: {
+      model,
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+      system: MCQ_EXTRACTION_SYSTEM_PROMPT,
       messages: [{ role: "user", content: chunkText }],
-    }),
+    },
   });
+
+  const text = await res.text();
 
   if (res.status === 401) {
     throw new FatalParseError(
@@ -139,12 +215,27 @@ async function parseAnthropic(
     );
   }
   if (!res.ok) {
-    throw new Error(`Anthropic request failed: ${res.status}`);
+    const proxyMsg =
+      res.status === 502 ? parseProxyForwardErrorBody(text) : null;
+    if (proxyMsg) {
+      throw new Error(proxyMsg);
+    }
+    throw new Error(describeBadAiResponse(res.status, text));
   }
 
-  const data = (await res.json()) as {
+  let data: {
     content?: Array<{ type?: string; text?: string }>;
   };
+  try {
+    data = JSON.parse(text) as typeof data;
+  } catch {
+    if (responseLooksLikeHtml(text)) {
+      throw new Error(
+        "API returned HTML instead of JSON — check the messages API URL.",
+      );
+    }
+    throw new Error("Invalid JSON from Anthropic");
+  }
   const blocks = data.content;
   const textParts =
     blocks
@@ -155,16 +246,34 @@ async function parseAnthropic(
     throw new Error("Empty Anthropic message content");
   }
 
-  const parsed = parseJsonFromModelText(joined);
-  return validateQuestionsFromJson(parsed);
+  return questionsFromAssistantContent(joined);
 }
 
 export async function parseChunkOnce(
   params: ParseChunkOnceParams,
 ): Promise<Question[]> {
-  const { provider, apiKey, chunkText, signal } = params;
+  const { provider, apiKey, apiUrl, model, chunkText, signal } = params;
+  const endpoint = resolveChatApiUrl(provider, apiUrl);
+  const modelId = resolveModelId(provider, model);
   if (provider === "openai") {
-    return parseOpenAI(apiKey, chunkText, signal);
+    return parseOpenAI(
+      apiKey,
+      endpoint,
+      modelId,
+      chunkText,
+      signal,
+      "openai",
+    );
   }
-  return parseAnthropic(apiKey, chunkText, signal);
+  if (provider === "custom") {
+    return parseOpenAI(
+      apiKey,
+      endpoint,
+      modelId,
+      chunkText,
+      signal,
+      "custom",
+    );
+  }
+  return parseAnthropic(apiKey, endpoint, modelId, chunkText, signal);
 }

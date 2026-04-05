@@ -1,9 +1,12 @@
 "use client";
 
 import type { Question } from "@/types/question";
+import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
 import { QuestionEditor } from "@/components/review/QuestionEditor";
+import { StoredImage } from "@/components/media/StoredImage";
 
 export type QuestionCardProps = {
+  studySetId: string;
   question: Question;
   index: number;
   isEditing: boolean;
@@ -11,9 +14,11 @@ export type QuestionCardProps = {
   onSave: (q: Question) => void;
   onCancel: () => void;
   onDelete: () => void;
+  onSetCorrectIndex?: (index: 0 | 1 | 2 | 3) => void;
 };
 
 export function QuestionCard({
+  studySetId,
   question,
   index,
   isEditing,
@@ -21,11 +26,12 @@ export function QuestionCard({
   onSave,
   onCancel,
   onDelete,
+  onSetCorrectIndex,
 }: QuestionCardProps) {
   return (
-    <article className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
+    <article className="rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-surface)] p-4 shadow-md shadow-black/15">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold text-neutral-900">
+        <h3 className="text-sm font-semibold text-[var(--d2q-text)]">
           {`Q${index}`}
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -33,7 +39,7 @@ export function QuestionCard({
             <button
               type="button"
               onClick={onToggleEdit}
-              className="cursor-pointer text-sm font-medium text-teal-800 underline-offset-2 hover:underline"
+              className="cursor-pointer text-sm font-medium text-[var(--d2q-accent-hover)] underline-offset-2 hover:underline"
             >
               Edit
             </button>
@@ -41,7 +47,7 @@ export function QuestionCard({
           <button
             type="button"
             onClick={onDelete}
-            className="cursor-pointer text-sm font-medium text-red-700 underline-offset-2 hover:underline"
+            className="cursor-pointer text-sm font-medium text-red-400 underline-offset-2 hover:underline"
           >
             Remove
           </button>
@@ -50,23 +56,28 @@ export function QuestionCard({
 
       {isEditing ? (
         <QuestionEditor
+          studySetId={studySetId}
           question={question}
           onSave={onSave}
           onCancel={onCancel}
         />
       ) : (
-        <div className="mt-3 space-y-2 text-sm text-neutral-800">
+        <div className="mt-3 space-y-2 text-sm text-[var(--d2q-text)]">
           <p className="whitespace-pre-wrap">{question.question}</p>
-          <ol className="list-none space-y-1 pl-0">
-            {question.options.map((opt, i) => (
-              <li key={i}>
-                <span className="font-medium text-neutral-600">
-                  {String.fromCharCode(65 + i)}.
-                </span>{" "}
-                {opt}
-              </li>
-            ))}
-          </ol>
+          {question.questionImageId ? (
+            <StoredImage
+              mediaId={question.questionImageId}
+              alt=""
+            />
+          ) : null}
+          <McqOptionsPreview
+            question={question}
+            onSetCorrectIndex={onSetCorrectIndex}
+            renderAfterOption={(i) => {
+              const oid = question.optionImageIds?.[i];
+              return oid ? <StoredImage mediaId={oid} alt="" /> : null;
+            }}
+          />
         </div>
       )}
     </article>

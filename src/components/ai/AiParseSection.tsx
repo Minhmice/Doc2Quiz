@@ -1,33 +1,55 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chunkText } from "@/lib/ai/chunkText";
 import { FatalParseError } from "@/lib/ai/errors";
 import { runSequentialParse } from "@/lib/ai/runSequentialParse";
+import { runVisionSequential } from "@/lib/ai/runVisionSequential";
 import {
-  clearKeyForProvider,
   getKeyForProvider,
+  getModelForProvider,
   getProvider,
-  setKeyForProvider,
-  setProvider,
+  getUrlForProvider,
 } from "@/lib/ai/storage";
-import { loadDraftQuestions } from "@/lib/review/draftQuestions";
-import type { AiProvider, Question } from "@/types/question";
-import { LS_DRAFT_QUESTIONS } from "@/types/question";
+import { useParseProgress } from "@/components/ai/ParseProgressContext";
+import {
+  ensureStudySetDb,
+  getDraftQuestions,
+  getParseProgressRecord,
+  putDraftQuestions,
+  putParseProgressRecord,
+  touchStudySetMeta,
+} from "@/lib/db/studySetDb";
+import {
+  renderPdfPagesToImages,
+  VISION_MAX_PAGES_DEFAULT,
+} from "@/lib/pdf/renderPagesToImages";
+import type { Question } from "@/types/question";
+import type { ParseProgressPhase } from "@/types/studySet";
 import { QuestionPreviewList } from "@/components/ai/QuestionPreviewList";
 
 export type AiParseSectionProps = {
+  studySetId: string;
   extractedText: string;
+  activePdfFile: File | null;
+  pageCount: number | null;
+  textExtractionEmpty: boolean;
+  /** Persist textarea/source to IDB immediately before starting parse (merged Source page). */
+  onBeforeParse?: () => Promise<void>;
   onDraftPersisted?: () => void;
 };
 
 export function AiParseSection({
+  studySetId,
   extractedText,
+  activePdfFile,
+  pageCount = null,
+  textExtractionEmpty = false,
+  onBeforeParse,
   onDraftPersisted,
 }: AiParseSectionProps) {
-  const [provider, setProviderState] = useState<AiProvider>("openai");
-  const [keyInput, setKeyInput] = useState("");
-  const [showKey, setShowKey] = useState(false);
+  const { reportParse, clearParse } = useParseProgress();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [progress, setProgress] = useState<{
     current: number;
@@ -36,63 +58,188 @@ export function AiParseSection({
   }>({ current: 0, total: 0, status: "idle" });
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [visionRendering, setVisionRendering] = useState(false);
+  const [parseMode, setParseMode] = useState<"text" | "vision" | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  const lastIdbWriteRef = useRef(0);
+  const prevRunningRef = useRef(false);
 
   useEffect(() => {
-    const p = getProvider();
-    setProviderState(p);
-    setKeyInput(getKeyForProvider(p));
-    const draft = loadDraftQuestions();
-    if (draft.length > 0) {
-      setQuestions(draft);
+    void (async () => {
+      try {
+        await ensureStudySetDb();
+        const s = await getParseProgressRecord(studySetId);
+        if (s?.running) {
+          await putParseProgressRecord({
+            ...s,
+            running: false,
+            phase: "idle",
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [studySetId]);
+
+  useEffect(() => {
+    return () => {
+      clearParse();
+    };
+  }, [clearParse]);
+
+  useEffect(() => {
+    const running =
+      progress.status === "running" || visionRendering;
+    let phase: ParseProgressPhase = "idle";
+    if (running) {
+      if (visionRendering) {
+        phase = "rendering_pdf";
+      } else if (parseMode === "vision") {
+        phase = "vision_pages";
+      } else {
+        phase = "text_chunks";
+      }
     }
-  }, []);
+
+    const record = {
+      studySetId,
+      updatedAt: new Date().toISOString(),
+      running,
+      phase,
+      current: progress.current,
+      total: progress.total,
+    };
+
+    if (running) {
+      reportParse({
+        studySetId,
+        running: true,
+        phase,
+        current: progress.current,
+        total: progress.total,
+      });
+      const now = Date.now();
+      const immediate = !prevRunningRef.current;
+      if (immediate || now - lastIdbWriteRef.current >= 400) {
+        lastIdbWriteRef.current = now;
+        void putParseProgressRecord(record);
+      }
+    } else {
+      clearParse(studySetId);
+      if (prevRunningRef.current) {
+        void putParseProgressRecord({
+          ...record,
+          running: false,
+          phase: "idle",
+        });
+      }
+    }
+    prevRunningRef.current = running;
+  }, [studySetId, progress, visionRendering, parseMode, reportParse, clearParse]);
+
+  const reloadDraft = useCallback(async () => {
+    const draft = await getDraftQuestions(studySetId);
+    setQuestions(draft);
+  }, [studySetId]);
+
+  useEffect(() => {
+    void reloadDraft();
+  }, [reloadDraft]);
+
+  const provider = getProvider();
+  const keyInput = getKeyForProvider(provider);
+  const urlInput = getUrlForProvider(provider);
+  const modelInput = getModelForProvider(provider);
 
   const trimmedText = extractedText.trim();
   const hasKey = keyInput.trim().length > 0;
-  const isRunning = progress.status === "running";
+  const hasCustomEndpoint =
+    provider !== "custom" || urlInput.trim().length > 0;
+  const hasCustomModel =
+    provider !== "custom" || modelInput.trim().length > 0;
 
-  const parseDisabled = useMemo(
-    () => !trimmedText || !hasKey || isRunning,
-    [trimmedText, hasKey, isRunning],
-  );
+  const visionForwardReady =
+    provider === "openai" || provider === "custom";
+
+  const isRunning =
+    progress.status === "running" || visionRendering;
+
+  const visionDisabled =
+    !textExtractionEmpty ||
+    !activePdfFile ||
+    !visionForwardReady ||
+    !hasKey ||
+    isRunning ||
+    (provider === "custom" && (!urlInput.trim() || !modelInput.trim()));
+
+  const canRunTextParse =
+    Boolean(trimmedText) && hasKey && hasCustomEndpoint && hasCustomModel;
+  const canRunVisionParse = !visionDisabled;
+
+  const unifiedParseDisabled =
+    isRunning || (!canRunTextParse && !(textExtractionEmpty && canRunVisionParse));
 
   const hintMessage = useMemo(() => {
     if (isRunning) {
       return null;
     }
-    if (!trimmedText) {
-      return "Upload and extract a PDF first.";
-    }
     if (!hasKey) {
-      return "Add an API key above to parse questions.";
+      return null;
+    }
+    if (!trimmedText) {
+      if (textExtractionEmpty && activePdfFile) {
+        return "No selectable text — use Parse below with a vision-capable model (OpenAI or Custom), or add text in the editor above.";
+      }
+      return "Add extracted or pasted text above, or use a scanned PDF with Parse below.";
+    }
+    if (provider === "custom") {
+      if (!urlInput.trim()) {
+        return "Enter the full chat-completions URL in Settings.";
+      }
+      if (!modelInput.trim()) {
+        return "Enter a model id in Settings.";
+      }
     }
     return null;
-  }, [trimmedText, hasKey, isRunning]);
-
-  const selectProvider = useCallback((p: AiProvider) => {
-    setProvider(p);
-    setProviderState(p);
-    setKeyInput(getKeyForProvider(p));
-  }, []);
-
-  const handleKeyChange = useCallback(
-    (value: string) => {
-      setKeyInput(value);
-      setKeyForProvider(provider, value);
-    },
-    [provider],
-  );
-
-  const handleClearKey = useCallback(() => {
-    clearKeyForProvider(provider);
-    setKeyInput("");
-  }, [provider]);
+  }, [
+    trimmedText,
+    hasKey,
+    isRunning,
+    provider,
+    urlInput,
+    modelInput,
+    textExtractionEmpty,
+    activePdfFile,
+  ]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
   }, []);
+
+  const persistQuestions = useCallback(
+    async (qs: Question[]) => {
+      await putDraftQuestions(studySetId, qs);
+      await touchStudySetMeta(studySetId, {});
+      onDraftPersisted?.();
+    },
+    [studySetId, onDraftPersisted],
+  );
+
+  const handlePreviewSetCorrectIndex = useCallback(
+    (questionId: string, index: 0 | 1 | 2 | 3) => {
+      setQuestions((prev) => {
+        const nextList = prev.map((q) =>
+          q.id === questionId ? { ...q, correctIndex: index } : q,
+        );
+        void persistQuestions(nextList);
+        return nextList;
+      });
+    },
+    [persistQuestions],
+  );
 
   const handleParse = useCallback(async () => {
     setError(null);
@@ -102,7 +249,7 @@ export function AiParseSection({
     if (chunks.length === 0) {
       setError(
         trimmedText.length === 0
-          ? "Upload and extract a PDF first."
+          ? "No text to parse yet."
           : "No text chunks to parse. Try a longer document.",
       );
       return;
@@ -115,12 +262,15 @@ export function AiParseSection({
 
     const controller = new AbortController();
     abortRef.current = controller;
+    setParseMode("text");
     setProgress({ current: 0, total: chunks.length, status: "running" });
 
     try {
       const result = await runSequentialParse({
         provider,
         apiKey,
+        apiUrl: urlInput,
+        model: modelInput,
         chunks,
         signal: controller.signal,
         onProgress: ({ current, total }) => {
@@ -146,200 +296,293 @@ export function AiParseSection({
       }
 
       if (!controller.signal.aborted && !result.fatalError) {
-        try {
-          localStorage.setItem(
-            LS_DRAFT_QUESTIONS,
-            JSON.stringify({
-              savedAt: new Date().toISOString(),
-              questions: result.questions,
-            }),
-          );
-          onDraftPersisted?.();
-        } catch {
-          /* ignore quota / private mode */
-        }
+        await persistQuestions(result.questions);
       }
     } catch (e) {
       if (e instanceof FatalParseError) {
         setError(e.message);
       } else {
-        setError(
-          "Some parts of the document could not be processed.",
-        );
+        setError("Some parts of the document could not be processed.");
       }
     } finally {
       abortRef.current = null;
+      setParseMode(null);
       setProgress((p) => ({
         ...p,
         status: "idle",
       }));
     }
-  }, [extractedText, keyInput, provider, trimmedText.length, onDraftPersisted]);
+  }, [
+    extractedText,
+    keyInput,
+    urlInput,
+    modelInput,
+    provider,
+    trimmedText.length,
+    persistQuestions,
+  ]);
+
+  const handleVisionParse = useCallback(async () => {
+    if (!activePdfFile || visionDisabled) {
+      return;
+    }
+
+    setError(null);
+    setSummary(null);
+
+    const apiKey = keyInput.trim();
+    if (!apiKey) {
+      return;
+    }
+
+    const forwardProvider = provider === "custom" ? "custom" : "openai";
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setParseMode("vision");
+    setVisionRendering(true);
+    setProgress({ current: 0, total: 1, status: "running" });
+
+    try {
+      const pages = await renderPdfPagesToImages(activePdfFile, {
+        signal: controller.signal,
+        maxPages: VISION_MAX_PAGES_DEFAULT,
+      });
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (pages.length === 0) {
+        setError("Could not render any PDF pages for vision.");
+        return;
+      }
+
+      setVisionRendering(false);
+      const visionStepTotal =
+        pages.length <= 1 ? pages.length : pages.length - 1;
+      setProgress({ current: 0, total: visionStepTotal, status: "running" });
+
+      const result = await runVisionSequential({
+        forwardProvider,
+        apiKey,
+        apiUrl: urlInput,
+        model: modelInput,
+        pages,
+        signal: controller.signal,
+        onProgress: ({ current, total }) => {
+          setProgress({ current, total, status: "running" });
+        },
+      });
+
+      setQuestions(result.questions);
+
+      const n = result.questions.length;
+      const m = result.failedSteps;
+      const parts: string[] = [
+        `Vision: parsed ${n} question${n === 1 ? "" : "s"}`,
+      ];
+      if (m > 0) {
+        parts.push(`${m} vision step${m === 1 ? "" : "s"} failed`);
+      }
+      if (controller.signal.aborted) {
+        parts.push("Parsing stopped.");
+      }
+      setSummary(parts.join(". ") + ".");
+
+      if (result.fatalError) {
+        setError(result.fatalError);
+      }
+
+      if (!controller.signal.aborted && !result.fatalError) {
+        await persistQuestions(result.questions);
+      }
+    } catch (e) {
+      if (e instanceof FatalParseError) {
+        setError(e.message);
+      } else if (
+        e instanceof DOMException &&
+        e.name === "AbortError"
+      ) {
+        setSummary("Vision parsing stopped.");
+      } else {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Vision parsing failed. Check model supports images.",
+        );
+      }
+    } finally {
+      setVisionRendering(false);
+      abortRef.current = null;
+      setParseMode(null);
+      setProgress((p) => ({
+        ...p,
+        status: "idle",
+      }));
+    }
+  }, [
+    activePdfFile,
+    visionDisabled,
+    keyInput,
+    provider,
+    urlInput,
+    modelInput,
+    persistQuestions,
+  ]);
+
+  const handleUnifiedParse = useCallback(async () => {
+    setError(null);
+    setSummary(null);
+    try {
+      await onBeforeParse?.();
+    } catch {
+      setError("Could not save source text before parsing.");
+      return;
+    }
+    if (canRunTextParse && !isRunning) {
+      await handleParse();
+      return;
+    }
+    if (textExtractionEmpty && canRunVisionParse && activePdfFile) {
+      await handleVisionParse();
+      return;
+    }
+    if (!hasKey) {
+      setError("Add an API key in Settings to parse.");
+      return;
+    }
+    if (trimmedText && !canRunTextParse && provider === "custom") {
+      if (!urlInput.trim()) {
+        setError("Enter the full chat-completions URL in Settings.");
+        return;
+      }
+      if (!modelInput.trim()) {
+        setError("Enter a model id in Settings.");
+        return;
+      }
+    }
+    setError(
+      trimmedText
+        ? "Cannot start text parse right now."
+        : textExtractionEmpty && provider === "anthropic"
+          ? "Switch to OpenAI or Custom in Settings for vision parsing."
+          : "Nothing to parse — add text or use a PDF with no extractable text.",
+    );
+  }, [
+    onBeforeParse,
+    canRunTextParse,
+    canRunVisionParse,
+    isRunning,
+    textExtractionEmpty,
+    activePdfFile,
+    hasKey,
+    trimmedText,
+    provider,
+    urlInput,
+    modelInput,
+    handleParse,
+    handleVisionParse,
+  ]);
+
+  const visionPageCap =
+    pageCount !== null
+      ? Math.min(pageCount, VISION_MAX_PAGES_DEFAULT)
+      : VISION_MAX_PAGES_DEFAULT;
 
   return (
     <section
-      className="mt-10 border-t border-neutral-200 pt-10"
+      className="space-y-6"
       aria-labelledby="ai-parse-heading"
     >
-      <h2
-        id="ai-parse-heading"
-        className="text-lg font-semibold tracking-tight text-neutral-900"
-      >
-        AI question parsing
-      </h2>
-      <p className="mt-1 text-sm text-neutral-600">
-        Choose a provider and add your API key. Questions are generated in your
-        browser from the extracted text above.
-      </p>
-
-      <div
-        className="mt-6 flex flex-wrap gap-2"
-        role="group"
-        aria-label="AI provider"
-      >
-        <button
-          type="button"
-          onClick={() => selectProvider("openai")}
-          className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-            provider === "openai"
-              ? "border-teal-600 bg-teal-50 text-teal-900"
-              : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
-          }`}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2
+          id="ai-parse-heading"
+          className="text-lg font-semibold tracking-tight text-[var(--d2q-text)]"
         >
-          OpenAI
-        </button>
-        <button
-          type="button"
-          onClick={() => selectProvider("anthropic")}
-          className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-            provider === "anthropic"
-              ? "border-teal-600 bg-teal-50 text-teal-900"
-              : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
-          }`}
-        >
-          Claude
-        </button>
-      </div>
-
-      <div className="mt-4">
-        <label
-          htmlFor="ai-api-key"
-          className="block text-sm font-medium text-neutral-800"
-        >
-          API key ({provider === "openai" ? "OpenAI" : "Anthropic"})
-        </label>
-        <p className="mt-1 text-sm text-neutral-600">
-          Your API key is stored locally in your browser. It is never sent to our
-          servers.
-        </p>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
-          <div className="relative min-w-0 flex-1">
-            <input
-              id="ai-api-key"
-              type={showKey ? "text" : "password"}
-              autoComplete="off"
-              spellCheck={false}
-              value={keyInput}
-              onChange={(e) => handleKeyChange(e.target.value)}
-              className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 pr-10 text-sm text-neutral-900 shadow-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
-              aria-describedby="ai-key-trust"
-            />
-            <span id="ai-key-trust" className="sr-only">
-              Your API key is stored locally in your browser. It is never sent
-              to our servers.
+          Parse with AI
+        </h2>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {hasKey ? (
+            <span className="rounded-full bg-emerald-950/50 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/30">
+              API key set
             </span>
-            <button
-              type="button"
-              onClick={() => setShowKey((v) => !v)}
-              className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer rounded p-1 text-neutral-500 transition-colors duration-200 hover:bg-neutral-100 hover:text-neutral-800"
-              aria-label={showKey ? "Hide API key" : "Show API key"}
+          ) : (
+            <Link
+              href="/settings"
+              className="font-medium text-[var(--d2q-accent-hover)] underline-offset-2 hover:underline"
             >
-              {showKey ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="h-5 w-5"
-                  aria-hidden
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m12.743 12.743 3 3M9.88 9.88l4.24 4.24m-4.24 4.24 4.24-4.24"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="h-5 w-5"
-                  aria-hidden
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                  />
-                </svg>
-              )}
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={handleClearKey}
-            className="cursor-pointer rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors duration-200 hover:bg-neutral-50"
-          >
-            Clear
-          </button>
+              Configure API in Settings
+            </Link>
+          )}
         </div>
       </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleParse}
-          disabled={parseDisabled}
-          className="cursor-pointer rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+      <p className="text-sm text-[var(--d2q-muted)]">
+        Uses the text editor above (or vision on scanned PDFs). Configure
+        provider, model, and keys in{" "}
+        <Link
+          href="/settings"
+          className="font-medium text-[var(--d2q-accent-hover)] underline-offset-2 hover:underline"
         >
-          Parse Questions
-        </button>
-        {isRunning ? (
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="cursor-pointer rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-900 transition-colors duration-200 hover:bg-red-100"
-          >
-            Cancel
-          </button>
-        ) : null}
-      </div>
+          Settings
+        </Link>
+        .
+      </p>
 
+      {textExtractionEmpty && activePdfFile ? (
+        <div
+          className="rounded-lg border border-orange-500/30 bg-orange-950/35 p-4 text-sm text-amber-100 shadow-sm"
+          role="region"
+          aria-label="Scanned PDF vision parsing"
+        >
+          <p className="font-semibold text-amber-200">Scanned or image-only PDF</p>
+          <p className="mt-1 text-amber-100/95">
+            <strong className="font-semibold">Parse</strong> below will use
+            vision: up to{" "}
+            <strong className="font-semibold">{visionPageCap}</strong>{" "}
+            page{visionPageCap === 1 ? "" : "s"} as images (one API call per
+            page). Use a vision-capable model in Settings.
+          </p>
+          {provider === "anthropic" ? (
+            <p className="mt-2 font-medium text-amber-200">
+              Switch to OpenAI or Custom in Settings to use vision parsing.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!hasKey ? (
+        <p className="text-sm text-[var(--d2q-muted)]">
+          Add an API key in{" "}
+          <Link
+            href="/settings"
+            className="font-medium text-[var(--d2q-accent-hover)] underline-offset-2 hover:underline"
+          >
+            Settings
+          </Link>{" "}
+          to parse questions.
+        </p>
+      ) : null}
       {hintMessage ? (
-        <p className="mt-2 text-sm text-neutral-500">{hintMessage}</p>
+        <p className="text-sm text-[var(--d2q-muted)]">{hintMessage}</p>
       ) : null}
 
       {isRunning ? (
         <p
-          className="mt-3 text-sm font-medium text-teal-800"
+          className="text-sm font-medium text-[var(--d2q-accent-hover)]"
           aria-live="polite"
         >
-          Parsing questions… {progress.current} / {progress.total} chunks
+          {visionRendering
+            ? "Rendering PDF pages as images…"
+            : parseMode === "vision"
+              ? `Parsing with vision… ${progress.current} / ${progress.total} steps`
+              : `Parsing questions… ${progress.current} / ${progress.total} chunks`}
         </p>
       ) : null}
 
       {error ? (
         <p
-          className="mt-3 text-sm font-medium text-red-800"
+          className="text-sm font-medium text-red-400"
           role="alert"
           aria-live="assertive"
         >
@@ -348,12 +591,35 @@ export function AiParseSection({
       ) : null}
 
       {summary ? (
-        <p className="mt-3 text-sm text-neutral-700" aria-live="polite">
+        <p className="text-sm text-[var(--d2q-text)]" aria-live="polite">
           {summary}
         </p>
       ) : null}
 
-      <QuestionPreviewList questions={questions} />
+      <QuestionPreviewList
+        questions={questions}
+        onSetCorrectIndex={handlePreviewSetCorrectIndex}
+      />
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-[var(--d2q-border)] pt-6">
+        <button
+          type="button"
+          onClick={() => void handleUnifiedParse()}
+          disabled={unifiedParseDisabled}
+          className="cursor-pointer rounded-lg bg-[var(--d2q-accent)] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition-colors duration-200 hover:bg-[var(--d2q-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Parse
+        </button>
+        {isRunning ? (
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="cursor-pointer rounded-lg border border-red-500/40 bg-red-950/40 px-4 py-2 text-sm font-medium text-red-300 transition-colors duration-200 hover:bg-red-950/60"
+          >
+            Cancel
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }

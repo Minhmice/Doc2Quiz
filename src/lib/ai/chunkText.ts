@@ -7,7 +7,11 @@ export const CHUNK_SOFT_TARGET = 1000;
 export const CHUNK_HARD_MAX = 1200;
 export const CHUNK_SOFT_MIN = 800;
 
+/** Chars from the end of chunk i prepended to chunk i+1 so cross-boundary MCQs stay in context (extra tokens). */
+export const CHUNK_CONTEXT_OVERLAP = 520;
+
 const PARA_SEP = "\n\n";
+const OVERLAP_SEP = "\n\n";
 
 function splitParagraphs(normalized: string): string[] {
   return normalized
@@ -60,11 +64,37 @@ function hardSliceLongParagraph(para: string): string[] {
   return parts;
 }
 
+function tailForOverlap(s: string, maxChars: number): string {
+  if (maxChars <= 0 || s.length === 0) {
+    return "";
+  }
+  if (s.length <= maxChars) {
+    return s.trim();
+  }
+  return s.slice(-maxChars).trimStart();
+}
+
 /**
- * Split extracted document text into chunks for sequential API calls.
- * Does not mutate `fullText`.
+ * After base chunking, prepend each chunk with the tail of the previous chunk (raw slice, not recursively overlapped).
  */
-export function chunkText(fullText: string): string[] {
+export function applyChunkContextOverlap(
+  baseChunks: string[],
+  overlapChars: number = CHUNK_CONTEXT_OVERLAP,
+): string[] {
+  if (baseChunks.length <= 1 || overlapChars <= 0) {
+    return baseChunks;
+  }
+  const out: string[] = [baseChunks[0]!];
+  for (let i = 1; i < baseChunks.length; i++) {
+    const prev = baseChunks[i - 1]!;
+    const tail = tailForOverlap(prev, overlapChars);
+    const cur = baseChunks[i]!;
+    out.push(tail.length > 0 ? tail + OVERLAP_SEP + cur : cur);
+  }
+  return out;
+}
+
+function chunkTextWithoutOverlap(fullText: string): string[] {
   const text = fullText.trim();
   if (text.length === 0) {
     return [];
@@ -101,4 +131,13 @@ export function chunkText(fullText: string): string[] {
 
   flush();
   return chunks;
+}
+
+/**
+ * Split extracted document text into chunks for sequential API calls.
+ * Chunks after the first include a tail of the previous chunk for cross-boundary MCQs.
+ * Does not mutate `fullText`.
+ */
+export function chunkText(fullText: string): string[] {
+  return applyChunkContextOverlap(chunkTextWithoutOverlap(fullText));
 }

@@ -87,8 +87,8 @@ export function UploadBox({
           "rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
           disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
           isDragging
-            ? "border-teal-600 bg-teal-50"
-            : "border-neutral-300 bg-white hover:border-teal-500",
+            ? "border-[var(--d2q-accent)] bg-[var(--d2q-accent-muted)]"
+            : "border-[var(--d2q-border-strong)] bg-[var(--d2q-surface)] hover:border-[var(--d2q-accent)]",
         ].join(" ")}
         onClick={() => !disabled && inputRef.current?.click()}
       >
@@ -100,21 +100,21 @@ export function UploadBox({
           disabled={disabled}
           onChange={onInputChange}
         />
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-[var(--d2q-muted)]">
           Drag and drop a PDF here, or{" "}
-          <span className="font-medium text-teal-700">
+          <span className="font-medium text-[var(--d2q-accent-hover)]">
             {hasExtractedContent ? "Choose another PDF" : "Choose PDF"}
           </span>
         </p>
       </div>
       {pickedMeta ? (
-        <p className="mt-3 text-sm text-neutral-700">
+        <p className="mt-3 text-sm text-[var(--d2q-text)]">
           <span className="font-medium">{pickedMeta.name}</span>
-          <span className="text-neutral-500"> · {formatBytes(pickedMeta.size)}</span>
+          <span className="text-[var(--d2q-muted)]"> · {formatBytes(pickedMeta.size)}</span>
         </p>
       ) : null}
       {error ? (
-        <p className="mt-2 text-sm text-red-700" role="alert">
+        <p className="mt-2 text-sm text-red-400" role="alert">
           {error}
         </p>
       ) : null}

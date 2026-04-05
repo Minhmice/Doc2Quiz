@@ -1,0 +1,52 @@
+version: 1
+default:
+  primary_agent: orchestrator
+  direct_answer_when: []
+  stop_delegation_when:
+    - repeated_outputs_without_new_evidence
+    - contract_complete_and_quality_gates_passed
+parallel_delegation:
+  require_all:
+    - independent_artifacts
+    - no_output_dependency
+    - clear_merge_owner
+sequential_delegation:
+  trigger_any:
+    - upstream_output_required
+    - quality_gate_required
+    - deployment_dependency_chain
+signals:
+  product-manager:
+    keywords: ["requirements", "scope", "priority", "acceptance", "mvp", "non-goal"]
+  planner:
+    keywords: ["plan", "roadmap", "decompose", "sequence", "milestone"]
+  research-analyst:
+    keywords: ["compare", "evaluate", "unknown", "best practice", "tradeoff"]
+  frontend-developer:
+    keywords: ["ui", "component", "page", "layout", "a11y", "render", "translation", "i18n", "locale", "localized", "shadcn", "components.json", "radix", "add button", "add dialog"]
+  backend-developer:
+    keywords: ["api", "route", "auth", "service", "server", "endpoint"]
+  typescript-specialist:
+    keywords: ["type error", "generic", "zod", "inference", "type-safe"]
+  database-specialist:
+    keywords: ["schema", "migration", "rls", "query", "index", "sql"]
+  debugger:
+    keywords: ["bug", "repro", "regression", "flaky", "trace", "root cause"]
+  code-reviewer:
+    keywords: ["review", "risk", "security", "maintainability", "correctness"]
+  security-specialist:
+    keywords: ["security", "vulnerability", "audit", "risk", "xss", "sql injection", "auth", "access control", "secret", "csp"]
+  qa-tester:
+    keywords: ["test plan", "verify", "pass/fail", "edge case", "coverage"]
+  documentation-writer:
+    keywords: ["readme", "docs", "runbook", "how-to", "changelog"]
+  devops-engineer:
+    keywords: ["deploy", "pipeline", "rollback", "slo", "monitoring", "ci/cd"]
+  google-cli-specialist:
+    keywords: ["gws", "google workspace", "google-cli", "cli", "discovery", "auth", "commands", "validate"]
+quality_gates:
+  mandatory_before_done:
+    - code-reviewer
+    - qa-tester
+  mandatory_before_release_recommendation:
+    - devops-engineer

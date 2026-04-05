@@ -1,0 +1,10 @@
+skill_id,display_name,source_path,description,primary_specialist,keywords,has_references_dir
+building-native-ui,Building native UI,.agents/skills/building-native-ui/SKILL.md,"Expo Router UI: styling components navigation animations native tabs patterns",frontend-developer,"expo router, native tabs, expo ui, react native screen, stack tabs, form sheet, animations, SF symbols",yes
+expo-tailwind-setup,Expo Tailwind / NativeWind,.agents/skills/expo-tailwind-setup/SKILL.md,"Tailwind CSS v4 + react-native-css + NativeWind v5 in Expo",frontend-developer,"nativewind, tailwind v4, global.css, metro postcss, className react native",no
+upgrading-expo,Upgrading Expo SDK,.agents/skills/upgrading-expo/SKILL.md,"SDK bumps expo-doctor dependencies new architecture deprecations",typescript-specialist,"expo upgrade, sdk 55, expo-doctor, react compiler, reanimated worklets",yes
+expo-deployment,Expo deployment,.agents/skills/expo-deployment/SKILL.md,"App Store Play Store web EAS Hosting TestFlight metadata",devops-engineer,"eas build, eas submit, testflight, play store, app store, expo export",yes
+expo-dev-client,Expo dev client,.agents/skills/expo-dev-client/SKILL.md,"Custom dev client builds local TestFlight distribution",devops-engineer,"dev client, expo run ios, development build, testflight internal",no
+expo-cicd-workflows,EAS CI/CD workflows,.agents/skills/expo-cicd-workflows/SKILL.md,"eas/workflows YAML pipelines automation",devops-engineer,"eas workflow, .eas/workflows, ci cd expo, build profile",yes
+expo-api-routes,Expo API routes,.agents/skills/expo-api-routes/SKILL.md,"Expo Router API routes with EAS Hosting",backend-developer,"expo api route, eas hosting server, edge function expo",no
+use-dom,Expo use DOM,.agents/skills/use-dom/SKILL.md,"DOM components webview native incremental web migration",frontend-developer,"expo dom, webview react native, use dom, universal web",no
+native-data-fetching,Native data fetching,.agents/skills/native-data-fetching/SKILL.md,"fetch React Query SWR offline Expo Router loaders",frontend-developer,"useLoaderData, tanstack query, react query mobile, swr native, api error cache",yes

@@ -1,5 +1,15 @@
 import type { Question } from "@/types/question";
 
+export function hasValidCorrectIndex(q: Question): boolean {
+  const ci = q.correctIndex;
+  return (
+    typeof ci === "number" &&
+    Number.isInteger(ci) &&
+    ci >= 0 &&
+    ci <= 3
+  );
+}
+
 export function isMcqComplete(q: Question): boolean {
   if (typeof q.question !== "string" || q.question.trim().length === 0) {
     return false;
@@ -14,16 +24,7 @@ export function isMcqComplete(q: Question): boolean {
   ) {
     return false;
   }
-  const ci = q.correctIndex;
-  if (
-    typeof ci !== "number" ||
-    !Number.isInteger(ci) ||
-    ci < 0 ||
-    ci > 3
-  ) {
-    return false;
-  }
-  return true;
+  return hasValidCorrectIndex(q);
 }
 
 export function allMcqsComplete(questions: Question[]): boolean {

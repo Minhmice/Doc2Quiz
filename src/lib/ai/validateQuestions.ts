@@ -69,6 +69,34 @@ export function validateQuestionsFromJson(
         ? existingId.trim()
         : crypto.randomUUID();
 
+    const qImg = rec.questionImageId;
+    const optImgs = rec.optionImageIds;
+    const questionImageId =
+      typeof qImg === "string" && qImg.trim().length > 0
+        ? qImg.trim()
+        : undefined;
+    let optionImageIds:
+      | [
+          string | undefined,
+          string | undefined,
+          string | undefined,
+          string | undefined,
+        ]
+      | undefined;
+    if (Array.isArray(optImgs) && optImgs.length === 4) {
+      const tuple = optImgs.map((x) =>
+        typeof x === "string" && x.trim().length > 0 ? x.trim() : undefined,
+      ) as [
+        string | undefined,
+        string | undefined,
+        string | undefined,
+        string | undefined,
+      ];
+      if (tuple.some(Boolean)) {
+        optionImageIds = tuple;
+      }
+    }
+
     out.push({
       id,
       question: question.trim(),
@@ -79,6 +107,8 @@ export function validateQuestionsFromJson(
         (options[3] as string).trim(),
       ] as [string, string, string, string],
       correctIndex: correctIndex as 0 | 1 | 2 | 3,
+      ...(questionImageId ? { questionImageId } : {}),
+      ...(optionImageIds ? { optionImageIds } : {}),
     });
   }
 

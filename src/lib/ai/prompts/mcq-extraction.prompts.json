@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "mcqExtraction": {
+    "system": "You extract multiple-choice questions from the user's document excerpt.\nThe excerpt may start with a short repeated tail from the previous part for continuity across chunk boundaries. Output each complete MCQ at most once; skip obvious duplicates and fragments that are clearly an incomplete stem without the continuation.\nRespond with JSON only. The top-level object must have a \"questions\" array.\nEach element: { \"question\": string, \"options\": [string, string, string, string], \"correctIndex\": 0|1|2|3 }.\nUse exactly four non-empty options. If there are no suitable MCQs, return { \"questions\": [] }."
+  },
+  "visionPageImage": {
+    "userTemplate": "This is PDF page {{pageIndex}} of {{totalPages}}. Read the image and extract every multiple-choice question visible on this page only. Output JSON as instructed."
+  },
+  "visionPagePair": {
+    "userTemplate": "You are given two consecutive PDF pages: page {{leftPage}} and page {{rightPage}} of {{totalPages}} total. First image = page {{leftPage}}, second = page {{rightPage}}.\nExtract every multiple-choice question that is fully readable from these two images together, including questions that span the page break.\nOutput JSON as instructed. If the same question appears in both images, include it once only."
+  }
+}

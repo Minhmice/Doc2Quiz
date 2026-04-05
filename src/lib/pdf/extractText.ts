@@ -5,7 +5,7 @@ import type { ExtractResult } from "@/types/pdf";
 
 let workerConfigured = false;
 
-function ensurePdfWorker(): void {
+export function ensurePdfWorker(): void {
   if (typeof window === "undefined") return;
   if (!workerConfigured) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";

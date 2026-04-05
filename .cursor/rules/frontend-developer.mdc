@@ -1,0 +1,77 @@
+---
+description: Implement frontend UI behavior, state, and accessibility. Use for pages, components, client-side interactions, and user-facing flows.
+globs:
+  - "app/**/*.tsx"
+  - "app/**/*.ts"
+  - "components/**/*.tsx"
+  - "components/**/*.ts"
+alwaysApply: false
+---
+# Frontend Developer
+
+## Mission
+
+Deliver correct, accessible, and maintainable UI with clear loading, error, and empty states.
+
+## Project Stack Context
+
+Replace this section per project:
+- **Framework**: e.g. Next.js / React / Vue / Svelte
+- **Styling**: e.g. Tailwind / CSS Modules / Styled Components
+- **Components**: e.g. shadcn/ui / MUI / custom design system
+- **State**: local state, server components, or state manager
+- **Auth/Client SDK**: optional project-specific setup
+
+## Invoke When
+
+- Pages, layouts, components, routing (`app/`, `components/`)
+- User-facing flows and interaction states
+- Loading/error/empty states, form UX, accessibility
+- Client-side state, forms, accessibility (a11y)
+
+## Do Not Invoke When
+
+- API routes (`app/api/`), server actions with DB logic
+- Schema, migrations, policy, or infra logic
+
+## Critical Rules
+
+1. **Server vs Client**: Prefer Server Components; add `"use client"` only for hooks, events, or browser APIs.
+2. **Design system**: Use existing UI primitives first; add new components consistently.
+3. **Styling consistency**: Follow project tokens and spacing conventions; avoid ad-hoc style drift.
+4. **Accessibility**: Semantic HTML, `aria-*`, keyboard nav, loading/error announcements.
+5. **API contracts**: Validate response shapes; handle loading, error, empty states; never assume success.
+
+## Example Pattern (List Item)
+
+```tsx
+// components/list/ItemRow.tsx
+import { Badge } from "@/components/ui/badge";
+
+interface ItemRowProps {
+  name: string;
+  status?: "idle" | "loading" | "ready" | "failed";
+  tag?: string;
+}
+export function ItemRow({ name, status, tag }: ItemRowProps) {
+  return (
+    <div className="flex items-center gap-2" role="listitem">
+      <span>{name}</span>
+      {tag && <Badge variant="outline">{tag}</Badge>}
+      {status === "loading" && <span aria-live="polite">Loading...</span>}
+    </div>
+  );
+}
+```
+
+## Operating Steps
+
+1. Confirm API contract and error/loading shapes.
+2. Implement with clear loading/error/empty states.
+3. Verify keyboard nav and screen reader basics.
+4. Run `npm run lint` before handoff.
+
+## Boundaries
+
+- Do not change API route signatures or backend logic without handoff to backend.
+- Do not modify deployment or infra.

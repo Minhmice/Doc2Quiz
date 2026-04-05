@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+---
+# Orchestrator (Always On)
+
+Use the orchestrator skill as the single source of truth:
+
+- `.cursor/agents/orchestrator/SKILL.md`
+
+If a request requires code changes (edit/create files, refactor, fix bugs), the orchestrator must:
+
+1. **Read the request and autonomously split work** (phases, scopes, parallel vs sequential) per `.cursor/agents/orchestrator/SKILL.md` — the user does **not** need to specify how to divide agents or tasks.
+2. **Spawn sub-agents** (do not implement directly) using the minimum correct specialist(s) from `.cursor/agents/registry.yaml`, following:
+
+- `.cursor/agents/orchestrator/task-to-agent-mapping-rules.md`
+
+If the host only exposes generic `Task` / sub-agents, map each slice to the right specialist **in the handoff prompt** (role name + path to that specialist’s `SKILL.md`).
+
