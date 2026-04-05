@@ -12,12 +12,16 @@ import { ReviewList } from "@/components/review/ReviewList";
 
 export type ReviewSectionProps = {
   draftReloadKey?: number;
+  onBeginPractice?: () => void;
 };
 
 const APPROVE_ERROR = "Some questions are incomplete. Please fix before saving.";
 const PRACTICE_LINE = "Practice mode will be available in the next step.";
 
-export function ReviewSection({ draftReloadKey = 0 }: ReviewSectionProps) {
+export function ReviewSection({
+  draftReloadKey = 0,
+  onBeginPractice,
+}: ReviewSectionProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [approved, setApproved] = useState(false);
@@ -91,6 +95,7 @@ export function ReviewSection({ draftReloadKey = 0 }: ReviewSectionProps) {
 
   const removed = Math.max(0, initialTotalRef.current - questions.length);
   const approveDisabled = questions.length === 0;
+  const canPractice = Boolean(bank?.questions?.length);
 
   return (
     <section
@@ -149,9 +154,16 @@ export function ReviewSection({ draftReloadKey = 0 }: ReviewSectionProps) {
         </button>
         <button
           type="button"
-          disabled
-          title="Practice will be unlocked in Phase 4"
-          className="cursor-not-allowed rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-400"
+          disabled={!canPractice}
+          title={
+            canPractice ? undefined : "Approve and save questions first."
+          }
+          onClick={() => onBeginPractice?.()}
+          className={
+            canPractice
+              ? "cursor-pointer rounded-lg border border-teal-600 bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-900 shadow-sm transition-colors duration-200 hover:bg-teal-100"
+              : "cursor-not-allowed rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-400"
+          }
         >
           Start practice
         </button>

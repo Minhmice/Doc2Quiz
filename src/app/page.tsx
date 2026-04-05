@@ -3,10 +3,13 @@
 import { useCallback, useState } from "react";
 import { UploadBox } from "@/components/upload/UploadBox";
 import { AiParseSection } from "@/components/ai/AiParseSection";
+import { PracticeSection } from "@/components/practice/PracticeSection";
 import { ReviewSection } from "@/components/review/ReviewSection";
 import { RawTextViewer } from "@/components/viewer/RawTextViewer";
+import { loadApprovedBank } from "@/lib/review/approvedBank";
 import { extractText } from "@/lib/pdf/extractText";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
+import type { Question } from "@/types/question";
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
@@ -14,8 +17,22 @@ export default function Home() {
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draftReloadKey, setDraftReloadKey] = useState(0);
+  const [practiceActive, setPracticeActive] = useState(false);
+  const [practiceSessionKey, setPracticeSessionKey] = useState(0);
+  const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
+
   const handleDraftPersisted = useCallback(() => {
     setDraftReloadKey((k) => k + 1);
+  }, []);
+
+  const handleBeginPractice = useCallback(() => {
+    const b = loadApprovedBank();
+    if (!b?.questions?.length) {
+      return;
+    }
+    setPracticeQuestions([...b.questions]);
+    setPracticeSessionKey((k) => k + 1);
+    setPracticeActive(true);
   }, []);
 
   const hasContent =
@@ -90,7 +107,17 @@ export default function Home() {
         extractedText={extractedText ?? ""}
         onDraftPersisted={handleDraftPersisted}
       />
-      <ReviewSection draftReloadKey={draftReloadKey} />
+      <ReviewSection
+        draftReloadKey={draftReloadKey}
+        onBeginPractice={handleBeginPractice}
+      />
+      {practiceActive ? (
+        <PracticeSection
+          questions={practiceQuestions}
+          sessionKey={practiceSessionKey}
+          onClose={() => setPracticeActive(false)}
+        />
+      ) : null}
     </main>
   );
 }
