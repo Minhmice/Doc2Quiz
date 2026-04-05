@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { UploadBox } from "@/components/upload/UploadBox";
+import { AiParseSection } from "@/components/ai/AiParseSection";
 import { RawTextViewer } from "@/components/viewer/RawTextViewer";
 import { extractText } from "@/lib/pdf/extractText";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
@@ -79,6 +80,8 @@ export default function Home() {
       ) : null}
 
       <RawTextViewer text={extractedText} pageCount={pageCount} />
+
+      <AiParseSection extractedText={extractedText ?? ""} />
     </main>
   );
 }
