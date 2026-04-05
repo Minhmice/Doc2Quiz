@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { UploadBox } from "@/components/upload/UploadBox";
 import { AiParseSection } from "@/components/ai/AiParseSection";
+import { ReviewSection } from "@/components/review/ReviewSection";
 import { RawTextViewer } from "@/components/viewer/RawTextViewer";
 import { extractText } from "@/lib/pdf/extractText";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
@@ -12,6 +13,10 @@ export default function Home() {
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [draftReloadKey, setDraftReloadKey] = useState(0);
+  const handleDraftPersisted = useCallback(() => {
+    setDraftReloadKey((k) => k + 1);
+  }, []);
 
   const hasContent =
     extractedText !== null && extractedText.trim().length > 0;
@@ -81,7 +86,11 @@ export default function Home() {
 
       <RawTextViewer text={extractedText} pageCount={pageCount} />
 
-      <AiParseSection extractedText={extractedText ?? ""} />
+      <AiParseSection
+        extractedText={extractedText ?? ""}
+        onDraftPersisted={handleDraftPersisted}
+      />
+      <ReviewSection draftReloadKey={draftReloadKey} />
     </main>
   );
 }

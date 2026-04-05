@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chunkText } from "@/lib/ai/chunkText";
 import { FatalParseError } from "@/lib/ai/errors";
 import { runSequentialParse } from "@/lib/ai/runSequentialParse";
-import { validateQuestionsFromJson } from "@/lib/ai/validateQuestions";
 import {
   clearKeyForProvider,
   getKeyForProvider,
@@ -12,34 +11,20 @@ import {
   setKeyForProvider,
   setProvider,
 } from "@/lib/ai/storage";
+import { loadDraftQuestions } from "@/lib/review/draftQuestions";
 import type { AiProvider, Question } from "@/types/question";
 import { LS_DRAFT_QUESTIONS } from "@/types/question";
 import { QuestionPreviewList } from "@/components/ai/QuestionPreviewList";
 
 export type AiParseSectionProps = {
   extractedText: string;
+  onDraftPersisted?: () => void;
 };
 
-function loadDraftQuestions(): Question[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  try {
-    const raw = localStorage.getItem(LS_DRAFT_QUESTIONS);
-    if (!raw) {
-      return [];
-    }
-    const data = JSON.parse(raw) as { questions?: unknown };
-    return validateQuestionsFromJson(
-      { questions: data.questions },
-      { preserveIds: true },
-    );
-  } catch {
-    return [];
-  }
-}
-
-export function AiParseSection({ extractedText }: AiParseSectionProps) {
+export function AiParseSection({
+  extractedText,
+  onDraftPersisted,
+}: AiParseSectionProps) {
   const [provider, setProviderState] = useState<AiProvider>("openai");
   const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -169,6 +154,7 @@ export function AiParseSection({ extractedText }: AiParseSectionProps) {
               questions: result.questions,
             }),
           );
+          onDraftPersisted?.();
         } catch {
           /* ignore quota / private mode */
         }
@@ -188,7 +174,7 @@ export function AiParseSection({ extractedText }: AiParseSectionProps) {
         status: "idle",
       }));
     }
-  }, [extractedText, keyInput, provider, trimmedText.length]);
+  }, [extractedText, keyInput, provider, trimmedText.length, onDraftPersisted]);
 
   return (
     <section
