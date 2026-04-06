@@ -23,7 +23,7 @@ Recommendation: start with **(1)** for a fast v1 toggle; add **(2)** if users ne
 ## UI / routes
 
 - New tab or toggle on `/sets/[id]/practice`: **Quiz** vs **Flashcards**.
-- Or route `/sets/[id]/flashcards` with shared shell (`SetSubNav` entry).
+- Or route `/sets/[id]/flashcards` with shared shell (`StepProgressBar` entry).
 
 ## AI
 

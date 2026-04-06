@@ -28,6 +28,7 @@ function openDb(): Promise<IDBDatabase> {
       req.onsuccess = () => resolve(req.result);
       req.onupgradeneeded = (ev) => {
         const db = (ev.target as IDBOpenDBRequest).result;
+        const from = ev.oldVersion;
         if (!db.objectStoreNames.contains("meta")) {
           db.createObjectStore("meta", { keyPath: "id" });
         }
@@ -46,6 +47,17 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains("parseProgress")) {
           db.createObjectStore("parseProgress", { keyPath: "studySetId" });
+        }
+        if (from < 3) {
+          if (!db.objectStoreNames.contains("quizSessions")) {
+            const qs = db.createObjectStore("quizSessions", { keyPath: "id" });
+            qs.createIndex("byStudySetId", "studySetId", { unique: false });
+          }
+          if (!db.objectStoreNames.contains("studyWrongHistory")) {
+            db.createObjectStore("studyWrongHistory", {
+              keyPath: "studySetId",
+            });
+          }
         }
       };
     });
@@ -111,11 +123,22 @@ export async function putStudySetMeta(meta: StudySetMeta): Promise<void> {
 
 export async function deleteStudySet(id: string): Promise<void> {
   const db = await ensureStudySetDb();
+  const storeNames: string[] = [
+    "meta",
+    "document",
+    "draft",
+    "approved",
+    "media",
+    "parseProgress",
+  ];
+  if (db.objectStoreNames.contains("quizSessions")) {
+    storeNames.push("quizSessions");
+  }
+  if (db.objectStoreNames.contains("studyWrongHistory")) {
+    storeNames.push("studyWrongHistory");
+  }
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(
-      ["meta", "document", "draft", "approved", "media", "parseProgress"],
-      "readwrite",
-    );
+    const tx = db.transaction(storeNames, "readwrite");
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error ?? new Error("deleteStudySet failed"));
     tx.onabort = () =>
@@ -125,6 +148,24 @@ export async function deleteStudySet(id: string): Promise<void> {
     tx.objectStore("draft").delete(id);
     tx.objectStore("approved").delete(id);
     tx.objectStore("parseProgress").delete(id);
+    if (db.objectStoreNames.contains("studyWrongHistory")) {
+      tx.objectStore("studyWrongHistory").delete(id);
+    }
+    if (db.objectStoreNames.contains("quizSessions")) {
+      const qsStore = tx.objectStore("quizSessions");
+      if (qsStore.indexNames.contains("byStudySetId")) {
+        const idx = qsStore.index("byStudySetId");
+        const qReq = idx.openCursor(IDBKeyRange.only(id));
+        qReq.onerror = () => reject(qReq.error);
+        qReq.onsuccess = () => {
+          const cursor = qReq.result;
+          if (cursor) {
+            cursor.delete();
+            cursor.continue();
+          }
+        };
+      }
+    }
     const mediaStore = tx.objectStore("media");
     const idx = mediaStore.index("byStudySetId");
     const req = idx.openCursor(IDBKeyRange.only(id));
@@ -309,6 +350,7 @@ export function newStudySetId(): string {
 
 export async function createStudySet(input: {
   title: string;
+  subtitle?: string;
   sourceFileName?: string;
   pageCount?: number;
   extractedText: string;
@@ -319,6 +361,7 @@ export async function createStudySet(input: {
   const meta: StudySetMeta = {
     id,
     title: input.title,
+    subtitle: input.subtitle,
     createdAt: now,
     updatedAt: now,
     sourceFileName: input.sourceFileName,
@@ -351,7 +394,10 @@ export async function createStudySet(input: {
 export async function touchStudySetMeta(
   id: string,
   patch: Partial<
-    Pick<StudySetMeta, "title" | "status" | "pageCount" | "sourceFileName">
+    Pick<
+      StudySetMeta,
+      "title" | "subtitle" | "status" | "pageCount" | "sourceFileName"
+    >
   >,
 ): Promise<void> {
   const existing = await getStudySetMeta(id);

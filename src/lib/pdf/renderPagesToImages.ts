@@ -1,7 +1,7 @@
 "use client";
 
 import * as pdfjsLib from "pdfjs-dist";
-import { ensurePdfWorker } from "@/lib/pdf/extractText";
+import { ensurePdfWorker } from "@/lib/pdf/pdfWorker";
 
 export const VISION_MAX_PAGES_DEFAULT = 20;
 export const VISION_MAX_WIDTH_DEFAULT = 1024;
@@ -22,6 +22,11 @@ export async function renderPdfPagesToImages(
     maxPages?: number;
     maxWidth?: number;
     jpegQuality?: number;
+    /** Fires after each page is rasterized (for progress UI / thumbnails). */
+    onPageRendered?: (
+      page: PageImageResult,
+      meta: { totalPages: number },
+    ) => void;
   },
 ): Promise<PageImageResult[]> {
   ensurePdfWorker();
@@ -30,6 +35,7 @@ export async function renderPdfPagesToImages(
     maxPages = VISION_MAX_PAGES_DEFAULT,
     maxWidth = VISION_MAX_WIDTH_DEFAULT,
     jpegQuality = VISION_JPEG_QUALITY,
+    onPageRendered,
   } = options;
 
   const data = await file.arrayBuffer();
@@ -63,7 +69,9 @@ export async function renderPdfPagesToImages(
 
       await page.render({ canvasContext: ctx, viewport }).promise;
       const dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
-      out.push({ pageIndex: i, dataUrl });
+      const pageResult = { pageIndex: i, dataUrl };
+      out.push(pageResult);
+      onPageRendered?.(pageResult, { totalPages: limit });
     }
 
     return out;

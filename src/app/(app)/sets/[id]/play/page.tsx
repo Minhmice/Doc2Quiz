@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { PlaySession } from "@/components/play/PlaySession";
 import { ensureStudySetDb, getStudySetMeta } from "@/lib/db/studySetDb";
 
-export default function StudySetPlayPage() {
+function StudySetPlayPageInner() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = typeof params.id === "string" ? params.id : "";
+  const reviewMistakesOnly = searchParams.get("review") === "mistakes";
 
   const [headline, setHeadline] = useState("");
+  const [subtitle, setSubtitle] = useState<string | undefined>();
+  const [sourceName, setSourceName] = useState<string | undefined>();
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadMeta = useCallback(async () => {
@@ -25,7 +29,9 @@ export default function StudySetPlayPage() {
         setLoadError("Study set not found.");
         return;
       }
-      setHeadline(meta.sourceFileName ?? meta.title);
+      setHeadline(meta.title);
+      setSubtitle(meta.subtitle);
+      setSourceName(meta.sourceFileName);
     } catch (e) {
       setLoadError(
         e instanceof Error ? e.message : "Failed to load study set.",
@@ -54,15 +60,39 @@ export default function StudySetPlayPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--d2q-text)]">
+      <header className="mb-6 space-y-1">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--d2q-text)] sm:text-3xl">
           Take quiz · {headline || "…"}
         </h1>
+        {subtitle ? (
+          <p className="text-sm font-medium text-[var(--d2q-muted)]">
+            {subtitle}
+          </p>
+        ) : null}
+        {sourceName ? (
+          <p className="text-xs text-[var(--d2q-muted)]">Source: {sourceName}</p>
+        ) : null}
         <p className="mt-1 text-sm text-[var(--d2q-muted)]">
-          Uses your approved bank. Keys 1–4 pick an answer.
+          {reviewMistakesOnly
+            ? "Reviewing questions you missed last time. Keys 1–4 pick an answer."
+            : "Uses your approved bank. Keys 1–4 pick an answer."}
         </p>
       </header>
-      <PlaySession studySetId={id} />
+      <PlaySession studySetId={id} reviewMistakesOnly={reviewMistakesOnly} />
     </div>
+  );
+}
+
+export default function StudySetPlayPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="text-sm text-muted-foreground" role="status">
+          Loading…
+        </p>
+      }
+    >
+      <StudySetPlayPageInner />
+    </Suspense>
   );
 }

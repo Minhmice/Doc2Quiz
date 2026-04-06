@@ -8,6 +8,12 @@ import {
   type VisionForwardProvider,
 } from "@/lib/ai/parseVisionPage";
 
+export type VisionParseProgress = {
+  current: number;
+  total: number;
+  questionsSoFar: number;
+};
+
 export async function runVisionSequential(options: {
   forwardProvider: VisionForwardProvider;
   apiKey: string;
@@ -15,7 +21,7 @@ export async function runVisionSequential(options: {
   model?: string;
   pages: PageImageResult[];
   signal: AbortSignal;
-  onProgress?: (p: { current: number; total: number }) => void;
+  onProgress?: (p: VisionParseProgress) => void;
 }): Promise<{
   questions: Question[];
   /** Failed API passes (single page or one overlapping pair). */
@@ -63,7 +69,7 @@ export async function runVisionSequential(options: {
         break;
       } catch (e) {
         if (e instanceof FatalParseError) {
-          onProgress?.({ current: 1, total });
+          onProgress?.({ current: 1, total, questionsSoFar: questions.length });
           return {
             questions: dedupeQuestionsByStem(questions),
             failedSteps,
@@ -78,7 +84,7 @@ export async function runVisionSequential(options: {
     if (!signal.aborted && !ok) {
       failedSteps += 1;
     }
-    onProgress?.({ current: 1, total });
+    onProgress?.({ current: 1, total, questionsSoFar: questions.length });
     return { questions: dedupeQuestionsByStem(questions), failedSteps };
   }
 
@@ -114,7 +120,11 @@ export async function runVisionSequential(options: {
         break;
       } catch (e) {
         if (e instanceof FatalParseError) {
-          onProgress?.({ current: i + 1, total });
+          onProgress?.({
+            current: i + 1,
+            total,
+            questionsSoFar: questions.length,
+          });
           return {
             questions: dedupeQuestionsByStem(questions),
             failedSteps,
@@ -135,7 +145,11 @@ export async function runVisionSequential(options: {
       failedSteps += 1;
     }
 
-    onProgress?.({ current: i + 1, total });
+    onProgress?.({
+      current: i + 1,
+      total,
+      questionsSoFar: questions.length,
+    });
   }
 
   return { questions: dedupeQuestionsByStem(questions), failedSteps };

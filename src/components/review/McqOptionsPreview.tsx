@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { hasValidCorrectIndex } from "@/lib/review/validateMcq";
 import type { Question } from "@/types/question";
+import { Button } from "@/components/ui/button";
 
 const LABELS = ["A", "B", "C", "D"] as const;
 
@@ -34,15 +35,15 @@ export function McqOptionsPreview({
               key={idx}
               className={`flex gap-2 rounded-md border px-3 py-2 text-sm transition-colors duration-200 ${
                 isCorrect
-                  ? "border-emerald-500/60 bg-emerald-950/40 text-[var(--d2q-text)]"
-                  : "border-[var(--d2q-border)] bg-[var(--d2q-bg)] text-[var(--d2q-text)]"
+                  ? "border-emerald-500/60 bg-emerald-950/40 text-foreground"
+                  : "border-border bg-background text-foreground"
               }`}
             >
               <span
                 className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded text-xs font-semibold ${
                   isCorrect
                     ? "bg-emerald-600 text-white"
-                    : "bg-[var(--d2q-surface-elevated)] text-[var(--d2q-muted)] ring-1 ring-[var(--d2q-border)]"
+                    : "bg-muted text-muted-foreground ring-1 ring-border"
                 }`}
                 aria-hidden
               >
@@ -76,14 +77,16 @@ export function McqOptionsPreview({
             {LABELS.map((label, idx) => {
               const i = idx as 0 | 1 | 2 | 3;
               return (
-                <button
+                <Button
                   key={label}
                   type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-orange-500/50 text-orange-400 hover:bg-orange-950/30"
                   onClick={() => onSetCorrectIndex(i)}
-                  className="cursor-pointer rounded-md border border-[var(--d2q-accent-warm)]/50 bg-[var(--d2q-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--d2q-accent-warm)] shadow-sm transition-colors hover:bg-orange-950/30"
                 >
                   {label}
-                </button>
+                </Button>
               );
             })}
           </div>

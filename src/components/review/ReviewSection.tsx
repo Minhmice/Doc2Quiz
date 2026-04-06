@@ -13,6 +13,9 @@ import {
 } from "@/lib/db/studySetDb";
 import { allMcqsComplete } from "@/lib/review/validateMcq";
 import { ReviewList } from "@/components/review/ReviewList";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type ReviewSectionProps = {
   studySetId: string;
@@ -152,9 +155,11 @@ export function ReviewSection({
 
   if (loading) {
     return (
-      <p className="text-sm text-[var(--d2q-muted)]" aria-busy="true">
-        Loading questions…
-      </p>
+      <div className="space-y-3" aria-busy="true">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
     );
   }
 
@@ -162,33 +167,30 @@ export function ReviewSection({
     <section aria-labelledby="review-heading">
       <h2
         id="review-heading"
-        className="text-lg font-semibold tracking-tight text-[var(--d2q-text)]"
+        className="text-lg font-semibold tracking-tight text-foreground"
       >
         Review &amp; save
       </h2>
-      <p className="mt-1 text-sm text-[var(--d2q-muted)]">
+      <p className="mt-1 text-sm text-muted-foreground">
         Edit or remove questions, then press Done to save the bank and return to
         the library.
       </p>
 
-      <p className="mt-4 text-sm font-medium text-[var(--d2q-text)]">
+      <p className="mt-4 text-sm font-medium text-foreground">
         {questions.length} questions ready — {removed} removed
       </p>
 
       {approveError ? (
-        <p
-          className="mt-3 text-sm font-medium text-red-400"
-          role="alert"
-          aria-live="polite"
-        >
-          {approveError}
-        </p>
+        <Alert variant="destructive" className="mt-3">
+          <AlertTitle>Cannot save</AlertTitle>
+          <AlertDescription>{approveError}</AlertDescription>
+        </Alert>
       ) : null}
 
       {questions.length === 0 ? (
-        <p className="mt-6 text-sm text-[var(--d2q-muted)]">
+        <p className="mt-6 text-sm text-muted-foreground">
           No questions yet. Run{" "}
-          <strong className="font-medium text-[var(--d2q-text)]">Parse</strong> on
+          <strong className="font-medium text-foreground">Parse</strong> on
           the Source tab to generate questions.
         </p>
       ) : (
@@ -205,14 +207,13 @@ export function ReviewSection({
       )}
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <button
+        <Button
           type="button"
           onClick={() => void handleDone()}
           disabled={approveDisabled}
-          className="cursor-pointer rounded-lg bg-[var(--d2q-accent)] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition-colors duration-200 hover:bg-[var(--d2q-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Done
-        </button>
+        </Button>
       </div>
     </section>
   );

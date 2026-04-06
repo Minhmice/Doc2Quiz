@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { UploadBox } from "@/components/upload/UploadBox";
+import { generateStudySetTitle } from "@/lib/ai/generateStudySetTitle";
 import { createStudySet, ensureStudySetDb } from "@/lib/db/studySetDb";
-import { extractText } from "@/lib/pdf/extractText";
+import { getPdfPageCount } from "@/lib/pdf/getPdfPageCount";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
 
 export default function NewStudySetPage() {
@@ -26,33 +27,21 @@ export default function NewStudySetPage() {
       setLoading(true);
       try {
         await ensureStudySetDb();
-        const result = await extractText(file);
-        const title =
-          file.name.replace(/\.pdf$/i, "").trim() || "Untitled study set";
-
-        if (result.pageCount >= 1 && !result.text.trim()) {
-          const id = await createStudySet({
-            title,
-            sourceFileName: file.name,
-            pageCount: result.pageCount,
-            extractedText: "",
-            pdfFile: file,
-          });
-          router.push(`/sets/${id}/source`);
-          return;
-        }
+        const pageCount = await getPdfPageCount(file);
+        const naming = await generateStudySetTitle("", file.name);
 
         const id = await createStudySet({
-          title,
+          title: naming.title,
+          subtitle: naming.subtitle,
           sourceFileName: file.name,
-          pageCount: result.pageCount,
-          extractedText: result.text,
+          pageCount,
+          extractedText: "",
           pdfFile: file,
         });
         router.push(`/sets/${id}/source`);
       } catch {
         setError(
-          "Could not read this PDF. It may be scanned — you can still use vision parsing after import.",
+          "Could not open this PDF. Check the file is valid and try again.",
         );
       } finally {
         setLoading(false);
@@ -62,16 +51,18 @@ export default function NewStudySetPage() {
   );
 
   return (
-    <div>
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--d2q-text)]">
-        New study set
-      </h1>
-      <p className="mt-1 text-sm text-[var(--d2q-muted)]">
-        Upload a PDF. Text is extracted locally; then use Parse to generate
-        questions with AI.
-      </p>
+    <div className="mx-auto flex w-full max-w-6xl flex-col items-center px-4 py-6 sm:px-6 sm:py-8 lg:max-w-7xl lg:px-8">
+      <header className="w-full max-w-3xl text-center lg:max-w-4xl">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          New study set
+        </h1>
+        <p className="mx-auto mt-2 max-w-2xl text-pretty text-sm text-muted-foreground sm:text-base">
+          Upload a PDF. Questions are generated with AI vision (pages as images)
+          on the next step — no local text extraction.
+        </p>
+      </header>
 
-      <div className="mt-8 max-w-lg">
+      <div className="mt-8 w-full max-w-3xl sm:mt-10 lg:max-w-4xl xl:max-w-5xl">
         <UploadBox
           disabled={loading}
           error={error}
@@ -80,9 +71,12 @@ export default function NewStudySetPage() {
           onValidationError={handleValidationError}
         />
         {loading ? (
-          <p className="mt-4 text-sm font-medium text-[var(--d2q-accent-hover)]">
-            Extracting text…
-          </p>
+          <div className="mt-4 space-y-1 text-center sm:text-left">
+            <p className="text-sm font-medium text-primary">Opening PDF…</p>
+            <p className="text-xs text-muted-foreground">
+              Preparing study set…
+            </p>
+          </div>
         ) : null}
       </div>
     </div>

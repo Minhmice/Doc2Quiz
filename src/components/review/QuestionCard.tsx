@@ -4,6 +4,12 @@ import type { Question } from "@/types/question";
 import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
 import { QuestionEditor } from "@/components/review/QuestionEditor";
 import { StoredImage } from "@/components/media/StoredImage";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
 
 export type QuestionCardProps = {
   studySetId: string;
@@ -29,40 +35,44 @@ export function QuestionCard({
   onSetCorrectIndex,
 }: QuestionCardProps) {
   return (
-    <article className="rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-surface)] p-4 shadow-md shadow-black/15">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--d2q-text)]">
-          {`Q${index}`}
-        </h3>
+    <Card className="shadow-md">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0 pb-2">
+        <h3 className="text-sm font-semibold text-card-foreground">{`Q${index}`}</h3>
         <div className="flex flex-wrap gap-2">
           {!isEditing ? (
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-primary"
               onClick={onToggleEdit}
-              className="cursor-pointer text-sm font-medium text-[var(--d2q-accent-hover)] underline-offset-2 hover:underline"
             >
               Edit
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
+            className="h-auto px-0 text-destructive"
             onClick={onDelete}
-            className="cursor-pointer text-sm font-medium text-red-400 underline-offset-2 hover:underline"
           >
             Remove
-          </button>
+          </Button>
         </div>
-      </div>
+      </CardHeader>
 
       {isEditing ? (
-        <QuestionEditor
-          studySetId={studySetId}
-          question={question}
-          onSave={onSave}
-          onCancel={onCancel}
-        />
+        <CardContent className="pt-0">
+          <QuestionEditor
+            studySetId={studySetId}
+            question={question}
+            onSave={onSave}
+            onCancel={onCancel}
+          />
+        </CardContent>
       ) : (
-        <div className="mt-3 space-y-2 text-sm text-[var(--d2q-text)]">
+        <CardContent className="space-y-2 pt-0 text-sm text-card-foreground">
           <p className="whitespace-pre-wrap">{question.question}</p>
           {question.questionImageId ? (
             <StoredImage
@@ -78,8 +88,8 @@ export function QuestionCard({
               return oid ? <StoredImage mediaId={oid} alt="" /> : null;
             }}
           />
-        </div>
+        </CardContent>
       )}
-    </article>
+    </Card>
   );
 }

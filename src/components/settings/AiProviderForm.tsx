@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   clearKeyForProvider,
   clearModelForProvider,
@@ -22,44 +25,51 @@ import {
 } from "@/lib/ai/testConnection";
 import { dispatchAiConfigChanged } from "@/lib/ai/aiReachability";
 import type { AiProvider } from "@/types/question";
+import {
+  aiSettingsSchema,
+  type AiSettingsFormValues,
+} from "@/lib/validations/aiSettings";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 
 export function AiProviderForm() {
-  const [provider, setProviderState] = useState<AiProvider>("openai");
-  const [urlInput, setUrlInput] = useState("");
-  const [modelInput, setModelInput] = useState("");
-  const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
-  const [connectionValid, setConnectionValid] = useState(false);
-  const [visionImageTestOk, setVisionImageTestOk] = useState(false);
-  const [visionTestReply, setVisionTestReply] = useState<string | null>(null);
-  const [testRunning, setTestRunning] = useState(false);
-  const [visionTestRunning, setVisionTestRunning] = useState(false);
-  const [testError, setTestError] = useState<string | null>(null);
-  const [visionTestError, setVisionTestError] = useState<string | null>(null);
-
   const testAbortRef = useRef<AbortController | null>(null);
   const visionTestAbortRef = useRef<AbortController | null>(null);
 
+  const form = useForm<AiSettingsFormValues>({
+    resolver: zodResolver(aiSettingsSchema),
+    defaultValues: {
+      provider: "openai",
+      url: "",
+      model: "",
+      key: "",
+    },
+    mode: "onChange",
+  });
+
   useEffect(() => {
     const p = getProvider();
-    setProviderState(p);
-    setUrlInput(getUrlForProvider(p));
-    setModelInput(getModelForProvider(p));
-    setKeyInput(getKeyForProvider(p));
-  }, []);
+    form.reset({
+      provider: p,
+      url: getUrlForProvider(p),
+      model: getModelForProvider(p),
+      key: getKeyForProvider(p),
+    });
+  }, [form]);
 
-  const hasKey = keyInput.trim().length > 0;
-  const hasCustomEndpoint =
-    provider !== "custom" || urlInput.trim().length > 0;
-  const hasCustomModel =
-    provider !== "custom" || modelInput.trim().length > 0;
+  const provider = form.watch("provider");
 
   const invalidateConnection = useCallback(() => {
-    setConnectionValid(false);
-    setVisionImageTestOk(false);
-    setVisionTestReply(null);
-    setTestError(null);
-    setVisionTestError(null);
     testAbortRef.current?.abort();
     testAbortRef.current = null;
     visionTestAbortRef.current?.abort();
@@ -70,43 +80,14 @@ export function AiProviderForm() {
     (p: AiProvider) => {
       invalidateConnection();
       setProvider(p);
-      setProviderState(p);
-      setUrlInput(getUrlForProvider(p));
-      setModelInput(getModelForProvider(p));
-      setKeyInput(getKeyForProvider(p));
+      form.setValue("provider", p);
+      form.setValue("url", getUrlForProvider(p));
+      form.setValue("model", getModelForProvider(p));
+      form.setValue("key", getKeyForProvider(p));
+      void form.trigger();
       dispatchAiConfigChanged();
     },
-    [invalidateConnection],
-  );
-
-  const handleUrlChange = useCallback(
-    (value: string) => {
-      invalidateConnection();
-      setUrlInput(value);
-      setUrlForProvider(provider, value);
-      dispatchAiConfigChanged();
-    },
-    [provider, invalidateConnection],
-  );
-
-  const handleKeyChange = useCallback(
-    (value: string) => {
-      invalidateConnection();
-      setKeyInput(value);
-      setKeyForProvider(provider, value);
-      dispatchAiConfigChanged();
-    },
-    [provider, invalidateConnection],
-  );
-
-  const handleModelChange = useCallback(
-    (value: string) => {
-      invalidateConnection();
-      setModelInput(value);
-      setModelForProvider(provider, value);
-      dispatchAiConfigChanged();
-    },
-    [provider, invalidateConnection],
+    [form, invalidateConnection],
   );
 
   const handleClearKey = useCallback(() => {
@@ -114,110 +95,125 @@ export function AiProviderForm() {
     clearKeyForProvider(provider);
     clearUrlForProvider(provider);
     clearModelForProvider(provider);
-    setKeyInput("");
-    setUrlInput("");
-    setModelInput("");
+    form.setValue("key", "");
+    form.setValue("url", "");
+    form.setValue("model", "");
     dispatchAiConfigChanged();
-  }, [provider, invalidateConnection]);
+  }, [provider, form, invalidateConnection]);
 
   const handleTestConnection = useCallback(async () => {
-    setTestError(null);
-    visionTestAbortRef.current?.abort();
-    visionTestAbortRef.current = null;
-    const apiKey = keyInput.trim();
-    if (!apiKey) {
-      setTestError("Enter an API key first.");
+    const ok = await form.trigger();
+    if (!ok) {
+      toast.error("Fix form errors before testing.");
       return;
     }
+    const apiKey = form.getValues("key").trim();
+    if (!apiKey) {
+      toast.error("Enter an API key first.");
+      return;
+    }
+    visionTestAbortRef.current?.abort();
+    visionTestAbortRef.current = null;
     testAbortRef.current?.abort();
     const controller = new AbortController();
     testAbortRef.current = controller;
-    setTestRunning(true);
-    setConnectionValid(false);
+    const toastId = toast.loading("Testing connection…");
     try {
       const result = await testAiConnection({
-        provider,
-        apiUrl: urlInput,
+        provider: form.getValues("provider"),
+        apiUrl: form.getValues("url"),
         apiKey,
-        model: modelInput,
+        model: form.getValues("model"),
         signal: controller.signal,
       });
       if (controller.signal.aborted) {
         return;
       }
       if (result.ok) {
-        setConnectionValid(true);
-        setTestError(null);
+        toast.success("Connection OK", { id: toastId });
       } else {
-        setConnectionValid(false);
-        setTestError(result.message);
+        toast.error(result.message, { id: toastId });
       }
     } finally {
       if (testAbortRef.current === controller) {
         testAbortRef.current = null;
       }
-      setTestRunning(false);
     }
-  }, [provider, urlInput, keyInput, modelInput]);
+  }, [form]);
 
   const handleTestVisionImage = useCallback(async () => {
-    setVisionTestError(null);
-    testAbortRef.current?.abort();
-    testAbortRef.current = null;
-    const apiKey = keyInput.trim();
-    if (!apiKey) {
-      setVisionTestError("Enter an API key first.");
+    const ok = await form.trigger();
+    if (!ok) {
+      toast.error("Fix form errors before testing.");
       return;
     }
+    if (form.getValues("provider") === "anthropic") {
+      toast.error("Switch to OpenAI or Custom to test image input.");
+      return;
+    }
+    const apiKey = form.getValues("key").trim();
+    if (!apiKey) {
+      toast.error("Enter an API key first.");
+      return;
+    }
+    testAbortRef.current?.abort();
+    testAbortRef.current = null;
     visionTestAbortRef.current?.abort();
     const controller = new AbortController();
     visionTestAbortRef.current = controller;
-    setVisionTestRunning(true);
-    setVisionImageTestOk(false);
-    setVisionTestReply(null);
+    const toastId = toast.loading("Testing vision…");
     try {
       const result = await testAiVisionConnection({
-        provider,
-        apiUrl: urlInput,
+        provider: form.getValues("provider"),
+        apiUrl: form.getValues("url"),
         apiKey,
-        model: modelInput,
+        model: form.getValues("model"),
         signal: controller.signal,
       });
       if (controller.signal.aborted) {
         return;
       }
       if (result.ok) {
-        setVisionImageTestOk(true);
-        setVisionTestReply(result.replyPreview);
-        setVisionTestError(null);
+        toast.success(
+          result.replyPreview
+            ? `Vision OK — ${result.replyPreview.slice(0, 80)}…`
+            : "Vision OK",
+          { id: toastId },
+        );
       } else {
-        setVisionImageTestOk(false);
-        setVisionTestReply(null);
-        setVisionTestError(result.message);
+        toast.error(result.message, { id: toastId });
       }
     } finally {
       if (visionTestAbortRef.current === controller) {
         visionTestAbortRef.current = null;
       }
-      setVisionTestRunning(false);
     }
-  }, [provider, urlInput, keyInput, modelInput]);
+  }, [form]);
+
+  const hasKey = (form.watch("key") ?? "").trim().length > 0;
+  const hasCustomEndpoint =
+    provider !== "custom" || (form.watch("url") ?? "").trim().length > 0;
+  const hasCustomModel =
+    provider !== "custom" || (form.watch("model") ?? "").trim().length > 0;
 
   return (
     <section className="space-y-6" aria-labelledby="ai-settings-heading">
       <div>
         <h2
           id="ai-settings-heading"
-          className="text-lg font-semibold tracking-tight text-[var(--d2q-text)]"
+          className="text-lg font-semibold tracking-tight text-foreground"
         >
           AI connection
         </h2>
-        <p className="mt-1 text-sm text-[var(--d2q-muted)]">
-          OpenAI, Claude, or <strong className="font-medium text-[var(--d2q-text)]">Custom</strong>{" "}
+        <p className="mt-1 text-sm text-muted-foreground">
+          OpenAI, Claude, or{" "}
+          <strong className="font-medium text-foreground">Custom</strong>{" "}
           (OpenAI-compatible chat +{" "}
-          <code className="rounded bg-[var(--d2q-surface-elevated)] px-1 text-[var(--d2q-text)]">Bearer</code>). Stored
-          in your browser only. Requests use this app&apos;s{" "}
-          <code className="rounded bg-[var(--d2q-surface-elevated)] px-1 text-[var(--d2q-text)]">/api/ai/forward</code>{" "}
+          <code className="rounded bg-muted px-1 text-foreground">Bearer</code>
+          ). Stored in your browser only. Requests use this app&apos;s{" "}
+          <code className="rounded bg-muted px-1 text-foreground">
+            /api/ai/forward
+          </code>{" "}
           route.
         </p>
       </div>
@@ -227,49 +223,30 @@ export function AiProviderForm() {
         role="group"
         aria-label="AI provider"
       >
-        <button
-          type="button"
-          onClick={() => selectProvider("openai")}
-          className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-            provider === "openai"
-              ? "border-[var(--d2q-accent)] bg-[var(--d2q-accent-muted)] text-[var(--d2q-accent-hover)]"
-              : "border-[var(--d2q-border)] bg-[var(--d2q-surface-elevated)] text-[var(--d2q-muted)] hover:border-[var(--d2q-border-strong)] hover:bg-[var(--d2q-surface)] hover:text-[var(--d2q-text)]"
-          }`}
-        >
-          OpenAI
-        </button>
-        <button
-          type="button"
-          onClick={() => selectProvider("anthropic")}
-          className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-            provider === "anthropic"
-              ? "border-[var(--d2q-accent)] bg-[var(--d2q-accent-muted)] text-[var(--d2q-accent-hover)]"
-              : "border-[var(--d2q-border)] bg-[var(--d2q-surface-elevated)] text-[var(--d2q-muted)] hover:border-[var(--d2q-border-strong)] hover:bg-[var(--d2q-surface)] hover:text-[var(--d2q-text)]"
-          }`}
-        >
-          Claude
-        </button>
-        <button
-          type="button"
-          onClick={() => selectProvider("custom")}
-          className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-            provider === "custom"
-              ? "border-[var(--d2q-accent)] bg-[var(--d2q-accent-muted)] text-[var(--d2q-accent-hover)]"
-              : "border-[var(--d2q-border)] bg-[var(--d2q-surface-elevated)] text-[var(--d2q-muted)] hover:border-[var(--d2q-border-strong)] hover:bg-[var(--d2q-surface)] hover:text-[var(--d2q-text)]"
-          }`}
-        >
-          Custom
-        </button>
+        {(["openai", "anthropic", "custom"] as const).map((p) => (
+          <Button
+            key={p}
+            type="button"
+            variant={provider === p ? "secondary" : "outline"}
+            size="sm"
+            className={cn(
+              provider === p &&
+                "ring-2 ring-primary/50 bg-primary/10 text-primary",
+            )}
+            onClick={() => selectProvider(p)}
+          >
+            {p === "openai"
+              ? "OpenAI"
+              : p === "anthropic"
+                ? "Claude"
+                : "Custom"}
+          </Button>
+        ))}
       </div>
 
-      <div>
-        <label
-          htmlFor="ai-api-url"
-          className="block text-sm font-medium text-[var(--d2q-text)]"
-        >
-          API endpoint URL
-        </label>
-        <p className="mt-1 text-sm text-[var(--d2q-muted)]">
+      <Field>
+        <FieldLabel htmlFor="ai-api-url">API endpoint URL</FieldLabel>
+        <FieldDescription>
           {provider === "custom" ? (
             <>
               <strong>Required</strong> — base URL or full chat-completions URL.
@@ -279,112 +256,141 @@ export function AiProviderForm() {
           ) : (
             <>Leave blank for default Anthropic, or paste a compatible URL.</>
           )}
-        </p>
-        <input
-          id="ai-api-url"
-          type="url"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder={defaultEndpointHint(provider)}
-          value={urlInput}
-          onChange={(e) => handleUrlChange(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-bg)] px-3 py-2 text-sm text-[var(--d2q-text)] shadow-sm focus:border-[var(--d2q-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--d2q-accent)]/30"
-        />
-      </div>
+        </FieldDescription>
+        <FieldContent>
+          <Input
+            id="ai-api-url"
+            type="url"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={defaultEndpointHint(provider)}
+            {...(() => {
+              const { onChange, ...rest } = form.register("url");
+              return {
+                ...rest,
+                onChange: (
+                  e: React.ChangeEvent<HTMLInputElement>,
+                ) => {
+                  void onChange(e);
+                  setUrlForProvider(provider, e.target.value);
+                  dispatchAiConfigChanged();
+                  invalidateConnection();
+                },
+              };
+            })()}
+            aria-invalid={Boolean(form.formState.errors.url)}
+          />
+          <FieldError errors={[form.formState.errors.url]} />
+        </FieldContent>
+      </Field>
 
-      <div>
-        <label
-          htmlFor="ai-model"
-          className="block text-sm font-medium text-[var(--d2q-text)]"
-        >
-          Model
-        </label>
-        <p className="mt-1 text-sm text-[var(--d2q-muted)]">
+      <Field>
+        <FieldLabel htmlFor="ai-model">Model</FieldLabel>
+        <FieldDescription>
           {provider === "custom" ? (
             <strong>Required</strong>
           ) : (
             <>Optional — blank uses built-in default.</>
           )}
-        </p>
-        <input
-          id="ai-model"
-          type="text"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder={defaultModelPlaceholder(provider)}
-          value={modelInput}
-          onChange={(e) => handleModelChange(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-bg)] px-3 py-2 text-sm text-[var(--d2q-text)] shadow-sm focus:border-[var(--d2q-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--d2q-accent)]/30"
-        />
-      </div>
+        </FieldDescription>
+        <FieldContent>
+          <Input
+            id="ai-model"
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={defaultModelPlaceholder(provider)}
+            {...(() => {
+              const { onChange, ...rest } = form.register("model");
+              return {
+                ...rest,
+                onChange: (
+                  e: React.ChangeEvent<HTMLInputElement>,
+                ) => {
+                  void onChange(e);
+                  setModelForProvider(provider, e.target.value);
+                  dispatchAiConfigChanged();
+                  invalidateConnection();
+                },
+              };
+            })()}
+            aria-invalid={Boolean(form.formState.errors.model)}
+          />
+          <FieldError errors={[form.formState.errors.model]} />
+        </FieldContent>
+      </Field>
 
-      <div>
-        <label
-          htmlFor="ai-api-key"
-          className="block text-sm font-medium text-[var(--d2q-text)]"
-        >
+      <Field>
+        <FieldLabel htmlFor="ai-api-key">
           API key
           {provider === "openai"
             ? " (OpenAI)"
             : provider === "anthropic"
               ? " (Anthropic)"
               : " (Bearer token)"}
-        </label>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
-          <div className="relative min-w-0 flex-1">
-            <input
-              id="ai-api-key"
-              type={showKey ? "text" : "password"}
-              autoComplete="off"
-              spellCheck={false}
-              value={keyInput}
-              onChange={(e) => handleKeyChange(e.target.value)}
-              className="w-full rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-bg)] px-3 py-2 pr-10 text-sm text-[var(--d2q-text)] shadow-sm focus:border-[var(--d2q-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--d2q-accent)]/30"
-            />
-            <button
+        </FieldLabel>
+        <FieldContent>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <div className="relative min-w-0 flex-1">
+              <Input
+                id="ai-api-key"
+                type={showKey ? "text" : "password"}
+                autoComplete="off"
+                spellCheck={false}
+                className="pr-16"
+                {...(() => {
+                  const { onChange, ...rest } = form.register("key");
+                  return {
+                    ...rest,
+                    onChange: (
+                      e: React.ChangeEvent<HTMLInputElement>,
+                    ) => {
+                      void onChange(e);
+                      setKeyForProvider(provider, e.target.value);
+                      dispatchAiConfigChanged();
+                      invalidateConnection();
+                    },
+                  };
+                })()}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="absolute top-1/2 right-1 -translate-y-1/2"
+                onClick={() => setShowKey((v) => !v)}
+                aria-label={showKey ? "Hide API key" : "Show API key"}
+              >
+                {showKey ? "Hide" : "Show"}
+              </Button>
+            </div>
+            <Button
               type="button"
-              onClick={() => setShowKey((v) => !v)}
-              className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer rounded p-1 text-[var(--d2q-muted)] transition-colors duration-200 hover:bg-[var(--d2q-surface-elevated)] hover:text-[var(--d2q-text)]"
-              aria-label={showKey ? "Hide API key" : "Show API key"}
+              variant="outline"
+              onClick={handleClearKey}
             >
-              {showKey ? "Hide" : "Show"}
-            </button>
+              Clear
+            </Button>
           </div>
-          <button
-            type="button"
-            onClick={handleClearKey}
-            className="cursor-pointer rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--d2q-muted)] transition-colors duration-200 hover:bg-[var(--d2q-surface)] hover:text-[var(--d2q-text)]"
-          >
-            Clear
-          </button>
-        </div>
+          <FieldError errors={[form.formState.errors.key]} />
+        </FieldContent>
+
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button
+          <Button
             type="button"
-            onClick={handleTestConnection}
+            variant="secondary"
             disabled={
-              !hasKey ||
-              testRunning ||
-              visionTestRunning ||
-              !hasCustomEndpoint ||
-              !hasCustomModel
+              !hasKey || !hasCustomEndpoint || !hasCustomModel
             }
-            className="cursor-pointer rounded-lg border border-[var(--d2q-accent)] bg-[var(--d2q-accent-muted)] px-4 py-2 text-sm font-semibold text-[var(--d2q-accent-hover)] transition-colors duration-200 hover:bg-[var(--d2q-accent)]/30 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => void handleTestConnection()}
           >
-            {testRunning ? "Testing…" : "Test connection"}
-          </button>
-          {connectionValid ? (
-            <span className="inline-flex items-center rounded-full bg-emerald-950/50 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/30">
-              Valid
-            </span>
-          ) : null}
-          <button
+            Test connection
+          </Button>
+          <Button
             type="button"
-            onClick={handleTestVisionImage}
+            variant="outline"
             disabled={
               !hasKey ||
-              testRunning ||
-              visionTestRunning ||
               !hasCustomEndpoint ||
               !hasCustomModel ||
               provider === "anthropic"
@@ -394,30 +400,17 @@ export function AiProviderForm() {
                 ? "Switch to OpenAI or Custom to test image input."
                 : undefined
             }
-            className="cursor-pointer rounded-lg border border-[var(--d2q-accent-warm)]/60 bg-orange-950/30 px-4 py-2 text-sm font-semibold text-[var(--d2q-accent-warm)] transition-colors duration-200 hover:bg-orange-950/50 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => void handleTestVisionImage()}
           >
-            {visionTestRunning ? "Testing image…" : "Test image input"}
-          </button>
-          {visionImageTestOk ? (
-            <span
-              className="inline-flex max-w-[min(100%,18rem)] items-center rounded-full bg-orange-950/40 px-2.5 py-0.5 text-xs font-semibold text-amber-300 ring-1 ring-orange-500/30"
-              title={visionTestReply ?? undefined}
-            >
-              Vision OK
-            </span>
+            Test image input
+          </Button>
+          {hasKey ? (
+            <Badge variant="secondary" className="text-emerald-600">
+              Key set
+            </Badge>
           ) : null}
         </div>
-        {testError ? (
-          <p className="mt-2 text-sm font-medium text-red-400" role="alert">
-            {testError}
-          </p>
-        ) : null}
-        {visionTestError ? (
-          <p className="mt-2 text-sm font-medium text-red-400" role="alert">
-            {visionTestError}
-          </p>
-        ) : null}
-      </div>
+      </Field>
     </section>
   );
 }

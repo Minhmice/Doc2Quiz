@@ -2,7 +2,7 @@
 
 import { ParseProgressProvider } from "@/components/ai/ParseProgressContext";
 import { AppShell } from "@/components/layout/AppShell";
-import { AppStatusDock } from "@/components/layout/AppStatusDock";
+import { CommandPalette } from "@/components/layout/CommandPalette";
 
 export function AppProviders({
   children,
@@ -11,8 +11,8 @@ export function AppProviders({
 }) {
   return (
     <ParseProgressProvider>
+      <CommandPalette />
       <AppShell>{children}</AppShell>
-      <AppStatusDock />
     </ParseProgressProvider>
   );
 }

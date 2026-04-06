@@ -1,11 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { deleteMedia, putMediaBlob } from "@/lib/db/studySetDb";
 import type { Question } from "@/types/question";
+import {
+  questionEditorSchema,
+  type QuestionEditorFormValues,
+} from "@/lib/validations/question";
 import { StoredImage } from "@/components/media/StoredImage";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+  FieldTitle,
+} from "@/components/ui/field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
 
 const MAX_IMAGE_BYTES = 1_500_000;
+
+function valuesFromQuestion(q: Question): QuestionEditorFormValues {
+  return {
+    question: q.question,
+    option0: q.options[0],
+    option1: q.options[1],
+    option2: q.options[2],
+    option3: q.options[3],
+    correctIndex: q.correctIndex,
+  };
+}
 
 export type QuestionEditorProps = {
   studySetId: string;
@@ -20,14 +53,6 @@ export function QuestionEditor({
   onSave,
   onCancel,
 }: QuestionEditorProps) {
-  const [stem, setStem] = useState(question.question);
-  const [opt0, setOpt0] = useState(question.options[0]);
-  const [opt1, setOpt1] = useState(question.options[1]);
-  const [opt2, setOpt2] = useState(question.options[2]);
-  const [opt3, setOpt3] = useState(question.options[3]);
-  const [correctIndex, setCorrectIndex] = useState<0 | 1 | 2 | 3>(
-    question.correctIndex,
-  );
   const [questionImageId, setQuestionImageId] = useState<
     string | undefined
   >(question.questionImageId);
@@ -36,13 +61,14 @@ export function QuestionEditor({
   >(question.optionImageIds ?? [undefined, undefined, undefined, undefined]);
   const [imageError, setImageError] = useState<string | null>(null);
 
+  const form = useForm<QuestionEditorFormValues>({
+    resolver: zodResolver(questionEditorSchema),
+    defaultValues: valuesFromQuestion(question),
+    mode: "onBlur",
+  });
+
   useEffect(() => {
-    setStem(question.question);
-    setOpt0(question.options[0]);
-    setOpt1(question.options[1]);
-    setOpt2(question.options[2]);
-    setOpt3(question.options[3]);
-    setCorrectIndex(question.correctIndex);
+    form.reset(valuesFromQuestion(question));
     setQuestionImageId(question.questionImageId);
     setOptionImageIds(
       question.optionImageIds ?? [
@@ -53,10 +79,7 @@ export function QuestionEditor({
       ],
     );
     setImageError(null);
-  }, [question]);
-
-  const inputClass =
-    "mt-1 w-full rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-bg)] px-3 py-2 text-sm text-[var(--d2q-text)] shadow-sm focus:border-[var(--d2q-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--d2q-accent)]/30";
+  }, [question, form]);
 
   const pickImage = useCallback(
     async (file: File | undefined) => {
@@ -138,12 +161,17 @@ export function QuestionEditor({
     [optionImageIds],
   );
 
-  const handleSave = () => {
+  const submit = form.handleSubmit((data) => {
     const base: Question = {
       id: question.id,
-      question: stem,
-      options: [opt0, opt1, opt2, opt3] as Question["options"],
-      correctIndex,
+      question: data.question.trim(),
+      options: [
+        data.option0.trim(),
+        data.option1.trim(),
+        data.option2.trim(),
+        data.option3.trim(),
+      ] as Question["options"],
+      correctIndex: data.correctIndex,
     };
     if (questionImageId) {
       base.questionImageId = questionImageId;
@@ -152,143 +180,159 @@ export function QuestionEditor({
       base.optionImageIds = optionImageIds;
     }
     void onSave(base);
-  };
-
-  const groupName = `correct-${question.id}`;
+    toast.success("Question saved");
+  });
 
   return (
-    <div className="mt-4 space-y-4 border-t border-[var(--d2q-border)] pt-4">
+    <form
+      className="mt-4 space-y-4 border-t border-border pt-4"
+      onSubmit={submit}
+    >
       {imageError ? (
-        <p className="text-sm font-medium text-red-400" role="alert">
+        <p className="text-sm font-medium text-destructive" role="alert">
           {imageError}
         </p>
       ) : null}
-      <div>
-        <label
-          htmlFor={`q-stem-${question.id}`}
-          className="text-sm font-medium text-[var(--d2q-text)]"
-        >
-          Question
-        </label>
-        <textarea
-          id={`q-stem-${question.id}`}
-          value={stem}
-          onChange={(e) => setStem(e.target.value)}
-          rows={3}
-          className={inputClass}
-        />
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <label className="cursor-pointer text-xs font-medium text-[var(--d2q-accent-hover)] underline">
-            Add question image
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => void handleQuestionImage(e)}
-            />
-          </label>
-          {questionImageId ? (
-            <>
-              <StoredImage
-                mediaId={questionImageId}
-                alt=""
-                className="mt-1"
+
+      <FieldSet>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor={`q-stem-${question.id}`}>Question</FieldLabel>
+            <FieldContent>
+              <Textarea
+                id={`q-stem-${question.id}`}
+                rows={3}
+                {...form.register("question")}
+                aria-invalid={Boolean(form.formState.errors.question)}
               />
-              <button
-                type="button"
-                onClick={() => void clearQuestionImage()}
-                className="text-xs font-medium text-red-400 hover:underline"
-              >
-                Remove image
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-      {(["A", "B", "C", "D"] as const).map((label, i) => {
-        const setters = [setOpt0, setOpt1, setOpt2, setOpt3] as const;
-        const values = [opt0, opt1, opt2, opt3];
-        const idx = i as 0 | 1 | 2 | 3;
-        const oid = optionImageIds[idx];
-        return (
-          <div key={label}>
-            <label
-              htmlFor={`q-opt-${question.id}-${i}`}
-              className="text-sm font-medium text-[var(--d2q-text)]"
-            >
-              {label}
-            </label>
-            <input
-              id={`q-opt-${question.id}-${i}`}
-              type="text"
-              value={values[i]}
-              onChange={(e) => setters[i](e.target.value)}
-              className={inputClass}
-            />
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <label className="cursor-pointer text-xs font-medium text-[var(--d2q-accent-hover)] underline">
-                Image for {label}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(e) => void handleOptionImage(idx, e)}
-                />
-              </label>
-              {oid ? (
-                <>
-                  <StoredImage mediaId={oid} alt="" />
-                  <button
-                    type="button"
-                    onClick={() => void clearOptionImage(idx)}
-                    className="text-xs font-medium text-red-400 hover:underline"
-                  >
-                    Remove
-                  </button>
-                </>
-              ) : null}
-            </div>
-          </div>
-        );
-      })}
-      <fieldset>
-        <legend className="text-sm font-medium text-[var(--d2q-text)]">
-          Correct answer
-        </legend>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          {([0, 1, 2, 3] as const).map((i) => (
-            <label
-              key={i}
-              className="flex cursor-pointer items-center gap-2 text-sm text-[var(--d2q-muted)]"
-            >
+              <FieldError errors={[form.formState.errors.question]} />
+            </FieldContent>
+          </Field>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label className="cursor-pointer text-xs font-medium text-primary underline">
+              Add question image
               <input
-                type="radio"
-                name={groupName}
-                checked={correctIndex === i}
-                onChange={() => setCorrectIndex(i)}
-                className="h-4 w-4 border-[var(--d2q-border-strong)] text-[var(--d2q-accent)] focus:ring-[var(--d2q-accent)]"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => void handleQuestionImage(e)}
               />
-              {String.fromCharCode(65 + i)}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+            </Label>
+            {questionImageId ? (
+              <>
+                <StoredImage
+                  mediaId={questionImageId}
+                  alt=""
+                  className="mt-1"
+                />
+                <Button
+                  type="button"
+                  variant="link"
+                  size="xs"
+                  className="h-auto px-0 text-destructive"
+                  onClick={() => void clearQuestionImage()}
+                >
+                  Remove image
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </FieldGroup>
+
+        <Separator />
+
+        {(["A", "B", "C", "D"] as const).map((label, i) => {
+          const name = `option${i}` as
+            | "option0"
+            | "option1"
+            | "option2"
+            | "option3";
+          const idx = i as 0 | 1 | 2 | 3;
+          const oid = optionImageIds[idx];
+          const err = form.formState.errors[name];
+          return (
+            <Field key={label}>
+              <FieldLabel htmlFor={`q-opt-${question.id}-${i}`}>
+                {label}
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id={`q-opt-${question.id}-${i}`}
+                  {...form.register(name)}
+                  aria-invalid={Boolean(err)}
+                />
+                <FieldError errors={[err]} />
+              </FieldContent>
+              <div className="flex flex-wrap items-center gap-2">
+                <Label className="cursor-pointer text-xs font-medium text-primary underline">
+                  Image for {label}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) => void handleOptionImage(idx, e)}
+                  />
+                </Label>
+                {oid ? (
+                  <>
+                    <StoredImage mediaId={oid} alt="" />
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="xs"
+                      className="h-auto px-0 text-destructive"
+                      onClick={() => void clearOptionImage(idx)}
+                    >
+                      Remove
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            </Field>
+          );
+        })}
+
+        <Field>
+          <FieldTitle>Correct answer</FieldTitle>
+          <FieldContent>
+            <Controller
+              control={form.control}
+              name="correctIndex"
+              render={({ field }) => (
+                <RadioGroup
+                  value={String(field.value)}
+                  onValueChange={(v) =>
+                    field.onChange(Number(v) as 0 | 1 | 2 | 3)
+                  }
+                  className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+                >
+                  {([0, 1, 2, 3] as const).map((i) => (
+                    <Label
+                      key={i}
+                      htmlFor={`q-correct-${question.id}-${i}`}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground"
+                    >
+                      <RadioGroupItem
+                        value={String(i)}
+                        id={`q-correct-${question.id}-${i}`}
+                      />
+                      {String.fromCharCode(65 + i)}
+                    </Label>
+                  ))}
+                </RadioGroup>
+              )}
+            />
+            <FieldError errors={[form.formState.errors.correctIndex]} />
+          </FieldContent>
+        </Field>
+      </FieldSet>
+
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="cursor-pointer rounded-lg bg-[var(--d2q-accent)] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition-colors duration-200 hover:bg-[var(--d2q-accent-hover)]"
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="cursor-pointer rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--d2q-muted)] transition-colors duration-200 hover:bg-[var(--d2q-surface)] hover:text-[var(--d2q-text)]"
-        >
+        <Button type="submit">Save</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
-    </div>
+    </form>
   );
 }

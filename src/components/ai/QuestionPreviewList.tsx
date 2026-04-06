@@ -1,5 +1,7 @@
 import type { Question } from "@/types/question";
 import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export type QuestionPreviewListProps = {
   questions: Question[];
@@ -16,23 +18,32 @@ export function QuestionPreviewList({
 
   return (
     <ul className="mt-4 space-y-3" aria-label="Parsed questions preview">
-      {questions.map((q) => (
+      {questions.map((q, i) => (
         <li key={q.id}>
-          <article
-            className="rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-surface)] p-4 shadow-md shadow-black/15"
+          <Card
+            className="shadow-md"
             aria-label={`Question: ${q.question.slice(0, 80)}${q.question.length > 80 ? "…" : ""}`}
           >
-            <p className="text-sm font-medium text-[var(--d2q-text)]">{q.question}</p>
-            <McqOptionsPreview
-              question={q}
-              onSetCorrectIndex={
-                onSetCorrectIndex
-                  ? (idx) => onSetCorrectIndex(q.id, idx)
-                  : undefined
-              }
-              listClassName="mt-3 list-none space-y-2 p-0"
-            />
-          </article>
+            <CardContent className="space-y-2 pt-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  Draft {i + 1}
+                </Badge>
+              </div>
+              <p className="text-sm font-medium text-card-foreground">
+                {q.question}
+              </p>
+              <McqOptionsPreview
+                question={q}
+                onSetCorrectIndex={
+                  onSetCorrectIndex
+                    ? (idx) => onSetCorrectIndex(q.id, idx)
+                    : undefined
+                }
+                listClassName="mt-3 list-none space-y-2 p-0"
+              />
+            </CardContent>
+          </Card>
         </li>
       ))}
     </ul>

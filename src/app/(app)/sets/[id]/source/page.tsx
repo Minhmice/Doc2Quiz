@@ -1,31 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AiParseSection } from "@/components/ai/AiParseSection";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  AiParseSection,
+  type AiParseSectionHandle,
+  type ParseRunResult,
+} from "@/components/ai/AiParseSection";
+import { ParseProgressOverlay } from "@/components/ai/ParseProgressOverlay";
+import { ParseResultOverlay } from "@/components/ai/ParseResultOverlay";
+import { useParseProgress } from "@/components/ai/ParseProgressContext";
+import { PdfInfoCard } from "@/components/upload/PdfInfoCard";
+import { Button } from "@/components/ui/button";
 import {
   ensureStudySetDb,
   getDocument,
   getStudySetMeta,
   putDocument,
+  putDraftQuestions,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
+import { getPdfPageCount } from "@/lib/pdf/getPdfPageCount";
 import { pdfFileFromDocument } from "@/lib/studySet/pdfFileFromDocument";
-import { extractText } from "@/lib/pdf/extractText";
-import type { StudySetDocumentRecord } from "@/types/studySet";
+import type { Question } from "@/types/question";
+import type { StudySetDocumentRecord, StudySetMeta } from "@/types/studySet";
 
 export default function StudySetSourcePage() {
   const params = useParams();
+  const router = useRouter();
   const id = typeof params.id === "string" ? params.id : "";
 
-  const [title, setTitle] = useState("");
-  const [pageCount, setPageCount] = useState<number | null>(null);
+  const parseRef = useRef<AiParseSectionHandle>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  const { live } = useParseProgress();
+
+  const [meta, setMeta] = useState<StudySetMeta | null>(null);
   const [doc, setDoc] = useState<StudySetDocumentRecord | null>(null);
-  const [editedText, setEditedText] = useState("");
-  const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [replaceBusy, setReplaceBusy] = useState(false);
+  const [autoStartKey, setAutoStartKey] = useState(0);
+  const [parseResult, setParseResult] = useState<{
+    questions: Question[];
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -34,20 +53,18 @@ export default function StudySetSourcePage() {
     setLoadError(null);
     try {
       await ensureStudySetDb();
-      const meta = await getStudySetMeta(id);
-      if (!meta) {
+      const m = await getStudySetMeta(id);
+      if (!m) {
         setLoadError("Study set not found.");
         return;
       }
-      setTitle(meta.title);
-      setPageCount(meta.pageCount ?? null);
+      setMeta(m);
       const d = await getDocument(id);
       if (!d) {
         setLoadError("Document record missing.");
         return;
       }
       setDoc(d);
-      setEditedText(d.extractedText);
     } catch (e) {
       setLoadError(
         e instanceof Error ? e.message : "Failed to load study set.",
@@ -59,68 +76,59 @@ export default function StudySetSourcePage() {
     void load();
   }, [load]);
 
-  const handleSaveText = useCallback(async () => {
-    if (!id || !doc) {
-      return;
-    }
-    setSaving(true);
-    try {
-      const next: StudySetDocumentRecord = {
-        ...doc,
-        extractedText: editedText,
-      };
-      await putDocument(next);
-      setDoc(next);
-      await touchStudySetMeta(id, {});
-    } finally {
-      setSaving(false);
-    }
-  }, [id, doc, editedText]);
-
-  const syncBeforeParse = useCallback(async () => {
-    if (!id || !doc) {
-      return;
-    }
-    const next: StudySetDocumentRecord = {
-      ...doc,
-      extractedText: editedText,
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
     };
-    await putDocument(next);
-    setDoc(next);
-    await touchStudySetMeta(id, {});
-  }, [id, doc, editedText]);
+  }, []);
 
   const handleReplacePdf = useCallback(
     async (file: File) => {
-      if (!id || !doc) {
+      if (!id) {
         return;
       }
       setReplaceBusy(true);
       setLoadError(null);
+      setParseResult(null);
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
       try {
-        const result = await extractText(file);
+        const pageCount = await getPdfPageCount(file);
         const buf = await file.arrayBuffer();
         const next: StudySetDocumentRecord = {
           studySetId: id,
-          extractedText: result.text,
+          extractedText: "",
           pdfArrayBuffer: buf,
           pdfFileName: file.name,
         };
         await putDocument(next);
+        await putDraftQuestions(id, []);
         setDoc(next);
-        setEditedText(result.text);
         await touchStudySetMeta(id, {
-          pageCount: result.pageCount,
+          pageCount,
           sourceFileName: file.name,
         });
-        setPageCount(result.pageCount);
+        const m = await getStudySetMeta(id);
+        if (m) {
+          setMeta(m);
+        }
+        setAutoStartKey((k) => k + 1);
+        await load();
       } catch {
         setLoadError("Could not read the replacement PDF.");
       } finally {
         setReplaceBusy(false);
       }
     },
-    [id, doc],
+    [id, load],
   );
 
   const pdfFile = useMemo(
@@ -128,10 +136,54 @@ export default function StudySetSourcePage() {
     [doc],
   );
 
-  const textExtractionEmpty =
-    pageCount !== null &&
-    pageCount >= 1 &&
-    editedText.trim().length === 0;
+  const parsing = Boolean(live?.running && live.studySetId === id);
+
+  const clearRedirectTimer = useCallback(() => {
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+  }, []);
+
+  const handleParseFinished = useCallback(
+    (r: ParseRunResult) => {
+      clearRedirectTimer();
+      if (r.ok && !r.aborted) {
+        setParseResult({
+          questions: r.questions,
+        });
+        redirectTimerRef.current = setTimeout(() => {
+          router.push(`/sets/${id}/review`);
+        }, 2000);
+      } else {
+        setParseResult(null);
+      }
+    },
+    [clearRedirectTimer, id, router],
+  );
+
+  const handleManualParse = useCallback(() => {
+    setParseResult(null);
+    clearRedirectTimer();
+    void (async () => {
+      const r = await parseRef.current?.runParse();
+      if (r) {
+        handleParseFinished(r);
+      }
+    })();
+  }, [clearRedirectTimer, handleParseFinished]);
+
+  const handlePreviewPdf = useCallback(() => {
+    if (!pdfFile) {
+      return;
+    }
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    const url = URL.createObjectURL(pdfFile);
+    previewUrlRef.current = url;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, [pdfFile]);
 
   if (!id) {
     return null;
@@ -141,110 +193,104 @@ export default function StudySetSourcePage() {
     return (
       <div>
         <p className="text-red-400">{loadError}</p>
-        <Link href="/dashboard" className="mt-4 inline-block text-[var(--d2q-accent-hover)]">
+        <Link
+          href="/dashboard"
+          className="mt-4 inline-block text-[var(--d2q-accent-hover)]"
+        >
           ← Library
         </Link>
       </div>
     );
   }
 
-  if (!doc) {
-    return <p className="text-sm text-[var(--d2q-muted)]">Loading…</p>;
+  if (!doc || !meta) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
 
   return (
-    <div>
-      <header className="mb-6">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--d2q-text)]">
-          Source · {title}
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          {meta.title}
         </h1>
-        <p className="mt-1 text-sm text-[var(--d2q-muted)]">
-          Edit text, replace the PDF if needed, then parse with AI below.
-        </p>
+        {meta.subtitle ? (
+          <p className="text-sm font-medium text-muted-foreground">
+            {meta.subtitle}
+          </p>
+        ) : null}
+        {meta.sourceFileName ? (
+          <p className="text-xs text-muted-foreground">
+            Source: {meta.sourceFileName}
+          </p>
+        ) : null}
       </header>
 
-      <div className="mb-6 flex flex-wrap gap-3">
-        <label className="cursor-pointer rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--d2q-text)] hover:bg-[var(--d2q-surface)]">
-          Replace PDF
-          <input
-            type="file"
-            accept="application/pdf"
-            className="sr-only"
-            disabled={replaceBusy}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) {
-                void handleReplacePdf(f);
-              }
-            }}
-          />
-        </label>
-        {replaceBusy ? (
-          <span className="text-sm text-[var(--d2q-accent-hover)]">Processing PDF…</span>
-        ) : null}
-      </div>
+      <PdfInfoCard
+        fileName={meta.sourceFileName ?? doc.pdfFileName ?? "document.pdf"}
+        pageCount={meta.pageCount ?? 0}
+        uploadedAt={meta.createdAt}
+        onReplace={handleReplacePdf}
+        replaceBusy={replaceBusy}
+        onPreview={pdfFile ? handlePreviewPdf : undefined}
+      />
 
-      {pageCount !== null && pageCount > 0 ? (
-        <p className="mb-2 text-sm text-[var(--d2q-muted)]">
-          {pageCount} {pageCount === 1 ? "page" : "pages"} in PDF
-          {Boolean(pageCount >= 1) && editedText.trim() === "" ? (
-            <span className="ml-2 font-medium text-[var(--d2q-accent-warm)]">
-              — no selectable text; Parse below will use vision when
-              configured.
-            </span>
-          ) : null}
-        </p>
+      {loadError ? (
+        <p className="text-sm text-destructive">{loadError}</p>
       ) : null}
 
-      <div className="mt-2 space-y-2">
-        <label
-          htmlFor="source-edit"
-          className="text-sm font-medium text-[var(--d2q-text)]"
-        >
-          Edit text for parsing
-        </label>
-        <textarea
-          id="source-edit"
-          value={editedText}
-          onChange={(e) => setEditedText(e.target.value)}
-          rows={12}
-          className="w-full rounded-lg border border-[var(--d2q-border)] bg-[var(--d2q-bg)] p-3 font-mono text-sm text-[var(--d2q-text)] shadow-sm focus:border-[var(--d2q-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--d2q-accent)]/30"
-          spellCheck={false}
+      <AiParseSection
+        ref={parseRef}
+        studySetId={id}
+        activePdfFile={pdfFile}
+        pageCount={meta.pageCount ?? null}
+        variant="embedded"
+        autoStartWhenDraftEmpty
+        autoStartResetKey={autoStartKey}
+        onEmbeddedParseFinished={handleParseFinished}
+        onDraftPersisted={load}
+      />
+
+      <ParseProgressOverlay studySetId={id} />
+
+      {parseResult ? (
+        <ParseResultOverlay
+          questions={parseResult.questions}
+          onContinue={() => router.push(`/sets/${id}/review`)}
         />
-        <div className="flex flex-wrap gap-2">
-          <button
+      ) : null}
+
+      {!parsing && !parseResult ? (
+        <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-border bg-muted/20 p-10 text-center sm:p-12">
+          <p className="text-lg font-medium text-foreground">
+            Ready to generate questions
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            AI reads each page as an image and extracts multiple-choice
+            questions. You can run again if results look off.
+          </p>
+          <Button
             type="button"
-            disabled={saving}
-            onClick={() => void handleSaveText()}
-            className="cursor-pointer rounded-lg bg-[var(--d2q-text)] px-4 py-2 text-sm font-semibold text-[var(--d2q-bg)] hover:bg-white disabled:opacity-50"
+            size="lg"
+            className="mt-2 font-semibold"
+            onClick={handleManualParse}
           >
-            {saving ? "Saving…" : "Save text"}
-          </button>
+            Parse with AI
+          </Button>
         </div>
-      </div>
+      ) : null}
 
-      <div className="mt-10">
-        <AiParseSection
-          studySetId={id}
-          extractedText={editedText}
-          activePdfFile={pdfFile}
-          pageCount={pageCount}
-          textExtractionEmpty={textExtractionEmpty}
-          onBeforeParse={syncBeforeParse}
-          onDraftPersisted={load}
-        />
-      </div>
+      {parsing ? (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => parseRef.current?.cancel()}
+          >
+            Cancel parsing (stop AI processing)
+          </Button>
+        </div>
+      ) : null}
 
-      <p className="mt-8 text-sm text-[var(--d2q-muted)]">
-        Next:{" "}
-        <Link
-          href={`/sets/${id}/review`}
-          className="font-medium text-[var(--d2q-accent-hover)] underline-offset-2 hover:underline"
-        >
-          Review questions
-        </Link>
-      </p>
     </div>
   );
 }

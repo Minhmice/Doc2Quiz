@@ -3,6 +3,8 @@ export type StudySetStatus = "draft" | "ready";
 export type StudySetMeta = {
   id: string;
   title: string;
+  /** Optional second line, e.g. school or context from AI */
+  subtitle?: string;
   createdAt: string;
   updatedAt: string;
   sourceFileName?: string;
@@ -19,7 +21,7 @@ export type StudySetDocumentRecord = {
 };
 
 export const DB_NAME = "doc2quiz";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 /** Last-known AI parse progress per study set (throttled writes while parsing) */
 export type ParseProgressPhase =

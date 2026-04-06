@@ -14,6 +14,8 @@ export default function StudySetDonePage() {
   const id = typeof params.id === "string" ? params.id : "";
 
   const [headline, setHeadline] = useState("");
+  const [subtitle, setSubtitle] = useState<string | undefined>();
+  const [sourceName, setSourceName] = useState<string | undefined>();
   const [approvedCount, setApprovedCount] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -29,7 +31,9 @@ export default function StudySetDonePage() {
         setLoadError("Study set not found.");
         return;
       }
-      setHeadline(meta.sourceFileName ?? meta.title);
+      setHeadline(meta.title);
+      setSubtitle(meta.subtitle);
+      setSourceName(meta.sourceFileName);
       const bank = await getApprovedBank(id);
       setApprovedCount(bank?.questions.length ?? 0);
     } catch (e) {
@@ -60,10 +64,18 @@ export default function StudySetDonePage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--d2q-text)]">
+      <header className="mb-6 space-y-1">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--d2q-text)] sm:text-3xl">
           Done · {headline || "…"}
         </h1>
+        {subtitle ? (
+          <p className="text-sm font-medium text-[var(--d2q-muted)]">
+            {subtitle}
+          </p>
+        ) : null}
+        {sourceName ? (
+          <p className="text-xs text-[var(--d2q-muted)]">Source: {sourceName}</p>
+        ) : null}
         <p className="mt-1 text-sm text-[var(--d2q-muted)]">
           Study set ready. {approvedCount} approved question
           {approvedCount === 1 ? "" : "s"} saved locally.

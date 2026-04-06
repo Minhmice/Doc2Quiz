@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import { DM_Sans, Syne, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { AppRootProviders } from "@/components/providers/app-root-providers";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -27,11 +28,17 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn(dmSans.variable, syne.variable, "font-sans", geist.variable)}>
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${dmSans.className} min-h-screen bg-[var(--d2q-bg)] text-[var(--d2q-text)] antialiased`}
+        className={cn(
+          dmSans.variable,
+          syne.variable,
+          geist.variable,
+          dmSans.className,
+          "min-h-screen bg-background text-foreground",
+        )}
       >
-        {children}
+        <AppRootProviders>{children}</AppRootProviders>
       </body>
     </html>
   );
