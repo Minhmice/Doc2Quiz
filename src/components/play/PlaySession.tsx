@@ -27,8 +27,41 @@ import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 const LABELS = ["A", "B", "C", "D"] as const;
+
+function ResultRow({
+  index,
+  stem,
+  missed,
+}: {
+  index: number;
+  stem: string;
+  missed: boolean;
+}) {
+  return (
+    <div className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-secondary/40 px-3 py-2">
+      <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+        Q{index}
+      </span>
+      <p className="min-w-0 flex-1 truncate text-base leading-normal text-foreground">
+        {stem}
+      </p>
+      <Badge
+        variant="secondary"
+        className={
+          missed
+            ? "shrink-0 border border-red-400/50 bg-red-950/40 text-foreground"
+            : "shrink-0 border border-emerald-500/50 bg-emerald-950/40 text-foreground"
+        }
+      >
+        {missed ? "Incorrect" : "Correct"}
+      </Badge>
+    </div>
+  );
+}
 
 function MediaImage({ mediaId }: { mediaId: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -94,14 +127,12 @@ export function PlaySession({
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<0 | 1 | 2 | 3 | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
-  const finishedToastRef = useRef(false);
   const sessionRecordedRef = useRef(false);
   const wrongIdsRef = useRef<Set<string>>(new Set());
 
   const reload = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    finishedToastRef.current = false;
     sessionRecordedRef.current = false;
     wrongIdsRef.current = new Set();
     try {
@@ -154,15 +185,6 @@ export function PlaySession({
   );
 
   useEffect(() => {
-    if (finished && playable.length > 0 && !finishedToastRef.current) {
-      finishedToastRef.current = true;
-      toast.success(
-        `Session complete: ${correctCount}/${playable.length} correct`,
-      );
-    }
-  }, [finished, playable.length, correctCount]);
-
-  useEffect(() => {
     if (!finished || playable.length === 0 || sessionRecordedRef.current) {
       return;
     }
@@ -212,7 +234,6 @@ export function PlaySession({
   }, [finished, loading, loadError, current, revealed, goNext, handlePick]);
 
   const restart = () => {
-    finishedToastRef.current = false;
     sessionRecordedRef.current = false;
     wrongIdsRef.current = new Set();
     setIndex(0);
@@ -284,29 +305,111 @@ export function PlaySession({
   }
 
   if (finished) {
+    const total = playable.length;
+    const wrongCount = total - correctCount;
+    const pct =
+      total > 0 ? Math.round((100 * correctCount) / total) : 0;
+    const breakdownScroll = total > 8;
+
     return (
       <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Session complete</CardTitle>
+        <CardHeader className="space-y-3">
+          <CardTitle id="quiz-results-title">Session complete</CardTitle>
+          <div
+            className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-bold tabular-nums tracking-tight text-[32px] leading-[1.1]"
+            aria-live="polite"
+          >
+            <span className="text-emerald-500">{pct}%</span>
+            <span
+              className="text-muted-foreground font-semibold text-xl"
+              aria-hidden
+            >
+              ·
+            </span>
+            <span className="text-foreground">
+              {correctCount} / {total} correct
+            </span>
+          </div>
           <CardDescription>
-            You got{" "}
-            <span className="font-semibold text-emerald-500">{correctCount}</span>{" "}
-            of{" "}
-            <span className="font-semibold text-foreground">
-              {playable.length}
-            </span>{" "}
-            correct.
+            {wrongCount > 0
+              ? `${wrongCount} to review`
+              : "All correct — nothing to drill."}
           </CardDescription>
         </CardHeader>
+
+        <Separator />
+
+        <CardContent className="pt-6">
+          <section
+            role="region"
+            aria-labelledby="quiz-results-title"
+            className="space-y-3"
+          >
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              Question review
+            </h3>
+            {breakdownScroll ? (
+              <ScrollArea className="h-[min(22.5rem,50vh)] pr-3">
+                <ul role="list" className="space-y-2">
+                  {playable.map((q, i) => {
+                    const missed = wrongIdsRef.current.has(q.id);
+                    return (
+                      <li key={q.id} role="listitem">
+                        <ResultRow
+                          index={i + 1}
+                          stem={q.question}
+                          missed={missed}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ScrollArea>
+            ) : (
+              <ul role="list" className="space-y-2">
+                {playable.map((q, i) => {
+                  const missed = wrongIdsRef.current.has(q.id);
+                  return (
+                    <li key={q.id} role="listitem">
+                      <ResultRow
+                        index={i + 1}
+                        stem={q.question}
+                        missed={missed}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </CardContent>
+
         <CardFooter className="flex flex-wrap gap-3">
-          <Button type="button" onClick={restart}>
-            Take quiz again
+          {wrongCount > 0 ? (
+            <Link
+              href={`/sets/${studySetId}/play?review=mistakes`}
+              className={cn(buttonVariants({ variant: "default" }))}
+            >
+              Drill mistakes
+            </Link>
+          ) : (
+            <Button
+              type="button"
+              disabled
+              title="You did not miss any questions in this session."
+            >
+              Drill mistakes
+            </Button>
+          )}
+          <Button type="button" variant="outline" onClick={restart}>
+            Quiz again
           </Button>
           <Link
             href="/dashboard"
+            aria-label="Open library"
             className={cn(buttonVariants({ variant: "outline" }))}
           >
-            Library
+            Open library
           </Link>
         </CardFooter>
       </Card>
