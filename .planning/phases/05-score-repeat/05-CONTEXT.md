@@ -35,7 +35,7 @@ Phase 5 delivers **end-of-session scoring** (X/Y, percentage), a **per-question 
 ### 4. Actions & navigation
 - **D-08:** **Primary CTA:** **Drill mistakes** → **`/sets/{studySetId}/play?review=mistakes`** (existing `PlaySession` prop `reviewMistakesOnly`). Use **`Link` + `Button asChild`**. **Disabled** (not hidden) when `wrongCount === 0`, with **`title`** / tooltip explaining why.
 - **D-09:** **Quiz again** — restarts session in place (reset index, picks, counts) without leaving route.
-- **D-10:** **Library** — navigate to **`/dashboard`** (outline), matching current play completion footer.
+- **D-10:** **Open library** — navigate to **`/dashboard`** (outline); label may shorten to **Library** only with `aria-label` / tooltip that includes “Open library” (per approved UI-SPEC).
 
 ### 5. Feedback duplication
 - **D-11:** **Toast** on session complete (`PlaySession` today) vs **card** hero — **dedupe or soften** toast so users are not told the score twice (executor chooses: remove toast, shorten toast, or gate on “results UI visible”).

@@ -1,10 +1,11 @@
 ---
 phase: 05
 slug: score-repeat
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-04-08
+reviewed_at: "2026-04-08"
 ---
 
 # Phase 05 — UI Design Contract
@@ -52,7 +53,9 @@ Declared values (multiples of 4):
 | Body | 16px | 400 | 1.5 |
 | Label | 12px | 600 | 1.35 |
 | Heading | 20px | 600 | 1.2 |
-| Display | 36px at `sm` and up, 28px below | 700 | 1.1 |
+| Display | 32px | 700 | 1.1 |
+
+**Responsive (executor discretion):** Use Tailwind classes whose **computed** size stays closest to **32px** for the score hero at desktop; do not introduce additional **named** sizes in this contract beyond the four rows above.
 
 **Weights used:** 400 (body), 600 (labels, card titles), 700 (display score / % only).
 
@@ -73,7 +76,7 @@ Map to **semantic tokens** in `globals.css` (light/dark). Approximate hex shown 
 | Error / wrong | `destructive` / red row treatment — match play: `red-400/50` border, `red-950/40` bg for **Incorrect** rows |
 | Muted copy | `--muted-foreground` | Secondary lines, hints, truncated stem |
 
-**Accent reserved for:** Primary CTA (**Drill mistakes**), default-style **Quiz again** if only one primary in footer, focus rings, indigo **Library** as outline/secondary unless Drill is sole default. **Do not** paint every breakdown row with primary; rows use success/error neutrals.
+**Accent reserved for:** Primary CTA (**Drill mistakes**), default-style **Quiz again** if only one primary in footer, focus rings, indigo **Open library** as outline/secondary unless Drill is sole default. **Do not** paint every breakdown row with primary; rows use success/error neutrals.
 
 **Destructive token (`--destructive`):** Reserved for destructive confirmations only (e.g. clear history), not for ordinary “wrong answer” styling.
 
@@ -115,7 +118,7 @@ Map to **semantic tokens** in `globals.css` (light/dark). Approximate hex shown 
 **Keyboard / a11y:**
 
 - Container: `role="region"` + `aria-labelledby` pointing at **Session complete** (or a dedicated **Results summary** `h2` inside the card if you split headings for semantics).
-- Breakdown list: `role="list"` with each row `role="listitem"`. If rows are not links, expose **Tab** order: **Drill mistakes** → **Quiz again** → **Library** first; optionally **roving `tabindex`** on rows with **↑/↓** for scan-only users — minimum bar: screen readers get list semantics and visible badges.
+- Breakdown list: `role="list"` with each row `role="listitem"`. If rows are not links, expose **Tab** order: **Drill mistakes** → **Quiz again** → **Open library** first; optionally **roving `tabindex`** on rows with **↑/↓** for scan-only users — minimum bar: screen readers get list semantics and visible badges.
 
 ---
 
@@ -125,7 +128,7 @@ Map to **semantic tokens** in `globals.css` (light/dark). Approximate hex shown 
 |--------|---------|-----------|--------------|
 | **Drill mistakes** | `default` (primary) | **First** in footer row (before **Quiz again**) | `wrongCount > 0` |
 | **Quiz again** | `outline` or `secondary` | After primary | Always |
-| **Library** | `outline` | End of row | Always |
+| **Open library** | `outline` | End of row | Always |
 
 **Drill mistakes** navigates to **`/sets/{id}/play?review=mistakes`** (existing contract with `getMistakeQuestionIds` / `studyWrongHistory`). Use Next.js **`Link`** styled as button or **`Button asChild`** for consistency.
 
@@ -137,10 +140,10 @@ Map to **semantic tokens** in `globals.css` (light/dark). Approximate hex shown 
 
 | Scenario | UI |
 |----------|-----|
-| **Zero mistakes** | Primary line celebrates or neutral “Perfect run”; Drill disabled as above; **Quiz again** + **Library** unchanged. |
+| **Zero mistakes** | Primary line celebrates or neutral “Perfect run”; Drill disabled as above; **Quiz again** + **Open library** unchanged. |
 | **All wrong** | Still show **%** and **0/N**; Drill enabled with copy implying full set review. |
 | **Drill route with no stored mistakes** | Keep existing **`Alert`**: “No missed questions to review” + **Take full quiz** (already in `PlaySession`). |
-| **IndexedDB / load error** | Keep **`Alert variant="destructive"`** pattern; copy: problem + path (**retry** / **Library**). |
+| **IndexedDB / load error** | Keep **`Alert variant="destructive"`** pattern; copy: problem + path (**retry** / **Open library**). |
 | **Persistence restored (optional)** | Subtle **muted** one-liner under header or above card: “Progress is saved on this device.” No modal; dismiss not required for v1. |
 
 ---
@@ -163,7 +166,7 @@ If product adds **“Clear mistake history”** later: use shadcn **`AlertDialog
 | Subline (has mistakes) | **{n}** to review |
 | Subline (no mistakes) | All correct — nothing to drill. |
 | Secondary CTA | **Quiz again** |
-| Tertiary / nav | **Library** |
+| Tertiary / nav | **Open library** (button/link to `/dashboard`; may shorten to **Library** in tight layouts if `aria-label` includes “Open library”) |
 | Toast on finish (optional; may dedupe with card) | **Session complete: {correct}/{total} correct** — if kept, avoid conflicting **%** only in toast |
 | Empty drill (play `?review=mistakes`) | **No missed questions to review** / body: **Finish a quiz with at least one incorrect answer to populate review mistakes, or take the full quiz instead.** / button **Take full quiz** |
 | Error (load bank) | **Could not load question bank.** + retry or return path |
@@ -182,11 +185,11 @@ If product adds **“Clear mistake history”** later: use shadcn **`AlertDialog
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-04-08 (gsd-ui-checker — six dimensions; typography tightened to four declared sizes)
