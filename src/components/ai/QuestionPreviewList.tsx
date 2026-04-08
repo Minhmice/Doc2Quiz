@@ -1,5 +1,6 @@
 import type { Question } from "@/types/question";
 import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
+import { StoredImage } from "@/components/media/StoredImage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -33,6 +34,9 @@ export function QuestionPreviewList({
               <p className="text-sm font-medium text-card-foreground">
                 {q.question}
               </p>
+              {q.questionImageId ? (
+                <StoredImage mediaId={q.questionImageId} alt="" />
+              ) : null}
               <McqOptionsPreview
                 question={q}
                 onSetCorrectIndex={
@@ -40,6 +44,10 @@ export function QuestionPreviewList({
                     ? (idx) => onSetCorrectIndex(q.id, idx)
                     : undefined
                 }
+                renderAfterOption={(i) => {
+                  const oid = q.optionImageIds?.[i];
+                  return oid ? <StoredImage mediaId={oid} alt="" /> : null;
+                }}
                 listClassName="mt-3 list-none space-y-2 p-0"
               />
             </CardContent>

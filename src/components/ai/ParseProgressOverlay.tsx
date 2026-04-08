@@ -19,6 +19,7 @@ import type { ParseProgressPhase } from "@/types/studySet";
 const PHASE_MESSAGES: Record<ParseProgressPhase, string> = {
   idle: "Preparing…",
   rendering_pdf: "Rendering PDF pages…",
+  ocr_extract: "Running OCR on page images…",
   vision_pages: "Extracting questions with vision…",
   text_chunks: "Extracting questions…",
 };
@@ -33,6 +34,14 @@ function estimateRangeSeconds(live: LiveParseReport): string | null {
     const left = Math.max(0, tot - cur);
     const low = Math.max(1, Math.round(left * 1.2));
     const high = Math.max(low + 1, Math.round(left * 2.8));
+    return `~${low}–${high}s remaining`;
+  }
+  if (live.phase === "ocr_extract") {
+    const tot = Math.max(1, live.total || 1);
+    const cur = live.current || 0;
+    const left = Math.max(0, tot - cur);
+    const low = Math.max(2, Math.round(left * 3));
+    const high = Math.max(low + 2, Math.round(left * 8));
     return `~${low}–${high}s remaining`;
   }
   const tot = Math.max(1, live.total || 1);
@@ -57,6 +66,14 @@ function ProcessingLine({ live }: { live: LiveParseReport }) {
     return (
       <p className="text-sm font-semibold text-foreground">
         Preparing page images…
+      </p>
+    );
+  }
+
+  if (live.phase === "ocr_extract" && live.total > 0) {
+    return (
+      <p className="text-sm font-semibold text-foreground">
+        OCR page {live.current}/{live.total}
       </p>
     );
   }
@@ -86,7 +103,8 @@ export function ParseProgressOverlay({
   const phase = live?.phase ?? "idle";
   const message = live ? PHASE_MESSAGES[phase] ?? "Working…" : "";
   const indeterminate =
-    live && (phase === "rendering_pdf" || live.total <= 0);
+    live &&
+    (phase === "rendering_pdf" || (phase !== "ocr_extract" && live.total <= 0));
   const pct =
     live && !indeterminate && live.total > 0
       ? Math.min(100, Math.round((100 * live.current) / live.total))

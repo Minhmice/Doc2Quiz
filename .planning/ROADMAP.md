@@ -127,6 +127,19 @@
 
 ---
 
+## Phase 6: Pipeline Hardening & Observability
+
+**Goal:** Reliable client IDs, structured pipeline logging, accurate import error surfacing, safe upgrade posture for pdf.js/Next.js, and OCR inspector UX fixes — without changing the v1 feature checklist of Phases 1–5.
+
+**Status:** In progress (context locked; implementation incremental)
+
+**Canonical refs:**
+- `.planning/phases/06-pipeline-hardening/06-CONTEXT.md` — decisions from product/chat handoff
+
+**Deferred (see CONTEXT):** Per-question image crops from OCR geometry; major framework/pdf.js bump until SSR isolation is designed.
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -136,6 +149,7 @@
 | 3 | REVIEW-01–04 | Pending |
 | 4 | PRAC-01–06 | Pending |
 | 5 | SCORE-01–04 | Pending |
+| 6 | (hardening — see 06-CONTEXT) | In progress |
 
 v1 requirements covered: 23 / 23 ✓
 

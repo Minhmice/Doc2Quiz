@@ -1,5 +1,6 @@
 import { ACTIVITY_STATS_CHANGED_EVENT } from "@/lib/appEvents";
 import { ensureStudySetDb } from "@/lib/db/studySetDb";
+import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 
 export type QuizSessionRecord = {
   id: string;
@@ -88,7 +89,7 @@ export async function recordQuizCompletion(input: {
   if (!db.objectStoreNames.contains("quizSessions")) {
     return;
   }
-  const id = crypto.randomUUID();
+  const id = createRandomUuid();
   const completedAt = new Date().toISOString();
   const session: QuizSessionRecord = {
     id,

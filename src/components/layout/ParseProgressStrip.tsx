@@ -9,6 +9,9 @@ function phaseLabel(phase: string): string {
   if (phase === "rendering_pdf") {
     return "Rendering PDF pages…";
   }
+  if (phase === "ocr_extract") {
+    return "OCR extract";
+  }
   if (phase === "vision_pages") {
     return "Vision parse";
   }
@@ -44,7 +47,8 @@ export function ParseProgressStrip() {
   }
 
   const indeterminate =
-    live.phase === "rendering_pdf" || live.total <= 0;
+    live.phase === "rendering_pdf" ||
+    (live.phase !== "ocr_extract" && live.total <= 0);
   const pct =
     !indeterminate && live.total > 0
       ? Math.min(100, Math.round((100 * live.current) / live.total))

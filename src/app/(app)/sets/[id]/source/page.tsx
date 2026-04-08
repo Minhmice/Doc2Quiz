@@ -8,12 +8,16 @@ import {
   type AiParseSectionHandle,
   type ParseRunResult,
 } from "@/components/ai/AiParseSection";
+import { OcrInspector } from "@/components/ai/OcrInspector";
+import { QuestionMappingDebug } from "@/components/ai/QuestionMappingDebug";
 import { ParseProgressOverlay } from "@/components/ai/ParseProgressOverlay";
 import { ParseResultOverlay } from "@/components/ai/ParseResultOverlay";
 import { useParseProgress } from "@/components/ai/ParseProgressContext";
 import { PdfInfoCard } from "@/components/upload/PdfInfoCard";
 import { Button } from "@/components/ui/button";
+import { deleteOcrResult } from "@/lib/ai/ocrDb";
 import {
+  clearOcrMetaFields,
   ensureStudySetDb,
   getDocument,
   getStudySetMeta,
@@ -21,6 +25,12 @@ import {
   putDraftQuestions,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
+import {
+  fileSummary,
+  normalizeUnknownError,
+  pipelineLog,
+} from "@/lib/logging/pipelineLogger";
+import { extractPdfText } from "@/lib/pdf/extractPdfText";
 import { getPdfPageCount } from "@/lib/pdf/getPdfPageCount";
 import { pdfFileFromDocument } from "@/lib/studySet/pdfFileFromDocument";
 import type { Question } from "@/types/question";
@@ -45,6 +55,7 @@ export default function StudySetSourcePage() {
   const [parseResult, setParseResult] = useState<{
     questions: Question[];
   } | null>(null);
+  const [ocrInspectorKey, setOcrInspectorKey] = useState(0);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -70,6 +81,7 @@ export default function StudySetSourcePage() {
         e instanceof Error ? e.message : "Failed to load study set.",
       );
     }
+    setOcrInspectorKey((k) => k + 1);
   }, [id]);
 
   useEffect(() => {
@@ -101,16 +113,27 @@ export default function StudySetSourcePage() {
         redirectTimerRef.current = null;
       }
       try {
+        pipelineLog("STUDY_SET", "replace-pdf", "info", "replace PDF start", {
+          studySetId: id,
+          ...fileSummary(file),
+        });
         const pageCount = await getPdfPageCount(file);
+        pipelineLog("PDF", "array-buffer", "info", "replace PDF: arrayBuffer for document", {
+          studySetId: id,
+          ...fileSummary(file),
+        });
         const buf = await file.arrayBuffer();
+        const extractedText = await extractPdfText(file);
         const next: StudySetDocumentRecord = {
           studySetId: id,
-          extractedText: "",
+          extractedText,
           pdfArrayBuffer: buf,
           pdfFileName: file.name,
         };
         await putDocument(next);
         await putDraftQuestions(id, []);
+        await deleteOcrResult(id);
+        await clearOcrMetaFields(id);
         setDoc(next);
         await touchStudySetMeta(id, {
           pageCount,
@@ -122,7 +145,18 @@ export default function StudySetSourcePage() {
         }
         setAutoStartKey((k) => k + 1);
         await load();
-      } catch {
+        pipelineLog("STUDY_SET", "replace-pdf", "info", "replace PDF success", {
+          studySetId: id,
+          pageCount,
+          ...fileSummary(file),
+        });
+      } catch (raw) {
+        pipelineLog("STUDY_SET", "replace-pdf", "error", "replace PDF failed (UI shows generic message)", {
+          studySetId: id,
+          ...fileSummary(file),
+          ...normalizeUnknownError(raw),
+          raw,
+        });
         setLoadError("Could not read the replacement PDF.");
       } finally {
         setReplaceBusy(false);
@@ -251,6 +285,18 @@ export default function StudySetSourcePage() {
       />
 
       <ParseProgressOverlay studySetId={id} />
+
+      <OcrInspector
+        studySetId={id}
+        pdfFile={pdfFile}
+        reloadKey={ocrInspectorKey}
+      />
+
+      <QuestionMappingDebug
+        studySetId={id}
+        pdfFile={pdfFile}
+        reloadKey={ocrInspectorKey}
+      />
 
       {parseResult ? (
         <ParseResultOverlay

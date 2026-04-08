@@ -4,6 +4,7 @@ import {
   type ApprovedBank,
   type Question,
 } from "@/types/question";
+import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import type { StudySetDocumentRecord, StudySetMeta } from "@/types/studySet";
 import { LS_IDB_MIGRATED } from "@/types/studySet";
 import { validateQuestionsFromJson } from "@/lib/ai/validateQuestions";
@@ -58,7 +59,7 @@ export async function migrateLegacyLocalStorage(db: IDBDatabase): Promise<void> 
     return;
   }
 
-  const id = crypto.randomUUID();
+  const id = createRandomUuid();
   const now = new Date().toISOString();
   const meta: StudySetMeta = {
     id,

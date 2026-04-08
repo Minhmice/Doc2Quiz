@@ -1,5 +1,12 @@
 export type AiProvider = "openai" | "anthropic" | "custom";
 
+/** How `sourcePageIndex` / `ocrPageIndex` were chosen (debug + future crop). */
+export type QuestionPageMappingMethod =
+  | "vision_provenance"
+  | "vision_single_page"
+  | "ocr_text_overlap"
+  | "unresolved";
+
 /** Optional image attachments stored in IndexedDB `media` store; ids are unique per blob */
 export type Question = {
   id: string;
@@ -13,6 +20,21 @@ export type Question = {
     string | undefined,
     string | undefined,
   ];
+  /** 1-based page index from the source PDF where this question originated (OCR/vision only). */
+  sourcePageIndex?: number;
+  /** Media ID of the source page image attached to this question (trace to IndexedDB media store). */
+  sourceImageMediaId?: string;
+  /** 1-based page index for the page raster used as the question reference image (usually equals `sourcePageIndex` when attach succeeded). */
+  imagePageIndex?: number;
+  /** 1-based OCR run page row used for overlap / region checks. */
+  ocrPageIndex?: number;
+  mappingMethod?: QuestionPageMappingMethod;
+  /** 0..1 confidence; low or `unresolved` means do not rely on page for automation. */
+  mappingConfidence?: number;
+  /** Short explanation for inspector / logs. */
+  mappingReason?: string;
+  /** True when mapped OCR page has at least one `cropReady` bbox (see `ocrRegionVerify`). */
+  verifiedRegionAvailable?: boolean;
 };
 
 export type ApprovedBank = {

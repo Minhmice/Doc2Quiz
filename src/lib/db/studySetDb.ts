@@ -1,3 +1,10 @@
+import { createRandomUuid } from "@/lib/ids/createRandomUuid";
+import {
+  fileSummary,
+  normalizeUnknownError,
+  pipelineLog,
+} from "@/lib/logging/pipelineLogger";
+import { extractPdfText } from "@/lib/pdf/extractPdfText";
 import type { ApprovedBank, Question } from "@/types/question";
 import {
   DB_NAME,
@@ -19,12 +26,25 @@ let initPromise: Promise<void> | null = null;
 
 function openDb(): Promise<IDBDatabase> {
   if (typeof indexedDB === "undefined") {
+    pipelineLog("IDB", "open", "error", "indexedDB API missing (private mode / unsupported)", {
+      dbName: DB_NAME,
+      dbVersion: DB_VERSION,
+    });
     return Promise.reject(new Error("IndexedDB is not available"));
   }
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onerror = () => reject(req.error ?? new Error("IDB open failed"));
+      req.onerror = () => {
+        const err = req.error;
+        pipelineLog("IDB", "open", "error", "indexedDB.open request failed", {
+          dbName: DB_NAME,
+          dbVersion: DB_VERSION,
+          ...normalizeUnknownError(err ?? new Error("IDB open failed")),
+          raw: err,
+        });
+        reject(err ?? new Error("IDB open failed"));
+      };
       req.onsuccess = () => resolve(req.result);
       req.onupgradeneeded = (ev) => {
         const db = (ev.target as IDBOpenDBRequest).result;
@@ -47,6 +67,9 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains("parseProgress")) {
           db.createObjectStore("parseProgress", { keyPath: "studySetId" });
+        }
+        if (!db.objectStoreNames.contains("ocr")) {
+          db.createObjectStore("ocr", { keyPath: "studySetId" });
         }
         if (from < 3) {
           if (!db.objectStoreNames.contains("quizSessions")) {
@@ -121,6 +144,18 @@ export async function putStudySetMeta(meta: StudySetMeta): Promise<void> {
   await txDone(tx);
 }
 
+/** Clear OCR provider/status on meta after replacing the PDF or resetting OCR. */
+export async function clearOcrMetaFields(id: string): Promise<void> {
+  const existing = await getStudySetMeta(id);
+  if (!existing) {
+    return;
+  }
+  const next = { ...existing, updatedAt: new Date().toISOString() };
+  delete (next as Record<string, unknown>).ocrProvider;
+  delete (next as Record<string, unknown>).ocrStatus;
+  await putStudySetMeta(next as StudySetMeta);
+}
+
 export async function deleteStudySet(id: string): Promise<void> {
   const db = await ensureStudySetDb();
   const storeNames: string[] = [
@@ -130,6 +165,7 @@ export async function deleteStudySet(id: string): Promise<void> {
     "approved",
     "media",
     "parseProgress",
+    "ocr",
   ];
   if (db.objectStoreNames.contains("quizSessions")) {
     storeNames.push("quizSessions");
@@ -148,6 +184,7 @@ export async function deleteStudySet(id: string): Promise<void> {
     tx.objectStore("draft").delete(id);
     tx.objectStore("approved").delete(id);
     tx.objectStore("parseProgress").delete(id);
+    tx.objectStore("ocr").delete(id);
     if (db.objectStoreNames.contains("studyWrongHistory")) {
       tx.objectStore("studyWrongHistory").delete(id);
     }
@@ -196,10 +233,29 @@ export async function getDocument(
 export async function putDocument(
   doc: StudySetDocumentRecord,
 ): Promise<void> {
-  const db = await ensureStudySetDb();
-  const tx = db.transaction("document", "readwrite");
-  tx.objectStore("document").put(doc);
-  await txDone(tx);
+  pipelineLog("IDB", "document-put", "info", "putDocument start", {
+    studySetId: doc.studySetId,
+    pdfFileName: doc.pdfFileName,
+    hasPdfBuffer: Boolean(doc.pdfArrayBuffer),
+    pdfBufferByteLength: doc.pdfArrayBuffer?.byteLength,
+    extractedTextChars: doc.extractedText.length,
+  });
+  try {
+    const db = await ensureStudySetDb();
+    const tx = db.transaction("document", "readwrite");
+    tx.objectStore("document").put(doc);
+    await txDone(tx);
+    pipelineLog("IDB", "document-put", "info", "putDocument success", {
+      studySetId: doc.studySetId,
+    });
+  } catch (raw) {
+    pipelineLog("IDB", "document-put", "error", "putDocument failed", {
+      studySetId: doc.studySetId,
+      ...normalizeUnknownError(raw),
+      raw,
+    });
+    throw raw;
+  }
 }
 
 export async function getParseProgressRecord(
@@ -249,14 +305,30 @@ export async function putDraftQuestions(
   studySetId: string,
   questions: Question[],
 ): Promise<void> {
-  const db = await ensureStudySetDb();
-  const tx = db.transaction("draft", "readwrite");
-  tx.objectStore("draft").put({
+  pipelineLog("IDB", "draft-put", "info", "putDraftQuestions start", {
     studySetId,
-    savedAt: new Date().toISOString(),
-    questions,
+    questionCount: questions.length,
   });
-  await txDone(tx);
+  try {
+    const db = await ensureStudySetDb();
+    const tx = db.transaction("draft", "readwrite");
+    tx.objectStore("draft").put({
+      studySetId,
+      savedAt: new Date().toISOString(),
+      questions,
+    });
+    await txDone(tx);
+    pipelineLog("IDB", "draft-put", "info", "putDraftQuestions success", {
+      studySetId,
+    });
+  } catch (raw) {
+    pipelineLog("IDB", "draft-put", "error", "putDraftQuestions failed", {
+      studySetId,
+      ...normalizeUnknownError(raw),
+      raw,
+    });
+    throw raw;
+  }
 }
 
 type ApprovedRow = ApprovedBank & { studySetId: string };
@@ -304,7 +376,7 @@ export async function putMediaBlob(
   blob: Blob,
 ): Promise<string> {
   const db = await ensureStudySetDb();
-  const id = crypto.randomUUID();
+  const id = createRandomUuid();
   const buffer = await blob.arrayBuffer();
   const tx = db.transaction("media", "readwrite");
   const rec: MediaRecord = {
@@ -345,7 +417,7 @@ export async function deleteMedia(mediaId: string): Promise<void> {
 }
 
 export function newStudySetId(): string {
-  return crypto.randomUUID();
+  return createRandomUuid();
 }
 
 export async function createStudySet(input: {
@@ -358,37 +430,82 @@ export async function createStudySet(input: {
 }): Promise<string> {
   const id = newStudySetId();
   const now = new Date().toISOString();
-  const meta: StudySetMeta = {
-    id,
-    title: input.title,
-    subtitle: input.subtitle,
-    createdAt: now,
-    updatedAt: now,
-    sourceFileName: input.sourceFileName,
-    pageCount: input.pageCount ?? undefined,
-    status: "draft",
-  };
-  let pdfArrayBuffer: ArrayBuffer | undefined;
-  if (input.pdfFile && input.pdfFile.size > 0) {
-    pdfArrayBuffer = await input.pdfFile.arrayBuffer();
+  try {
+    pipelineLog("STUDY_SET", "create", "info", "createStudySet start", {
+      studySetId: id,
+      title: input.title,
+      pageCount: input.pageCount,
+      sourceFileName: input.sourceFileName,
+      ...fileSummary(input.pdfFile ?? undefined),
+      reusedExtractedText: input.extractedText.trim().length > 0,
+    });
+    const meta: StudySetMeta = {
+      id,
+      title: input.title,
+      subtitle: input.subtitle,
+      createdAt: now,
+      updatedAt: now,
+      sourceFileName: input.sourceFileName,
+      pageCount: input.pageCount ?? undefined,
+      status: "draft",
+    };
+    /** If `pdfFile` is set and `extractedText` is already non-empty, callers skip a second extract. */
+    let extractedTextForDoc = input.extractedText;
+    if (input.pdfFile && input.pdfFile.size > 0) {
+      if (input.extractedText.trim().length > 0) {
+        extractedTextForDoc = input.extractedText;
+      } else {
+        pipelineLog("PDF", "extract-text", "info", "createStudySet: running extractPdfText (no pre text)", {
+          studySetId: id,
+          ...fileSummary(input.pdfFile),
+        });
+        extractedTextForDoc = await extractPdfText(input.pdfFile);
+      }
+    }
+    let pdfArrayBuffer: ArrayBuffer | undefined;
+    if (input.pdfFile && input.pdfFile.size > 0) {
+      pipelineLog("PDF", "array-buffer", "info", "createStudySet: reading pdf arrayBuffer for IDB", {
+        studySetId: id,
+        ...fileSummary(input.pdfFile),
+      });
+      pdfArrayBuffer = await input.pdfFile.arrayBuffer();
+      pipelineLog("PDF", "array-buffer", "info", "createStudySet: pdf buffer ready", {
+        studySetId: id,
+        byteLength: pdfArrayBuffer.byteLength,
+      });
+    }
+    const doc: StudySetDocumentRecord = {
+      studySetId: id,
+      extractedText: extractedTextForDoc,
+      pdfArrayBuffer,
+      pdfFileName: input.pdfFile?.name,
+    };
+    pipelineLog("IDB", "transaction", "info", "createStudySet: meta + document + draft transaction", {
+      studySetId: id,
+      extractedTextChars: extractedTextForDoc.length,
+    });
+    const db = await ensureStudySetDb();
+    const tx = db.transaction(["meta", "document", "draft"], "readwrite");
+    tx.objectStore("meta").put(meta);
+    tx.objectStore("document").put(doc);
+    tx.objectStore("draft").put({
+      studySetId: id,
+      savedAt: now,
+      questions: [],
+    });
+    await txDone(tx);
+    pipelineLog("STUDY_SET", "create", "info", "createStudySet success", {
+      studySetId: id,
+    });
+    return id;
+  } catch (raw) {
+    pipelineLog("STUDY_SET", "create", "error", "createStudySet failed", {
+      studySetId: id,
+      ...normalizeUnknownError(raw),
+      raw,
+    });
+    throw raw;
   }
-  const doc: StudySetDocumentRecord = {
-    studySetId: id,
-    extractedText: input.extractedText,
-    pdfArrayBuffer,
-    pdfFileName: input.pdfFile?.name,
-  };
-  const db = await ensureStudySetDb();
-  const tx = db.transaction(["meta", "document", "draft"], "readwrite");
-  tx.objectStore("meta").put(meta);
-  tx.objectStore("document").put(doc);
-  tx.objectStore("draft").put({
-    studySetId: id,
-    savedAt: now,
-    questions: [],
-  });
-  await txDone(tx);
-  return id;
 }
 
 export async function touchStudySetMeta(
@@ -396,7 +513,7 @@ export async function touchStudySetMeta(
   patch: Partial<
     Pick<
       StudySetMeta,
-      "title" | "subtitle" | "status" | "pageCount" | "sourceFileName"
+      "title" | "subtitle" | "status" | "pageCount" | "sourceFileName" | "ocrProvider" | "ocrStatus"
     >
   >,
 ): Promise<void> {

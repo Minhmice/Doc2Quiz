@@ -5,12 +5,20 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { FatalParseError } from "@/lib/ai/errors";
+import { getOcrResult, putOcrResult } from "@/lib/ai/ocrDb";
+import {
+  applyQuestionPageMapping,
+  type VisionParseMode,
+} from "@/lib/ai/mapQuestionsToPages";
+import { resolveChatApiUrl, resolveModelId } from "@/lib/ai/parseChunk";
+import { runOcrSequential } from "@/lib/ai/runOcrSequential";
 import { runVisionSequential } from "@/lib/ai/runVisionSequential";
 import {
   getKeyForProvider,
@@ -28,6 +36,11 @@ import {
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
 import {
+  fileSummary,
+  normalizeUnknownError,
+  pipelineLog,
+} from "@/lib/logging/pipelineLogger";
+import {
   renderPdfPagesToImages,
   VISION_MAX_PAGES_DEFAULT,
 } from "@/lib/pdf/renderPagesToImages";
@@ -37,8 +50,43 @@ import type { ParseProgressPhase } from "@/types/studySet";
 import { QuestionPreviewList } from "@/components/ai/QuestionPreviewList";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+
+const LS_ATTACH_PAGE_IMAGE = "doc2quiz:parse:attachPageImage";
+const LS_ENABLE_OCR = "doc2quiz:parse:enableOcr";
+
+function readAttachPageImagePreference(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  try {
+    const v = localStorage.getItem(LS_ATTACH_PAGE_IMAGE);
+    if (v === null) {
+      return true;
+    }
+    return v === "1";
+  } catch {
+    return true;
+  }
+}
+
+function readEnableOcrPreference(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  try {
+    const v = localStorage.getItem(LS_ENABLE_OCR);
+    if (v === null) {
+      return true;
+    }
+    return v === "1";
+  } catch {
+    return true;
+  }
+}
 
 export type ParseRunResult = {
   ok: boolean;
@@ -92,7 +140,20 @@ export const AiParseSection = forwardRef<
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [visionRendering, setVisionRendering] = useState(false);
-  const [parseMode, setParseMode] = useState<"vision" | null>(null);
+  /** Default true until client reads localStorage (avoids SSR hydration mismatch). */
+  const [attachPageImage, setAttachPageImage] = useState(true);
+  const attachCheckboxId = useId();
+  /** Default true until client reads localStorage (SSR-safe). */
+  const [enableOcr, setEnableOcr] = useState(true);
+  const ocrCheckboxId = useId();
+
+  useEffect(() => {
+    setAttachPageImage(readAttachPageImagePreference());
+  }, []);
+  useEffect(() => {
+    setEnableOcr(readEnableOcrPreference());
+  }, []);
+  const [parseMode, setParseMode] = useState<"vision" | "ocr" | null>(null);
   const [parseOverlay, setParseOverlay] = useState<{
     extractedCount: number;
     log: string[];
@@ -145,6 +206,8 @@ export const AiParseSection = forwardRef<
     if (running) {
       if (visionRendering) {
         phase = "rendering_pdf";
+      } else if (parseMode === "ocr") {
+        phase = "ocr_extract";
       } else if (parseMode === "vision") {
         phase = "vision_pages";
       } else {
@@ -277,6 +340,24 @@ export const AiParseSection = forwardRef<
     abortRef.current?.abort();
   }, []);
 
+  const setAttachPageImagePreference = useCallback((next: boolean) => {
+    setAttachPageImage(next);
+    try {
+      localStorage.setItem(LS_ATTACH_PAGE_IMAGE, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const setEnableOcrPreference = useCallback((next: boolean) => {
+    setEnableOcr(next);
+    try {
+      localStorage.setItem(LS_ENABLE_OCR, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const persistQuestions = useCallback(
     async (qs: Question[]) => {
       await putDraftQuestions(studySetId, qs);
@@ -331,6 +412,14 @@ export const AiParseSection = forwardRef<
 
     const forwardProvider = provider === "custom" ? "custom" : "openai";
 
+    pipelineLog("VISION", "parse-start", "info", "handleVisionParse started", {
+      studySetId: studySetId.trim() || "(empty)",
+      ...fileSummary(activePdfFile),
+      forwardProvider,
+      aiProvider: provider,
+      model: modelInput,
+    });
+
     const controller = new AbortController();
     abortRef.current = controller;
     setParseMode("vision");
@@ -374,6 +463,10 @@ export const AiParseSection = forwardRef<
       }
 
       if (pages.length === 0) {
+        pipelineLog("PDF", "render-batch", "error", "vision: zero pages after renderPdfPagesToImages", {
+          studySetId: studySetId.trim() || "(empty)",
+          ...fileSummary(activePdfFile),
+        });
         setError("Could not render any PDF pages for vision.");
         return {
           ok: false,
@@ -384,16 +477,120 @@ export const AiParseSection = forwardRef<
       }
 
       setVisionRendering(false);
-      const visionStepTotal =
-        pages.length <= 1 ? pages.length : pages.length - 1;
+
+      const enableOcrEffective =
+        enableOcr && studySetId.trim().length > 0 && visionForwardReady;
+
+      if (enableOcrEffective) {
+        setParseMode("ocr");
+        setProgress({ current: 0, total: pages.length, status: "running" });
+        setParseOverlay((p) => ({
+          ...p,
+          log: [
+            ...p.log,
+            `${timeStamp()} — OCR: extracting text per page (same API as vision)…`,
+          ].slice(-16),
+        }));
+        pipelineLog("OCR", "run", "info", "runOcrSequential starting", {
+          studySetId: studySetId.trim(),
+          pageCount: pages.length,
+          forwardProvider,
+          model: modelInput,
+        });
+        try {
+          const endpoint = resolveChatApiUrl(provider, urlInput);
+          const model = resolveModelId(provider, modelInput);
+          const ocrResult = await runOcrSequential({
+            pages,
+            signal: controller.signal,
+            provider: forwardProvider === "openai" ? "openai" : "custom",
+            endpoint,
+            apiKey,
+            model,
+            onProgress: ({ current, total, textSoFar }) => {
+              setProgress({ current, total, status: "running" });
+              setParseOverlay((p) => ({
+                ...p,
+                log: [
+                  ...p.log,
+                  `${timeStamp()} — OCR ${current}/${total} · ${textSoFar} chars total`,
+                ].slice(-16),
+              }));
+            },
+          });
+          if (!controller.signal.aborted && ocrResult) {
+            await putOcrResult(studySetId, ocrResult);
+            pipelineLog("OCR", "run", "info", "OCR run finished; putOcrResult done", {
+              studySetId,
+              savedPages: ocrResult.pages.length,
+              stats: ocrResult.stats,
+            });
+            await touchStudySetMeta(studySetId, {
+              ocrStatus: "done",
+              ocrProvider: ocrResult.provider,
+            });
+            const st = ocrResult.stats;
+            if (st && st.failedPages > 0) {
+              pipelineLog("OCR", "run", "warn", "some OCR pages failed (vision continues)", {
+                studySetId,
+                failedPages: st.failedPages,
+              });
+              toast.warning(
+                `${st.failedPages} page(s) failed OCR; vision parse continues.`,
+              );
+            }
+          } else if (!controller.signal.aborted && !ocrResult) {
+            pipelineLog("OCR", "run", "warn", "OCR returned null (aborted mid-run?)", {
+              studySetId,
+            });
+          }
+        } catch (raw) {
+          pipelineLog("OCR", "run", "error", "OCR step threw (vision continues)", {
+            studySetId: studySetId.trim(),
+            ...normalizeUnknownError(raw),
+            raw,
+          });
+          if (!controller.signal.aborted) {
+            toast.warning("OCR step failed; continuing with vision parse.");
+          }
+        } finally {
+          if (!controller.signal.aborted) {
+            setParseMode("vision");
+          }
+        }
+      }
+
+      if (controller.signal.aborted) {
+        return {
+          ok: false,
+          aborted: true,
+          fatalError: null,
+          questions: [],
+        };
+      }
+
+      const attachEffective =
+        attachPageImage && studySetId.trim().length > 0;
+      const visionStepTotal = attachEffective
+        ? pages.length
+        : pages.length <= 1
+          ? pages.length
+          : pages.length - 1;
       setProgress({ current: 0, total: visionStepTotal, status: "running" });
       setParseOverlay((p) => ({
         ...p,
         log: [
           ...p.log,
-          `${timeStamp()} — Analyzing structure · ${pages.length} page image${pages.length === 1 ? "" : "s"}`,
+          `${timeStamp()} — Analyzing structure · ${pages.length} page image${pages.length === 1 ? "" : "s"}${attachEffective ? " · page images will be linked to questions" : ""}`,
         ].slice(-16),
       }));
+
+      pipelineLog("VISION", "run", "info", "runVisionSequential starting", {
+        studySetId: studySetId.trim() || "(empty)",
+        attachPageImages: attachEffective,
+        visionSteps: visionStepTotal,
+        pageImages: pages.length,
+      });
 
       const result = await runVisionSequential({
         forwardProvider,
@@ -402,18 +599,42 @@ export const AiParseSection = forwardRef<
         model: modelInput,
         pages,
         signal: controller.signal,
+        studySetId,
+        attachPageImages: attachEffective,
         onProgress: ({ current, total, questionsSoFar }) => {
           setProgress({ current, total, status: "running" });
+          const attachDoneNote =
+            attachEffective && current === total
+              ? " · page images saved to questions"
+              : "";
           setParseOverlay((p) => ({
             ...p,
             extractedCount: questionsSoFar,
             log: [
               ...p.log,
-              `${timeStamp()} — Pass ${current}/${total} · ${questionsSoFar} question${questionsSoFar === 1 ? "" : "s"} extracted`,
+              `${timeStamp()} — Pass ${current}/${total} · ${questionsSoFar} question${questionsSoFar === 1 ? "" : "s"} extracted${attachDoneNote}`,
             ].slice(-16),
           }));
         },
       });
+
+      if (studySetId.trim().length > 0) {
+        try {
+          const ocrSnapshot = await getOcrResult(studySetId);
+          const parseMode: VisionParseMode = attachEffective
+            ? "attach_single"
+            : pages.length <= 1
+              ? "single"
+              : "pair";
+          applyQuestionPageMapping(
+            result.questions,
+            ocrSnapshot ?? null,
+            { parseMode },
+          );
+        } catch {
+          /* mapping is best-effort; vision + draft persist still proceed */
+        }
+      }
 
       setQuestions(result.questions);
 
@@ -432,11 +653,35 @@ export const AiParseSection = forwardRef<
 
       const fatal = result.fatalError ?? null;
       if (fatal) {
+        pipelineLog("VISION", "parse-fatal", "error", "vision parse returned fatalError", {
+          studySetId: studySetId.trim() || "(empty)",
+          fatalError: fatal,
+          failedSteps: result.failedSteps,
+          questionCount: result.questions.length,
+          ...fileSummary(activePdfFile),
+        });
         setError(fatal);
+      } else {
+        pipelineLog("VISION", "run", "info", "runVisionSequential finished OK", {
+          studySetId: studySetId.trim() || "(empty)",
+          questionCount: result.questions.length,
+          failedSteps: result.failedSteps,
+          attachImageFailures: result.attachImageFailures ?? 0,
+        });
       }
 
       if (!controller.signal.aborted && !fatal) {
         await persistQuestions(result.questions);
+      }
+
+      if (
+        attachEffective &&
+        (result.attachImageFailures ?? 0) > 0 &&
+        !controller.signal.aborted
+      ) {
+        toast.warning(
+          "Could not attach some page images; those questions have no reference image.",
+        );
       }
 
       const aborted = controller.signal.aborted;
@@ -447,6 +692,14 @@ export const AiParseSection = forwardRef<
         questions: result.questions,
       };
     } catch (e) {
+      pipelineLog("VISION", "parse-error", "error", "handleVisionParse threw", {
+        studySetId: studySetId.trim() || "(empty)",
+        ...fileSummary(activePdfFile),
+        ...normalizeUnknownError(e),
+        raw: e,
+        isFatalParse: e instanceof FatalParseError,
+        isAbort: e instanceof DOMException && e.name === "AbortError",
+      });
       if (e instanceof FatalParseError) {
         setError(e.message);
       } else if (e instanceof DOMException && e.name === "AbortError") {
@@ -488,6 +741,10 @@ export const AiParseSection = forwardRef<
     urlInput,
     modelInput,
     persistQuestions,
+    attachPageImage,
+    enableOcr,
+    studySetId,
+    visionForwardReady,
   ]);
 
   const runUnifiedParseInternal =
@@ -496,7 +753,12 @@ export const AiParseSection = forwardRef<
       setSummary(null);
       try {
         await onBeforeParse?.();
-      } catch {
+      } catch (raw) {
+        pipelineLog("VISION", "pre-parse", "error", "onBeforeParse failed", {
+          studySetId: studySetId.trim(),
+          ...normalizeUnknownError(raw),
+          raw,
+        });
         setError("Could not save before parsing.");
         return {
           ok: false,
@@ -638,6 +900,61 @@ export const AiParseSection = forwardRef<
       ? Math.min(pageCount, VISION_MAX_PAGES_DEFAULT)
       : VISION_MAX_PAGES_DEFAULT;
 
+  const attachEffectiveForUi =
+    attachPageImage && studySetId.trim().length > 0;
+
+  const attachPageImageControl = (
+    <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3">
+      <div className="flex cursor-pointer items-start gap-3">
+        <input
+          id={attachCheckboxId}
+          type="checkbox"
+          className="mt-1 size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
+          checked={attachPageImage}
+          onChange={(e) => setAttachPageImagePreference(e.target.checked)}
+        />
+        <div className="min-w-0 space-y-1">
+          <Label
+            htmlFor={attachCheckboxId}
+            className="cursor-pointer text-sm font-medium leading-none text-foreground"
+          >
+            Attach page image to parsed questions
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            Each parsed question will keep a reference image from its source PDF
+            page.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const ocrExtractionControl = (
+    <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3">
+      <div className="flex cursor-pointer items-start gap-3">
+        <input
+          id={ocrCheckboxId}
+          type="checkbox"
+          className="mt-1 size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
+          checked={enableOcr}
+          onChange={(e) => setEnableOcrPreference(e.target.checked)}
+        />
+        <div className="min-w-0 space-y-1">
+          <Label
+            htmlFor={ocrCheckboxId}
+            className="cursor-pointer text-sm font-medium leading-none text-foreground"
+          >
+            Run OCR before vision parse
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            Extracts page text and layout into local storage for the OCR inspector
+            and future mapping. OCR errors never block vision parsing.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   const showInlineProgress = !isEmbedded && isRunning;
   const showPreview = !isEmbedded;
 
@@ -689,7 +1006,14 @@ export const AiParseSection = forwardRef<
             </Link>
             .
           </p>
+          {attachPageImageControl}
+          {ocrExtractionControl}
         </>
+      ) : hasKey && activePdfFile ? (
+        <div className="space-y-3">
+          {attachPageImageControl}
+          {ocrExtractionControl}
+        </div>
       ) : null}
 
       {!hasKey ? (
@@ -713,7 +1037,9 @@ export const AiParseSection = forwardRef<
           <p className="text-sm font-medium text-primary">
             {visionRendering
               ? "Rendering PDF pages as images…"
-              : `Parsing with vision… ${progress.current} / ${progress.total} steps`}
+              : parseMode === "ocr"
+                ? `OCR text extraction… ${progress.current} / ${progress.total} pages`
+                : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
           </p>
           {!visionRendering && progress.total > 0 ? (
             <Progress

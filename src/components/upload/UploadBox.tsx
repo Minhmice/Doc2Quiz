@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { fileSummary, pipelineLog } from "@/lib/logging/pipelineLogger";
 import {
   validatePdfFile,
   type PdfValidationError,
@@ -35,7 +36,11 @@ export function UploadBox({
   } | null>(null);
 
   const processFile = useCallback(
-    (file: File) => {
+    (file: File, pickSource: "input" | "drop") => {
+      pipelineLog("PDF", "file-selected", "info", "file received (before validate)", {
+        pickSource,
+        ...fileSummary(file),
+      });
       const result = validatePdfFile(file);
       if (!result.ok) {
         setPickedMeta(null);
@@ -50,7 +55,7 @@ export function UploadBox({
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (file) processFile(file, "input");
     e.target.value = "";
   };
 
@@ -59,7 +64,7 @@ export function UploadBox({
     setIsDragging(false);
     if (disabled) return;
     const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
+    if (file) processFile(file, "drop");
   };
 
   const onDragOver = (e: React.DragEvent) => {

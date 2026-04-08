@@ -3,31 +3,32 @@ export type StudySetStatus = "draft" | "ready";
 export type StudySetMeta = {
   id: string;
   title: string;
-  /** Optional second line, e.g. school or context from AI */
   subtitle?: string;
   createdAt: string;
   updatedAt: string;
   sourceFileName?: string;
   pageCount?: number;
   status: StudySetStatus;
+  /** OCR extraction provider used, or undefined when OCR has not run for this set */
+  ocrProvider?: string;
+  ocrStatus?: "running" | "done";
 };
 
 export type StudySetDocumentRecord = {
   studySetId: string;
   extractedText: string;
-  /** Serialized PDF for vision re-parse after reload */
   pdfArrayBuffer?: ArrayBuffer;
   pdfFileName?: string;
 };
 
 export const DB_NAME = "doc2quiz";
-export const DB_VERSION = 3;
+export const DB_VERSION = 5;
 
-/** Last-known AI parse progress per study set (throttled writes while parsing) */
 export type ParseProgressPhase =
   | "idle"
   | "rendering_pdf"
   | "text_chunks"
+  | "ocr_extract"
   | "vision_pages";
 
 export type ParseProgressRecord = {
@@ -39,5 +40,4 @@ export type ParseProgressRecord = {
   total: number;
 };
 
-/** localStorage — set after one-time migration from legacy keys */
 export const LS_IDB_MIGRATED = "doc2quiz:idb:migrated-from-ls";

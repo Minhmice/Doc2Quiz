@@ -163,7 +163,7 @@ export function QuestionEditor({
 
   const submit = form.handleSubmit((data) => {
     const base: Question = {
-      id: question.id,
+      ...question,
       question: data.question.trim(),
       options: [
         data.option0.trim(),
@@ -175,9 +175,14 @@ export function QuestionEditor({
     };
     if (questionImageId) {
       base.questionImageId = questionImageId;
+    } else {
+      delete base.questionImageId;
+      delete base.sourceImageMediaId;
     }
     if (optionImageIds.some(Boolean)) {
       base.optionImageIds = optionImageIds;
+    } else {
+      delete base.optionImageIds;
     }
     void onSave(base);
     toast.success("Question saved");

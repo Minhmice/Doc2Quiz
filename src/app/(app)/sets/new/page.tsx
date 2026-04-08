@@ -5,8 +5,26 @@ import { useCallback, useState } from "react";
 import { UploadBox } from "@/components/upload/UploadBox";
 import { generateStudySetTitle } from "@/lib/ai/generateStudySetTitle";
 import { createStudySet, ensureStudySetDb } from "@/lib/db/studySetDb";
+import {
+  fileSummary,
+  normalizeUnknownError,
+  pipelineLog,
+} from "@/lib/logging/pipelineLogger";
+import { extractPdfText } from "@/lib/pdf/extractPdfText";
 import { getPdfPageCount } from "@/lib/pdf/getPdfPageCount";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
+
+type NewImportPhase = "idb" | "pdf" | "persist";
+
+function userMessageForImportFailure(phase: NewImportPhase): string {
+  if (phase === "idb") {
+    return "Could not access on-device storage. Check that this site can use storage, then try again.";
+  }
+  if (phase === "persist") {
+    return "Could not save your study set. The PDF was read, but saving failed—try again or free up browser storage.";
+  }
+  return "Could not open this PDF. Check the file is valid and try again.";
+}
 
 export default function NewStudySetPage() {
   const router = useRouter();
@@ -25,24 +43,73 @@ export default function NewStudySetPage() {
     async (file: File) => {
       setError(null);
       setLoading(true);
+      let phase: NewImportPhase = "idb";
+      pipelineLog("STUDY_SET", "new-import", "info", "new study set: file handling start", {
+        ...fileSummary(file),
+      });
       try {
+        pipelineLog("IDB", "ensure", "info", "ensureStudySetDb (new import)", {});
         await ensureStudySetDb();
-        const pageCount = await getPdfPageCount(file);
-        const naming = await generateStudySetTitle("", file.name);
 
+        phase = "pdf";
+        pipelineLog("PDF", "page-count", "info", "new import: getPdfPageCount start", {
+          ...fileSummary(file),
+        });
+        const pageCount = await getPdfPageCount(file);
+        pipelineLog("PDF", "page-count", "info", "new import: getPdfPageCount success", {
+          ...fileSummary(file),
+          pageCount,
+        });
+
+        pipelineLog("PDF", "extract-text", "info", "new import: extractPdfText start", {
+          ...fileSummary(file),
+          pageCount,
+        });
+        const extractedText = await extractPdfText(file);
+        pipelineLog("PDF", "extract-text", "info", "new import: extractPdfText finished", {
+          ...fileSummary(file),
+          pageCount,
+          extractedCharCount: extractedText.length,
+        });
+
+        const naming = await generateStudySetTitle(extractedText, file.name);
+
+        phase = "persist";
+        pipelineLog("STUDY_SET", "new-import", "info", "new import: createStudySet start", {
+          ...fileSummary(file),
+          pageCount,
+          title: naming.title,
+        });
         const id = await createStudySet({
           title: naming.title,
           subtitle: naming.subtitle,
           sourceFileName: file.name,
           pageCount,
-          extractedText: "",
+          extractedText,
           pdfFile: file,
         });
+        pipelineLog("STUDY_SET", "new-import", "info", "new import complete; navigating", {
+          studySetId: id,
+          ...fileSummary(file),
+        });
         router.push(`/sets/${id}/source`);
-      } catch {
-        setError(
-          "Could not open this PDF. Check the file is valid and try again.",
-        );
+      } catch (raw) {
+        const norm = normalizeUnknownError(raw);
+        const cause = raw instanceof Error && raw.cause ? normalizeUnknownError(raw.cause) : undefined;
+        pipelineLog("STUDY_SET", "new-import", "error", "new study set pipeline failed", {
+          phase,
+          userFacingBucket:
+            phase === "persist"
+              ? "study_set_save"
+              : phase === "idb"
+                ? "indexeddb"
+                : "pdf_open",
+          ...fileSummary(file),
+          ...norm,
+          cause,
+          raw,
+        });
+        setError(userMessageForImportFailure(phase));
       } finally {
         setLoading(false);
       }
@@ -57,8 +124,8 @@ export default function NewStudySetPage() {
           New study set
         </h1>
         <p className="mx-auto mt-2 max-w-2xl text-pretty text-sm text-muted-foreground sm:text-base">
-          Upload a PDF. Questions are generated with AI vision (pages as images)
-          on the next step — no local text extraction.
+          Upload a PDF. Text is extracted locally for titles and storage; on the
+          next step, questions are generated with AI vision (pages as images).
         </p>
       </header>
 

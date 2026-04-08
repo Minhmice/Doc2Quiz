@@ -1,4 +1,20 @@
-import type { Question } from "@/types/question";
+import { createRandomUuid } from "@/lib/ids/createRandomUuid";
+import type { Question, QuestionPageMappingMethod } from "@/types/question";
+
+const MAPPING_METHODS = new Set<QuestionPageMappingMethod>([
+  "vision_provenance",
+  "vision_single_page",
+  "ocr_text_overlap",
+  "unresolved",
+]);
+
+function parseMappingMethod(
+  v: unknown,
+): QuestionPageMappingMethod | undefined {
+  return typeof v === "string" && MAPPING_METHODS.has(v as QuestionPageMappingMethod)
+    ? (v as QuestionPageMappingMethod)
+    : undefined;
+}
 
 function extractQuestionsArray(raw: unknown): unknown[] {
   if (Array.isArray(raw)) {
@@ -67,7 +83,7 @@ export function validateQuestionsFromJson(
       typeof existingId === "string" &&
       existingId.trim().length > 0
         ? existingId.trim()
-        : crypto.randomUUID();
+        : createRandomUuid();
 
     const qImg = rec.questionImageId;
     const optImgs = rec.optionImageIds;
@@ -97,6 +113,48 @@ export function validateQuestionsFromJson(
       }
     }
 
+    const spi = rec.sourcePageIndex;
+    const sourcePageIndex =
+      typeof spi === "number" &&
+      Number.isInteger(spi) &&
+      spi >= 1
+        ? spi
+        : undefined;
+    const sim = rec.sourceImageMediaId;
+    const sourceImageMediaId =
+      typeof sim === "string" && sim.trim().length > 0
+        ? sim.trim()
+        : undefined;
+
+    const ipi = rec.imagePageIndex;
+    const imagePageIndex =
+      typeof ipi === "number" &&
+      Number.isInteger(ipi) &&
+      ipi >= 1
+        ? ipi
+        : undefined;
+    const opi = rec.ocrPageIndex;
+    const ocrPageIndex =
+      typeof opi === "number" &&
+      Number.isInteger(opi) &&
+      opi >= 1
+        ? opi
+        : undefined;
+    const mappingMethod = parseMappingMethod(rec.mappingMethod);
+    const mc = rec.mappingConfidence;
+    const mappingConfidence =
+      typeof mc === "number" && Number.isFinite(mc) && mc >= 0 && mc <= 1
+        ? mc
+        : undefined;
+    const mr = rec.mappingReason;
+    const mappingReason =
+      typeof mr === "string" && mr.trim().length > 0
+        ? mr.trim().slice(0, 600)
+        : undefined;
+    const vra = rec.verifiedRegionAvailable;
+    const verifiedRegionAvailable =
+      typeof vra === "boolean" ? vra : undefined;
+
     out.push({
       id,
       question: question.trim(),
@@ -109,6 +167,16 @@ export function validateQuestionsFromJson(
       correctIndex: correctIndex as 0 | 1 | 2 | 3,
       ...(questionImageId ? { questionImageId } : {}),
       ...(optionImageIds ? { optionImageIds } : {}),
+      ...(sourcePageIndex !== undefined ? { sourcePageIndex } : {}),
+      ...(sourceImageMediaId ? { sourceImageMediaId } : {}),
+      ...(imagePageIndex !== undefined ? { imagePageIndex } : {}),
+      ...(ocrPageIndex !== undefined ? { ocrPageIndex } : {}),
+      ...(mappingMethod ? { mappingMethod } : {}),
+      ...(mappingConfidence !== undefined ? { mappingConfidence } : {}),
+      ...(mappingReason ? { mappingReason } : {}),
+      ...(verifiedRegionAvailable !== undefined
+        ? { verifiedRegionAvailable }
+        : {}),
     });
   }
 
