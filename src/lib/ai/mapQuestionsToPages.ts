@@ -57,6 +57,14 @@ function setProvenanceMapping(
     ver && ver.pageUsableForCrop && ver.cropReadyBlockCount > 0,
   );
 
+  if (q.layoutChunkId) {
+    q.mappingMethod = "layout_chunk";
+    q.mappingConfidence = 0.9;
+    q.mappingReason =
+      "Question extracted from an OCR layout chunk on this page.";
+    return;
+  }
+
   if (ctx.parseMode === "attach_single") {
     q.mappingMethod = "vision_provenance";
     q.mappingConfidence = 0.92;

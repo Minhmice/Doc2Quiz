@@ -11,15 +11,25 @@ import {
   useRef,
   useState,
 } from "react";
+import { dedupeQuestionsByStem } from "@/lib/ai/dedupeQuestions";
 import { FatalParseError } from "@/lib/ai/errors";
 import { getOcrResult, putOcrResult } from "@/lib/ai/ocrDb";
 import {
   applyQuestionPageMapping,
   type VisionParseMode,
 } from "@/lib/ai/mapQuestionsToPages";
-import { resolveChatApiUrl, resolveModelId } from "@/lib/ai/parseChunk";
+import {
+  parseChunkSingleMcqOnce,
+  resolveChatApiUrl,
+  resolveModelId,
+} from "@/lib/ai/parseChunk";
+import { buildLayoutChunksFromRun } from "@/lib/ai/layoutChunksFromOcr";
+import { runLayoutChunkParse } from "@/lib/ai/runLayoutChunkParse";
 import { runOcrSequential } from "@/lib/ai/runOcrSequential";
-import { runVisionSequential } from "@/lib/ai/runVisionSequential";
+import {
+  runVisionSequential,
+  type RunVisionSequentialResult,
+} from "@/lib/ai/runVisionSequential";
 import {
   getKeyForProvider,
   getModelForProvider,
@@ -32,6 +42,7 @@ import {
   getDraftQuestions,
   getParseProgressRecord,
   putDraftQuestions,
+  putMediaBlob,
   putParseProgressRecord,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
@@ -42,9 +53,11 @@ import {
 } from "@/lib/logging/pipelineLogger";
 import {
   renderPdfPagesToImages,
+  type PageImageResult,
   VISION_MAX_PAGES_DEFAULT,
 } from "@/lib/pdf/renderPagesToImages";
 import { isMcqComplete } from "@/lib/review/validateMcq";
+import type { OcrRunResult } from "@/types/ocr";
 import type { Question } from "@/types/question";
 import type { ParseProgressPhase } from "@/types/studySet";
 import { QuestionPreviewList } from "@/components/ai/QuestionPreviewList";
@@ -57,6 +70,53 @@ import { toast } from "sonner";
 
 const LS_ATTACH_PAGE_IMAGE = "doc2quiz:parse:attachPageImage";
 const LS_ENABLE_OCR = "doc2quiz:parse:enableOcr";
+const LS_PARSE_STRATEGY = "doc2quiz:parse:strategy";
+
+export type ParseStrategy = "fast" | "accurate" | "hybrid";
+
+async function attachPageImagesForQuestions(
+  studySetId: string,
+  pages: PageImageResult[],
+  questions: Question[],
+): Promise<number> {
+  const pageByIndex = new Map(pages.map((p) => [p.pageIndex, p]));
+  const cache = new Map<number, string>();
+  let fails = 0;
+  for (const q of questions) {
+    if (q.questionImageId) {
+      continue;
+    }
+    const idx = q.sourcePageIndex;
+    if (!idx) {
+      continue;
+    }
+    const page = pageByIndex.get(idx);
+    if (!page) {
+      fails++;
+      continue;
+    }
+    let mediaId = cache.get(idx);
+    if (!mediaId) {
+      try {
+        const res = await fetch(page.dataUrl);
+        if (!res.ok) {
+          fails++;
+          continue;
+        }
+        const blob = await res.blob();
+        mediaId = await putMediaBlob(studySetId, blob);
+        cache.set(idx, mediaId);
+      } catch {
+        fails++;
+        continue;
+      }
+    }
+    q.questionImageId = mediaId;
+    q.sourceImageMediaId = mediaId;
+    q.imagePageIndex = idx;
+  }
+  return fails;
+}
 
 function readAttachPageImagePreference(): boolean {
   if (typeof window === "undefined") {
@@ -85,6 +145,21 @@ function readEnableOcrPreference(): boolean {
     return v === "1";
   } catch {
     return true;
+  }
+}
+
+function readParseStrategyPreference(): ParseStrategy {
+  if (typeof window === "undefined") {
+    return "accurate";
+  }
+  try {
+    const v = localStorage.getItem(LS_PARSE_STRATEGY);
+    if (v === "fast" || v === "hybrid") {
+      return v;
+    }
+    return "accurate";
+  } catch {
+    return "accurate";
   }
 }
 
@@ -146,6 +221,7 @@ export const AiParseSection = forwardRef<
   /** Default true until client reads localStorage (SSR-safe). */
   const [enableOcr, setEnableOcr] = useState(true);
   const ocrCheckboxId = useId();
+  const parseStrategyGroupId = useId();
 
   useEffect(() => {
     setAttachPageImage(readAttachPageImagePreference());
@@ -153,7 +229,12 @@ export const AiParseSection = forwardRef<
   useEffect(() => {
     setEnableOcr(readEnableOcrPreference());
   }, []);
-  const [parseMode, setParseMode] = useState<"vision" | "ocr" | null>(null);
+  const [parseStrategy, setParseStrategy] = useState<ParseStrategy>(
+    readParseStrategyPreference,
+  );
+  const [parseMode, setParseMode] = useState<"vision" | "ocr" | "chunk" | null>(
+    null,
+  );
   const [parseOverlay, setParseOverlay] = useState<{
     extractedCount: number;
     log: string[];
@@ -208,6 +289,8 @@ export const AiParseSection = forwardRef<
         phase = "rendering_pdf";
       } else if (parseMode === "ocr") {
         phase = "ocr_extract";
+      } else if (parseMode === "chunk") {
+        phase = "text_chunks";
       } else if (parseMode === "vision") {
         phase = "vision_pages";
       } else {
@@ -358,6 +441,15 @@ export const AiParseSection = forwardRef<
     }
   }, []);
 
+  const setParseStrategyPreference = useCallback((next: ParseStrategy) => {
+    setParseStrategy(next);
+    try {
+      localStorage.setItem(LS_PARSE_STRATEGY, next);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const persistQuestions = useCallback(
     async (qs: Question[]) => {
       await putDraftQuestions(studySetId, qs);
@@ -365,6 +457,476 @@ export const AiParseSection = forwardRef<
       onDraftPersisted?.();
     },
     [studySetId, onDraftPersisted],
+  );
+
+  type RenderOcrPrepared = {
+    kind: "prepared";
+    pages: PageImageResult[];
+    ocrForMapping: OcrRunResult | null;
+  };
+
+  const runRenderPagesAndOptionalOcr = useCallback(
+    async (
+      file: File,
+      controller: AbortController,
+      apiKey: string,
+      forwardProvider: "openai" | "custom",
+      timeStamp: () => string,
+      afterOcrParseMode: "vision" | "none",
+    ): Promise<ParseRunResult | RenderOcrPrepared> => {
+      const pages = await renderPdfPagesToImages(file, {
+        signal: controller.signal,
+        maxPages: VISION_MAX_PAGES_DEFAULT,
+        onPageRendered: (pg, { totalPages }) => {
+          setParseOverlay((p) => ({
+            ...p,
+            renderPage: pg.pageIndex,
+            renderTot: totalPages,
+            thumbs: [
+              ...p.thumbs,
+              { pageIndex: pg.pageIndex, dataUrl: pg.dataUrl },
+            ].slice(-6),
+            log: [
+              ...p.log,
+              `${timeStamp()} — Page ${pg.pageIndex}/${totalPages} rasterized`,
+            ].slice(-16),
+          }));
+        },
+      });
+
+      if (controller.signal.aborted) {
+        return {
+          ok: false,
+          aborted: true,
+          fatalError: null,
+          questions: [],
+        };
+      }
+
+      if (pages.length === 0) {
+        pipelineLog(
+          "PDF",
+          "render-batch",
+          "error",
+          "vision: zero pages after renderPdfPagesToImages",
+          {
+            studySetId: studySetId.trim() || "(empty)",
+            ...fileSummary(file),
+          },
+        );
+        setError("Could not render any PDF pages for vision.");
+        return {
+          ok: false,
+          aborted: false,
+          fatalError: null,
+          questions: [],
+        };
+      }
+
+      setVisionRendering(false);
+
+      let ocrForMapping: OcrRunResult | null = null;
+      const enableOcrEffective =
+        enableOcr && studySetId.trim().length > 0 && visionForwardReady;
+
+      if (enableOcrEffective) {
+        setParseMode("ocr");
+        setProgress({ current: 0, total: pages.length, status: "running" });
+        setParseOverlay((p) => ({
+          ...p,
+          log: [
+            ...p.log,
+            `${timeStamp()} — OCR: extracting text per page (same API as vision)…`,
+          ].slice(-16),
+        }));
+        pipelineLog("OCR", "run", "info", "runOcrSequential starting", {
+          studySetId: studySetId.trim(),
+          pageCount: pages.length,
+          forwardProvider,
+          model: modelInput,
+        });
+        try {
+          const endpoint = resolveChatApiUrl(provider, urlInput);
+          const model = resolveModelId(provider, modelInput);
+          const ocrResult = await runOcrSequential({
+            pages,
+            signal: controller.signal,
+            provider: forwardProvider === "openai" ? "openai" : "custom",
+            endpoint,
+            apiKey,
+            model,
+            onProgress: ({ current, total, textSoFar }) => {
+              setProgress({ current, total, status: "running" });
+              setParseOverlay((p) => ({
+                ...p,
+                log: [
+                  ...p.log,
+                  `${timeStamp()} — OCR ${current}/${total} · ${textSoFar} chars total`,
+                ].slice(-16),
+              }));
+            },
+          });
+          if (!controller.signal.aborted && ocrResult) {
+            ocrForMapping = ocrResult;
+            await putOcrResult(studySetId, ocrResult);
+            pipelineLog("OCR", "run", "info", "OCR run finished; putOcrResult done", {
+              studySetId,
+              savedPages: ocrResult.pages.length,
+              stats: ocrResult.stats,
+            });
+            await touchStudySetMeta(studySetId, {
+              ocrStatus: "done",
+              ocrProvider: ocrResult.provider,
+            });
+            const st = ocrResult.stats;
+            if (st && st.failedPages > 0) {
+              pipelineLog("OCR", "run", "warn", "some OCR pages failed (vision continues)", {
+                studySetId,
+                failedPages: st.failedPages,
+              });
+              toast.warning(
+                `${st.failedPages} page(s) failed OCR; vision parse continues.`,
+              );
+            }
+          } else if (!controller.signal.aborted && !ocrResult) {
+            pipelineLog("OCR", "run", "warn", "OCR returned null (aborted mid-run?)", {
+              studySetId,
+            });
+          }
+        } catch (raw) {
+          pipelineLog("OCR", "run", "error", "OCR step threw (vision continues)", {
+            studySetId: studySetId.trim(),
+            ...normalizeUnknownError(raw),
+            raw,
+          });
+          if (!controller.signal.aborted) {
+            toast.warning("OCR step failed; continuing with vision parse.");
+          }
+        } finally {
+          if (!controller.signal.aborted) {
+            setParseMode(afterOcrParseMode === "vision" ? "vision" : null);
+          }
+        }
+      }
+
+      if (controller.signal.aborted) {
+        return {
+          ok: false,
+          aborted: true,
+          fatalError: null,
+          questions: [],
+        };
+      }
+
+      return { kind: "prepared", pages, ocrForMapping };
+    },
+    [
+      enableOcr,
+      studySetId,
+      visionForwardReady,
+      provider,
+      urlInput,
+      modelInput,
+    ],
+  );
+
+  const runVisionSequentialWithUi = useCallback(
+    async (
+      pages: PageImageResult[],
+      controller: AbortController,
+      forwardProvider: "openai" | "custom",
+      apiKey: string,
+      timeStamp: () => string,
+    ) => {
+      const attachEffective =
+        attachPageImage && studySetId.trim().length > 0;
+      const visionStepTotal = attachEffective
+        ? pages.length
+        : pages.length <= 1
+          ? pages.length
+          : pages.length - 1;
+      setProgress({ current: 0, total: visionStepTotal, status: "running" });
+      setParseOverlay((p) => ({
+        ...p,
+        log: [
+          ...p.log,
+          `${timeStamp()} — Analyzing structure · ${pages.length} page image${pages.length === 1 ? "" : "s"}${attachEffective ? " · page images will be linked to questions" : ""}`,
+        ].slice(-16),
+      }));
+
+      pipelineLog("VISION", "run", "info", "runVisionSequential starting", {
+        studySetId: studySetId.trim() || "(empty)",
+        attachPageImages: attachEffective,
+        visionSteps: visionStepTotal,
+        pageImages: pages.length,
+      });
+
+      const result = await runVisionSequential({
+        forwardProvider,
+        apiKey,
+        apiUrl: urlInput,
+        model: modelInput,
+        pages,
+        signal: controller.signal,
+        studySetId,
+        attachPageImages: attachEffective,
+        onProgress: ({ current, total, questionsSoFar }) => {
+          setProgress({ current, total, status: "running" });
+          const attachDoneNote =
+            attachEffective && current === total
+              ? " · page images saved to questions"
+              : "";
+          setParseOverlay((p) => ({
+            ...p,
+            extractedCount: questionsSoFar,
+            log: [
+              ...p.log,
+              `${timeStamp()} — Pass ${current}/${total} · ${questionsSoFar} question${questionsSoFar === 1 ? "" : "s"} extracted${attachDoneNote}`,
+            ].slice(-16),
+          }));
+        },
+      });
+      return { result, attachEffective };
+    },
+    [attachPageImage, studySetId, urlInput, modelInput],
+  );
+
+  const finalizeVisionParseResult = useCallback(
+    async (
+      result: RunVisionSequentialResult,
+      pages: PageImageResult[],
+      attachEffective: boolean,
+      controller: AbortController,
+      ocrForMapping: OcrRunResult | null,
+      file: File,
+    ): Promise<ParseRunResult> => {
+      let ocrSnapshot: OcrRunResult | null = ocrForMapping;
+      if (studySetId.trim().length > 0) {
+        try {
+          ocrSnapshot =
+            ocrSnapshot ?? (await getOcrResult(studySetId)) ?? null;
+        } catch {
+          /* best-effort */
+        }
+      }
+
+      if (studySetId.trim().length > 0) {
+        try {
+          const visionParseMode: VisionParseMode = attachEffective
+            ? "attach_single"
+            : pages.length <= 1
+              ? "single"
+              : "pair";
+          applyQuestionPageMapping(result.questions, ocrSnapshot ?? null, {
+            parseMode: visionParseMode,
+          });
+        } catch {
+          /* mapping is best-effort; vision + draft persist still proceed */
+        }
+      }
+
+      setQuestions(result.questions);
+
+      const n = result.questions.length;
+      const m = result.failedSteps;
+      const parts: string[] = [
+        `Vision: parsed ${n} question${n === 1 ? "" : "s"}`,
+      ];
+      if (m > 0) {
+        parts.push(`${m} vision step${m === 1 ? "" : "s"} failed`);
+      }
+      if (controller.signal.aborted) {
+        parts.push("Parsing stopped.");
+      }
+      setSummary(parts.join(". ") + ".");
+
+      const fatal = result.fatalError ?? null;
+      if (fatal) {
+        pipelineLog("VISION", "parse-fatal", "error", "vision parse returned fatalError", {
+          studySetId: studySetId.trim() || "(empty)",
+          fatalError: fatal,
+          failedSteps: result.failedSteps,
+          questionCount: result.questions.length,
+          ...fileSummary(file),
+        });
+        setError(fatal);
+      } else {
+        pipelineLog("VISION", "run", "info", "runVisionSequential finished OK", {
+          studySetId: studySetId.trim() || "(empty)",
+          questionCount: result.questions.length,
+          failedSteps: result.failedSteps,
+          attachImageFailures: result.attachImageFailures ?? 0,
+        });
+      }
+
+      if (!controller.signal.aborted && !fatal) {
+        await persistQuestions(result.questions);
+      }
+
+      if (
+        attachEffective &&
+        (result.attachImageFailures ?? 0) > 0 &&
+        !controller.signal.aborted
+      ) {
+        toast.warning(
+          "Could not attach some page images; those questions have no reference image.",
+        );
+      }
+
+      const aborted = controller.signal.aborted;
+      return {
+        ok: !aborted && !fatal,
+        aborted,
+        fatalError: fatal,
+        questions: result.questions,
+      };
+    },
+    [studySetId, persistQuestions],
+  );
+
+  const runLayoutChunkPipelineFromPrepared = useCallback(
+    async (
+      pages: PageImageResult[],
+      ocrForMapping: OcrRunResult,
+      controller: AbortController,
+      forwardProvider: "openai" | "custom",
+      apiKey: string,
+      timeStamp: () => string,
+    ): Promise<ParseRunResult> => {
+      const chunks = buildLayoutChunksFromRun(ocrForMapping);
+      setParseMode("chunk");
+      setProgress({
+        current: 0,
+        total: Math.max(1, chunks.length),
+        status: "running",
+      });
+
+      const chunkOut = await runLayoutChunkParse({
+        run: ocrForMapping,
+        chunks,
+        signal: controller.signal,
+        parse: (userContent, signal) =>
+          parseChunkSingleMcqOnce({
+            provider,
+            apiKey,
+            apiUrl: urlInput,
+            model: modelInput,
+            chunkText: userContent,
+            signal,
+          }),
+        progress: (done, total) => {
+          setProgress({ current: done, total, status: "running" });
+          setParseOverlay((p) => ({
+            ...p,
+            log: [
+              ...p.log,
+              `${timeStamp()} — Chunk parse ${done}/${total}`,
+            ].slice(-16),
+          }));
+        },
+      });
+
+      let merged = chunkOut.questions;
+      if (chunkOut.needsVisionFallback) {
+        pipelineLog("VISION", "layout-chunk", "info", "vision fallback after chunk parse", {
+          studySetId: studySetId.trim(),
+        });
+        setParseMode("vision");
+        const { result, attachEffective } = await runVisionSequentialWithUi(
+          pages,
+          controller,
+          forwardProvider,
+          apiKey,
+          timeStamp,
+        );
+        if (result.fatalError) {
+          pipelineLog("VISION", "layout-chunk", "warn", "vision fallback returned fatal; keeping chunks only", {
+            studySetId: studySetId.trim(),
+            fatalError: result.fatalError,
+          });
+          toast.warning(
+            "Vision fallback failed; keeping layout-chunk results only.",
+          );
+          merged = chunkOut.questions;
+        } else {
+          merged = dedupeQuestionsByStem([
+            ...chunkOut.questions,
+            ...result.questions,
+          ]);
+          if (attachEffective && (result.attachImageFailures ?? 0) > 0) {
+            toast.warning(
+              "Could not attach some page images from the vision pass.",
+            );
+          }
+        }
+      }
+
+      const attachEffective =
+        attachPageImage && studySetId.trim().length > 0;
+      if (attachEffective) {
+        const fails = await attachPageImagesForQuestions(
+          studySetId,
+          pages,
+          merged,
+        );
+        if (fails > 0 && !controller.signal.aborted) {
+          toast.warning(
+            "Could not attach some page images; those questions have no reference image.",
+          );
+        }
+      }
+
+      let ocrSnapshot: OcrRunResult | null = ocrForMapping;
+      if (studySetId.trim().length > 0) {
+        try {
+          ocrSnapshot =
+            ocrSnapshot ?? (await getOcrResult(studySetId)) ?? null;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const visionParseMode: VisionParseMode = attachEffective
+        ? "attach_single"
+        : pages.length <= 1
+          ? "single"
+          : "pair";
+      applyQuestionPageMapping(merged, ocrSnapshot ?? null, {
+        parseMode: visionParseMode,
+      });
+
+      setQuestions(merged);
+      const parts = [
+        `Layout-aware: ${merged.length} question${merged.length === 1 ? "" : "s"}`,
+      ];
+      if (chunkOut.needsVisionFallback) {
+        parts.push("merged with full-page vision where chunks were insufficient");
+      }
+      if (controller.signal.aborted) {
+        parts.push("Parsing stopped.");
+      }
+      setSummary(parts.join(" · ") + ".");
+
+      if (!controller.signal.aborted) {
+        await persistQuestions(merged);
+      }
+
+      return {
+        ok: !controller.signal.aborted,
+        aborted: controller.signal.aborted,
+        fatalError: null,
+        questions: merged,
+      };
+    },
+    [
+      provider,
+      attachPageImage,
+      studySetId,
+      urlInput,
+      modelInput,
+      persistQuestions,
+      runVisionSequentialWithUi,
+    ],
   );
 
   const handlePreviewSetCorrectIndex = useCallback(
@@ -434,24 +996,18 @@ export const AiParseSection = forwardRef<
     });
 
     try {
-      const pages = await renderPdfPagesToImages(activePdfFile, {
-        signal: controller.signal,
-        maxPages: VISION_MAX_PAGES_DEFAULT,
-        onPageRendered: (pg, { totalPages }) => {
-          setParseOverlay((p) => ({
-            ...p,
-            renderPage: pg.pageIndex,
-            renderTot: totalPages,
-            thumbs: [...p.thumbs, { pageIndex: pg.pageIndex, dataUrl: pg.dataUrl }].slice(
-              -6,
-            ),
-            log: [
-              ...p.log,
-              `${timeStamp()} — Page ${pg.pageIndex}/${totalPages} rasterized`,
-            ].slice(-16),
-          }));
-        },
-      });
+      const prep = await runRenderPagesAndOptionalOcr(
+        activePdfFile,
+        controller,
+        apiKey,
+        forwardProvider,
+        timeStamp,
+        "vision",
+      );
+      if (!("kind" in prep) || prep.kind !== "prepared") {
+        return prep as ParseRunResult;
+      }
+      const { pages, ocrForMapping } = prep;
 
       if (controller.signal.aborted) {
         return {
@@ -462,235 +1018,21 @@ export const AiParseSection = forwardRef<
         };
       }
 
-      if (pages.length === 0) {
-        pipelineLog("PDF", "render-batch", "error", "vision: zero pages after renderPdfPagesToImages", {
-          studySetId: studySetId.trim() || "(empty)",
-          ...fileSummary(activePdfFile),
-        });
-        setError("Could not render any PDF pages for vision.");
-        return {
-          ok: false,
-          aborted: false,
-          fatalError: null,
-          questions: [],
-        };
-      }
-
-      setVisionRendering(false);
-
-      const enableOcrEffective =
-        enableOcr && studySetId.trim().length > 0 && visionForwardReady;
-
-      if (enableOcrEffective) {
-        setParseMode("ocr");
-        setProgress({ current: 0, total: pages.length, status: "running" });
-        setParseOverlay((p) => ({
-          ...p,
-          log: [
-            ...p.log,
-            `${timeStamp()} — OCR: extracting text per page (same API as vision)…`,
-          ].slice(-16),
-        }));
-        pipelineLog("OCR", "run", "info", "runOcrSequential starting", {
-          studySetId: studySetId.trim(),
-          pageCount: pages.length,
-          forwardProvider,
-          model: modelInput,
-        });
-        try {
-          const endpoint = resolveChatApiUrl(provider, urlInput);
-          const model = resolveModelId(provider, modelInput);
-          const ocrResult = await runOcrSequential({
-            pages,
-            signal: controller.signal,
-            provider: forwardProvider === "openai" ? "openai" : "custom",
-            endpoint,
-            apiKey,
-            model,
-            onProgress: ({ current, total, textSoFar }) => {
-              setProgress({ current, total, status: "running" });
-              setParseOverlay((p) => ({
-                ...p,
-                log: [
-                  ...p.log,
-                  `${timeStamp()} — OCR ${current}/${total} · ${textSoFar} chars total`,
-                ].slice(-16),
-              }));
-            },
-          });
-          if (!controller.signal.aborted && ocrResult) {
-            await putOcrResult(studySetId, ocrResult);
-            pipelineLog("OCR", "run", "info", "OCR run finished; putOcrResult done", {
-              studySetId,
-              savedPages: ocrResult.pages.length,
-              stats: ocrResult.stats,
-            });
-            await touchStudySetMeta(studySetId, {
-              ocrStatus: "done",
-              ocrProvider: ocrResult.provider,
-            });
-            const st = ocrResult.stats;
-            if (st && st.failedPages > 0) {
-              pipelineLog("OCR", "run", "warn", "some OCR pages failed (vision continues)", {
-                studySetId,
-                failedPages: st.failedPages,
-              });
-              toast.warning(
-                `${st.failedPages} page(s) failed OCR; vision parse continues.`,
-              );
-            }
-          } else if (!controller.signal.aborted && !ocrResult) {
-            pipelineLog("OCR", "run", "warn", "OCR returned null (aborted mid-run?)", {
-              studySetId,
-            });
-          }
-        } catch (raw) {
-          pipelineLog("OCR", "run", "error", "OCR step threw (vision continues)", {
-            studySetId: studySetId.trim(),
-            ...normalizeUnknownError(raw),
-            raw,
-          });
-          if (!controller.signal.aborted) {
-            toast.warning("OCR step failed; continuing with vision parse.");
-          }
-        } finally {
-          if (!controller.signal.aborted) {
-            setParseMode("vision");
-          }
-        }
-      }
-
-      if (controller.signal.aborted) {
-        return {
-          ok: false,
-          aborted: true,
-          fatalError: null,
-          questions: [],
-        };
-      }
-
-      const attachEffective =
-        attachPageImage && studySetId.trim().length > 0;
-      const visionStepTotal = attachEffective
-        ? pages.length
-        : pages.length <= 1
-          ? pages.length
-          : pages.length - 1;
-      setProgress({ current: 0, total: visionStepTotal, status: "running" });
-      setParseOverlay((p) => ({
-        ...p,
-        log: [
-          ...p.log,
-          `${timeStamp()} — Analyzing structure · ${pages.length} page image${pages.length === 1 ? "" : "s"}${attachEffective ? " · page images will be linked to questions" : ""}`,
-        ].slice(-16),
-      }));
-
-      pipelineLog("VISION", "run", "info", "runVisionSequential starting", {
-        studySetId: studySetId.trim() || "(empty)",
-        attachPageImages: attachEffective,
-        visionSteps: visionStepTotal,
-        pageImages: pages.length,
-      });
-
-      const result = await runVisionSequential({
+      const { result, attachEffective } = await runVisionSequentialWithUi(
+        pages,
+        controller,
         forwardProvider,
         apiKey,
-        apiUrl: urlInput,
-        model: modelInput,
+        timeStamp,
+      );
+      return await finalizeVisionParseResult(
+        result,
         pages,
-        signal: controller.signal,
-        studySetId,
-        attachPageImages: attachEffective,
-        onProgress: ({ current, total, questionsSoFar }) => {
-          setProgress({ current, total, status: "running" });
-          const attachDoneNote =
-            attachEffective && current === total
-              ? " · page images saved to questions"
-              : "";
-          setParseOverlay((p) => ({
-            ...p,
-            extractedCount: questionsSoFar,
-            log: [
-              ...p.log,
-              `${timeStamp()} — Pass ${current}/${total} · ${questionsSoFar} question${questionsSoFar === 1 ? "" : "s"} extracted${attachDoneNote}`,
-            ].slice(-16),
-          }));
-        },
-      });
-
-      if (studySetId.trim().length > 0) {
-        try {
-          const ocrSnapshot = await getOcrResult(studySetId);
-          const parseMode: VisionParseMode = attachEffective
-            ? "attach_single"
-            : pages.length <= 1
-              ? "single"
-              : "pair";
-          applyQuestionPageMapping(
-            result.questions,
-            ocrSnapshot ?? null,
-            { parseMode },
-          );
-        } catch {
-          /* mapping is best-effort; vision + draft persist still proceed */
-        }
-      }
-
-      setQuestions(result.questions);
-
-      const n = result.questions.length;
-      const m = result.failedSteps;
-      const parts: string[] = [
-        `Vision: parsed ${n} question${n === 1 ? "" : "s"}`,
-      ];
-      if (m > 0) {
-        parts.push(`${m} vision step${m === 1 ? "" : "s"} failed`);
-      }
-      if (controller.signal.aborted) {
-        parts.push("Parsing stopped.");
-      }
-      setSummary(parts.join(". ") + ".");
-
-      const fatal = result.fatalError ?? null;
-      if (fatal) {
-        pipelineLog("VISION", "parse-fatal", "error", "vision parse returned fatalError", {
-          studySetId: studySetId.trim() || "(empty)",
-          fatalError: fatal,
-          failedSteps: result.failedSteps,
-          questionCount: result.questions.length,
-          ...fileSummary(activePdfFile),
-        });
-        setError(fatal);
-      } else {
-        pipelineLog("VISION", "run", "info", "runVisionSequential finished OK", {
-          studySetId: studySetId.trim() || "(empty)",
-          questionCount: result.questions.length,
-          failedSteps: result.failedSteps,
-          attachImageFailures: result.attachImageFailures ?? 0,
-        });
-      }
-
-      if (!controller.signal.aborted && !fatal) {
-        await persistQuestions(result.questions);
-      }
-
-      if (
-        attachEffective &&
-        (result.attachImageFailures ?? 0) > 0 &&
-        !controller.signal.aborted
-      ) {
-        toast.warning(
-          "Could not attach some page images; those questions have no reference image.",
-        );
-      }
-
-      const aborted = controller.signal.aborted;
-      return {
-        ok: !aborted && !fatal,
-        aborted,
-        fatalError: fatal,
-        questions: result.questions,
-      };
+        attachEffective,
+        controller,
+        ocrForMapping,
+        activePdfFile,
+      );
     } catch (e) {
       pipelineLog("VISION", "parse-error", "error", "handleVisionParse threw", {
         studySetId: studySetId.trim() || "(empty)",
@@ -738,13 +1080,386 @@ export const AiParseSection = forwardRef<
     visionDisabled,
     keyInput,
     provider,
-    urlInput,
     modelInput,
-    persistQuestions,
-    attachPageImage,
+    studySetId,
+    runRenderPagesAndOptionalOcr,
+    runVisionSequentialWithUi,
+    finalizeVisionParseResult,
+  ]);
+
+  const handleLayoutAwareParse =
+    useCallback(async (): Promise<ParseRunResult> => {
+      if (!activePdfFile || visionDisabled) {
+        return {
+          ok: false,
+          aborted: false,
+          fatalError: null,
+          questions: [],
+        };
+      }
+
+      setError(null);
+      setSummary(null);
+
+      const apiKey = keyInput.trim();
+      if (!apiKey) {
+        return {
+          ok: false,
+          aborted: false,
+          fatalError: null,
+          questions: [],
+        };
+      }
+
+      if (!enableOcr) {
+        pipelineLog("VISION", "strategy", "info", "fast path needs OCR — using vision", {
+          studySetId: studySetId.trim(),
+        });
+        return handleVisionParse();
+      }
+
+      const timeStamp = () =>
+        new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      const forwardProvider = provider === "custom" ? "custom" : "openai";
+
+      pipelineLog("VISION", "layout-chunk", "info", "handleLayoutAwareParse started", {
+        studySetId: studySetId.trim() || "(empty)",
+        ...fileSummary(activePdfFile),
+        forwardProvider,
+      });
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setParseMode("vision");
+      setVisionRendering(true);
+      setProgress({ current: 0, total: 1, status: "running" });
+      setParseOverlay({
+        extractedCount: 0,
+        log: [`${timeStamp()} — Preparing document…`],
+        renderPage: 0,
+        renderTot: 0,
+        thumbs: [],
+      });
+
+      try {
+        const prep = await runRenderPagesAndOptionalOcr(
+          activePdfFile,
+          controller,
+          apiKey,
+          forwardProvider,
+          timeStamp,
+          "none",
+        );
+        if (!("kind" in prep) || prep.kind !== "prepared") {
+          return prep as ParseRunResult;
+        }
+        const { pages } = prep;
+        let ocrForMapping = prep.ocrForMapping;
+
+        if (controller.signal.aborted) {
+          return {
+            ok: false,
+            aborted: true,
+            fatalError: null,
+            questions: [],
+          };
+        }
+
+        if (!ocrForMapping && studySetId.trim()) {
+          try {
+            ocrForMapping =
+              (await getOcrResult(studySetId)) ?? null;
+          } catch {
+            /* ignore */
+          }
+        }
+
+        if (!ocrForMapping) {
+          pipelineLog("VISION", "layout-chunk", "warn", "no OCR data — vision only", {
+            studySetId: studySetId.trim(),
+          });
+          setParseMode("vision");
+          const { result, attachEffective } = await runVisionSequentialWithUi(
+            pages,
+            controller,
+            forwardProvider,
+            apiKey,
+            timeStamp,
+          );
+          return await finalizeVisionParseResult(
+            result,
+            pages,
+            attachEffective,
+            controller,
+            null,
+            activePdfFile,
+          );
+        }
+
+        return await runLayoutChunkPipelineFromPrepared(
+          pages,
+          ocrForMapping,
+          controller,
+          forwardProvider,
+          apiKey,
+          timeStamp,
+        );
+      } catch (e) {
+        pipelineLog("VISION", "layout-chunk", "error", "handleLayoutAwareParse threw", {
+          studySetId: studySetId.trim() || "(empty)",
+          ...fileSummary(activePdfFile),
+          ...normalizeUnknownError(e),
+          raw: e,
+          isFatalParse: e instanceof FatalParseError,
+          isAbort: e instanceof DOMException && e.name === "AbortError",
+        });
+        if (e instanceof FatalParseError) {
+          setError(e.message);
+        } else if (e instanceof DOMException && e.name === "AbortError") {
+          setSummary("Parsing stopped.");
+        } else {
+          setError(
+            e instanceof Error
+              ? e.message
+              : "Layout-aware parsing failed. Check your model and try again.",
+          );
+        }
+        return {
+          ok: false,
+          aborted: e instanceof DOMException && e.name === "AbortError",
+          fatalError: null,
+          questions: [],
+        };
+      } finally {
+        setVisionRendering(false);
+        abortRef.current = null;
+        setParseMode(null);
+        setProgress((p) => ({
+          ...p,
+          status: "idle",
+        }));
+        setParseOverlay({
+          extractedCount: 0,
+          log: [],
+          renderPage: 0,
+          renderTot: 0,
+          thumbs: [],
+        });
+      }
+    }, [
+      activePdfFile,
+      visionDisabled,
+      keyInput,
+      provider,
+      enableOcr,
+      studySetId,
+      handleVisionParse,
+      runRenderPagesAndOptionalOcr,
+      runVisionSequentialWithUi,
+      finalizeVisionParseResult,
+      runLayoutChunkPipelineFromPrepared,
+    ]);
+
+  const handleHybridParse = useCallback(async (): Promise<ParseRunResult> => {
+    if (!activePdfFile || visionDisabled) {
+      return {
+        ok: false,
+        aborted: false,
+        fatalError: null,
+        questions: [],
+      };
+    }
+
+    setError(null);
+    setSummary(null);
+
+    const apiKey = keyInput.trim();
+    if (!apiKey) {
+      return {
+        ok: false,
+        aborted: false,
+        fatalError: null,
+        questions: [],
+      };
+    }
+
+    if (!enableOcr) {
+      return handleVisionParse();
+    }
+
+    const timeStamp = () =>
+      new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    const forwardProvider = provider === "custom" ? "custom" : "openai";
+
+    pipelineLog("VISION", "hybrid", "info", "handleHybridParse started", {
+      studySetId: studySetId.trim() || "(empty)",
+      ...fileSummary(activePdfFile),
+    });
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setParseMode("vision");
+    setVisionRendering(true);
+    setProgress({ current: 0, total: 1, status: "running" });
+    setParseOverlay({
+      extractedCount: 0,
+      log: [`${timeStamp()} — Preparing document (hybrid)…`],
+      renderPage: 0,
+      renderTot: 0,
+      thumbs: [],
+    });
+
+    try {
+      const prep = await runRenderPagesAndOptionalOcr(
+        activePdfFile,
+        controller,
+        apiKey,
+        forwardProvider,
+        timeStamp,
+        "none",
+      );
+      if (!("kind" in prep) || prep.kind !== "prepared") {
+        return prep as ParseRunResult;
+      }
+      const { pages } = prep;
+      let ocrForMapping = prep.ocrForMapping;
+
+      if (controller.signal.aborted) {
+        return {
+          ok: false,
+          aborted: true,
+          fatalError: null,
+          questions: [],
+        };
+      }
+
+      const stats = ocrForMapping?.stats;
+      const useFast =
+        stats !== undefined &&
+        stats.failedPages === 0 &&
+        stats.totalPages > 0 &&
+        stats.successPages / stats.totalPages >= 0.85;
+
+      if (!useFast) {
+        pipelineLog("VISION", "hybrid", "info", "hybrid chose full vision (OCR gate)", {
+          studySetId: studySetId.trim(),
+          stats,
+        });
+        setParseMode("vision");
+        const { result, attachEffective } = await runVisionSequentialWithUi(
+          pages,
+          controller,
+          forwardProvider,
+          apiKey,
+          timeStamp,
+        );
+        return await finalizeVisionParseResult(
+          result,
+          pages,
+          attachEffective,
+          controller,
+          ocrForMapping,
+          activePdfFile,
+        );
+      }
+
+      if (!ocrForMapping && studySetId.trim()) {
+        try {
+          ocrForMapping = (await getOcrResult(studySetId)) ?? null;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (!ocrForMapping) {
+        setParseMode("vision");
+        const { result, attachEffective } = await runVisionSequentialWithUi(
+          pages,
+          controller,
+          forwardProvider,
+          apiKey,
+          timeStamp,
+        );
+        return await finalizeVisionParseResult(
+          result,
+          pages,
+          attachEffective,
+          controller,
+          null,
+          activePdfFile,
+        );
+      }
+
+      return await runLayoutChunkPipelineFromPrepared(
+        pages,
+        ocrForMapping,
+        controller,
+        forwardProvider,
+        apiKey,
+        timeStamp,
+      );
+    } catch (e) {
+      pipelineLog("VISION", "hybrid", "error", "handleHybridParse threw", {
+        studySetId: studySetId.trim() || "(empty)",
+        ...fileSummary(activePdfFile),
+        ...normalizeUnknownError(e),
+        raw: e,
+        isFatalParse: e instanceof FatalParseError,
+        isAbort: e instanceof DOMException && e.name === "AbortError",
+      });
+      if (e instanceof FatalParseError) {
+        setError(e.message);
+      } else if (e instanceof DOMException && e.name === "AbortError") {
+        setSummary("Parsing stopped.");
+      } else {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Hybrid parsing failed. Check your model and try again.",
+        );
+      }
+      return {
+        ok: false,
+        aborted: e instanceof DOMException && e.name === "AbortError",
+        fatalError: null,
+        questions: [],
+      };
+    } finally {
+      setVisionRendering(false);
+      abortRef.current = null;
+      setParseMode(null);
+      setProgress((p) => ({
+        ...p,
+        status: "idle",
+      }));
+      setParseOverlay({
+        extractedCount: 0,
+        log: [],
+        renderPage: 0,
+        renderTot: 0,
+        thumbs: [],
+      });
+    }
+  }, [
+    activePdfFile,
+    visionDisabled,
+    keyInput,
+    provider,
     enableOcr,
     studySetId,
-    visionForwardReady,
+    handleVisionParse,
+    runRenderPagesAndOptionalOcr,
+    runVisionSequentialWithUi,
+    finalizeVisionParseResult,
+    runLayoutChunkPipelineFromPrepared,
   ]);
 
   const runUnifiedParseInternal =
@@ -831,7 +1546,13 @@ export const AiParseSection = forwardRef<
         };
       }
 
-      return handleVisionParse();
+      if (parseStrategy === "accurate") {
+        return handleVisionParse();
+      }
+      if (parseStrategy === "hybrid") {
+        return handleHybridParse();
+      }
+      return handleLayoutAwareParse();
     }, [
       onBeforeParse,
       hasKey,
@@ -842,7 +1563,11 @@ export const AiParseSection = forwardRef<
       modelInput,
       hasCustomEndpoint,
       hasCustomModel,
+      parseStrategy,
+      studySetId,
       handleVisionParse,
+      handleHybridParse,
+      handleLayoutAwareParse,
     ]);
 
   useImperativeHandle(
@@ -955,6 +1680,71 @@ export const AiParseSection = forwardRef<
     </div>
   );
 
+  const parseStrategyControl = (
+    <div className="space-y-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+      <Label
+        id={`${parseStrategyGroupId}-label`}
+        className="text-sm font-medium text-foreground"
+      >
+        Parse strategy
+      </Label>
+      <div
+        className="flex flex-col gap-2 text-sm"
+        role="radiogroup"
+        aria-labelledby={`${parseStrategyGroupId}-label`}
+      >
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="radio"
+            className="mt-1 size-4 shrink-0 cursor-pointer accent-primary"
+            name={parseStrategyGroupId}
+            checked={parseStrategy === "fast"}
+            onChange={() => setParseStrategyPreference("fast")}
+          />
+          <span>
+            <span className="font-medium text-foreground">Fast</span>
+            <span className="block text-muted-foreground">
+              OCR layout chunks → small text prompts; full-page vision only if
+              chunks fail. Needs OCR enabled.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="radio"
+            className="mt-1 size-4 shrink-0 cursor-pointer accent-primary"
+            name={parseStrategyGroupId}
+            checked={parseStrategy === "hybrid"}
+            onChange={() => setParseStrategyPreference("hybrid")}
+          />
+          <span>
+            <span className="font-medium text-foreground">Hybrid</span>
+            <span className="block text-muted-foreground">
+              Uses Fast when OCR looks strong (≥85% pages successful, no failed
+              pages); otherwise full vision like Accurate.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="radio"
+            className="mt-1 size-4 shrink-0 cursor-pointer accent-primary"
+            name={parseStrategyGroupId}
+            checked={parseStrategy === "accurate"}
+            onChange={() => setParseStrategyPreference("accurate")}
+          />
+          <span>
+            <span className="font-medium text-foreground">Accurate</span>
+            <span className="block text-muted-foreground">
+              Full-page vision parse (same as before). Highest recall on hard
+              layouts.
+            </span>
+          </span>
+        </label>
+      </div>
+    </div>
+  );
+
   const showInlineProgress = !isEmbedded && isRunning;
   const showPreview = !isEmbedded;
 
@@ -1008,11 +1798,13 @@ export const AiParseSection = forwardRef<
           </p>
           {attachPageImageControl}
           {ocrExtractionControl}
+          {parseStrategyControl}
         </>
       ) : hasKey && activePdfFile ? (
         <div className="space-y-3">
           {attachPageImageControl}
           {ocrExtractionControl}
+          {parseStrategyControl}
         </div>
       ) : null}
 
@@ -1039,7 +1831,9 @@ export const AiParseSection = forwardRef<
               ? "Rendering PDF pages as images…"
               : parseMode === "ocr"
                 ? `OCR text extraction… ${progress.current} / ${progress.total} pages`
-                : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
+                : parseMode === "chunk"
+                  ? `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
+                  : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
           </p>
           {!visionRendering && progress.total > 0 ? (
             <Progress

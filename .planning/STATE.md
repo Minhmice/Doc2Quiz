@@ -30,7 +30,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 4 (Practice Engine): Complete
 - Phase 5 (Score & Repeat): Complete
 - Phase 6 (Pipeline Hardening & Observability): In progress (see 06-CONTEXT)
-- Phase 7 (Layout-aware chunk parsing): Added — not planned yet (`07-CONTEXT.md`)
+- Phase 7 (Layout-aware chunk parsing): Planned (`07-01` / `07-02` PLAN); not executed
 
 ## Last Session
 
@@ -43,6 +43,8 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 ### Roadmap Evolution
 
 - Phase 7 added: Layout-aware chunk-based parsing (token-optimized) — OCR blocks → semantic chunks → per-chunk text AI parse → merge; full-page vision as fallback; see `07-CONTEXT.md`.
+- Phase 7 discuss (`/gsd-discuss-phase 7`): gray areas closed in `07-CONTEXT.md` (D-16–D-26: OCR prereq, providers, sort key, hybrid threshold 85%, bulk fallback rules, Question optional fields, debug UI).
+- Phase 7 plan (`/gsd-plan-phase 7`): `07-01-PLAN.md`, `07-02-PLAN.md` added — ready for `/gsd-execute-phase 7` or manual execution.
 
 ## Config
 

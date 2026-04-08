@@ -106,6 +106,14 @@ export type OcrRunResult = {
   stats?: OcrRunStats;
 };
 
+/** One spatial reading-order slice of OCR blocks on a page (layout-aware chunk parse). */
+export type LayoutChunk = {
+  id: string;
+  pageIndex: number;
+  text: string;
+  blockIndices: number[];
+};
+
 export const LS_OCR_PROVIDER = "doc2quiz:ocr:provider";
 export const LS_OCR_KEY = "doc2quiz:ocr:key";
 export const LS_OCR_URL = "doc2quiz:ocr:url";

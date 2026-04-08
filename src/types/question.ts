@@ -5,6 +5,7 @@ export type QuestionPageMappingMethod =
   | "vision_provenance"
   | "vision_single_page"
   | "ocr_text_overlap"
+  | "layout_chunk"
   | "unresolved";
 
 /** Optional image attachments stored in IndexedDB `media` store; ids are unique per blob */
@@ -35,6 +36,12 @@ export type Question = {
   mappingReason?: string;
   /** True when mapped OCR page has at least one `cropReady` bbox (see `ocrRegionVerify`). */
   verifiedRegionAvailable?: boolean;
+  /** Stable id of the OCR layout chunk this row was extracted from (chunk-parse path). */
+  layoutChunkId?: string;
+  /** Model / pipeline confidence for the extraction step (0..1). */
+  parseConfidence?: number;
+  /** True when structure passed validation (four options, correctIndex in range). */
+  parseStructureValid?: boolean;
 };
 
 export type ApprovedBank = {

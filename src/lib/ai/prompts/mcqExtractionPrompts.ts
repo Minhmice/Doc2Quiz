@@ -3,6 +3,7 @@ import raw from "@/lib/ai/prompts/mcq-extraction.prompts.json";
 type McqExtractionPromptsFile = {
   version: number;
   mcqExtraction: { system: string };
+  mcqSingleChunk: { system: string };
   visionPageImage: { userTemplate: string };
   visionPagePair: { userTemplate: string };
 };
@@ -11,6 +12,9 @@ const prompts = raw as McqExtractionPromptsFile;
 
 /** System prompt: text chunk or vision page image → MCQ JSON (shared OpenAI / Anthropic / custom). */
 export const MCQ_EXTRACTION_SYSTEM_PROMPT = prompts.mcqExtraction.system;
+
+/** System prompt: one OCR layout chunk → at most one MCQ (text API). */
+export const MCQ_SINGLE_CHUNK_SYSTEM_PROMPT = prompts.mcqSingleChunk.system;
 
 export function visionPageUserPrompt(pageIndex: number, totalPages: number): string {
   return prompts.visionPageImage.userTemplate

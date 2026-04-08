@@ -5,6 +5,7 @@ const MAPPING_METHODS = new Set<QuestionPageMappingMethod>([
   "vision_provenance",
   "vision_single_page",
   "ocr_text_overlap",
+  "layout_chunk",
   "unresolved",
 ]);
 
@@ -155,6 +156,20 @@ export function validateQuestionsFromJson(
     const verifiedRegionAvailable =
       typeof vra === "boolean" ? vra : undefined;
 
+    const lcid = rec.layoutChunkId;
+    const layoutChunkId =
+      typeof lcid === "string" && lcid.trim().length > 0
+        ? lcid.trim()
+        : undefined;
+    const pc = rec.parseConfidence;
+    const parseConfidence =
+      typeof pc === "number" && Number.isFinite(pc) && pc >= 0 && pc <= 1
+        ? pc
+        : undefined;
+    const psv = rec.parseStructureValid;
+    const parseStructureValid =
+      typeof psv === "boolean" ? psv : undefined;
+
     out.push({
       id,
       question: question.trim(),
@@ -176,6 +191,11 @@ export function validateQuestionsFromJson(
       ...(mappingReason ? { mappingReason } : {}),
       ...(verifiedRegionAvailable !== undefined
         ? { verifiedRegionAvailable }
+        : {}),
+      ...(layoutChunkId ? { layoutChunkId } : {}),
+      ...(parseConfidence !== undefined ? { parseConfidence } : {}),
+      ...(parseStructureValid !== undefined
+        ? { parseStructureValid }
         : {}),
     });
   }

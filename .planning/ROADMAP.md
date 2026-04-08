@@ -140,6 +140,34 @@
 
 ---
 
+## Phase 7: Layout-aware chunk-based parsing (token-optimized)
+
+**Goal:** Replace default “full page image → one big vision JSON” with **OCR layout → semantic chunks → one small AI call per chunk → merge**, cutting tokens and improving accuracy. Keep **existing full-page vision as fallback** when chunk/OCR path fails or user chooses “accurate / full page” mode.
+
+**Status:** Not planned yet
+
+**Depends on:** Phase 6 (OCR output + observability); reuses `mapQuestionsToPages`, media attach patterns where applicable.
+
+**Deliverables (high level):**
+- **Chunk engine:** reading order `(y, x)`, question-boundary heuristics (e.g. `Câu 1`, `1.`), `Chunk { pageIndex, text, blocks[] }`, fallback 2–3 blocks if boundary unclear.
+- **AI parse (text-first per chunk):** minimal prompt — exactly **one** MCQ JSON (`question`, `options`, `correctIndex`); optional spatial hints from bbox.
+- **Merge engine:** dedupe by stem, validate 4 options, normalize text; integrate with existing `Question` model + draft persist.
+- **Token hygiene:** trim noise, whitespace; optional pre-clean of OCR text.
+- **Smart retry:** on chunk failure, retry with expanded chunk (next block(s)).
+- **Confidence:** per-question scores (`parseScore`, structure validity, option count) for review UI / filtering.
+- **Debug:** inspector (or overlay) shows **chunk → raw AI output → parsed question**.
+- **Hybrid UX (bonus):** modes Fast (chunk) / Accurate (full-page vision) / Hybrid (auto: high OCR quality → chunk, else vision).
+
+**Canonical refs:**
+- `.planning/phases/07-layout-aware-chunk-based-parsing-token-optimized/07-CONTEXT.md` — product brief + **discuss outcomes (D-16–D-26)** + code integration notes
+- `.planning/codebase/WORKFLOW-OCR-AI-QUIZ.md` — current pipeline
+- `src/types/ocr.ts`, `src/lib/ai/runOcrSequential.ts`, `src/lib/ai/ocrAdapter.ts`
+- `src/lib/ai/runVisionSequential.ts`, `src/components/ai/AiParseSection.tsx`
+
+**Plans:** 2 — `07-01-PLAN.md` (chunk engine + single-MCQ parse), `07-02-PLAN.md` (orchestration, UI modes, fallback, debug). Execute wave 1 then wave 2.
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -150,6 +178,7 @@
 | 4 | PRAC-01–06 | Pending |
 | 5 | SCORE-01–04 | Pending |
 | 6 | (hardening — see 06-CONTEXT) | In progress |
+| 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Planned |
 
 v1 requirements covered: 23 / 23 ✓
 

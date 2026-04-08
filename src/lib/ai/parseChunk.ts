@@ -18,11 +18,14 @@ import {
   responseLooksLikeHtml,
 } from "@/lib/ai/upstreamErrors";
 import { normalizeOpenAiChatCompletionsUrl } from "@/lib/ai/openAiEndpoint";
-import { MCQ_EXTRACTION_SYSTEM_PROMPT } from "@/lib/ai/prompts/mcqExtractionPrompts";
+import {
+  MCQ_EXTRACTION_SYSTEM_PROMPT,
+  MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+} from "@/lib/ai/prompts/mcqExtractionPrompts";
 import { validateQuestionsFromJson } from "@/lib/ai/validateQuestions";
 import type { AiProvider, Question } from "@/types/question";
 
-export { MCQ_EXTRACTION_SYSTEM_PROMPT };
+export { MCQ_EXTRACTION_SYSTEM_PROMPT, MCQ_SINGLE_CHUNK_SYSTEM_PROMPT };
 
 export const OPENAI_MODEL = "gpt-4o-mini";
 export const DEFAULT_OPENAI_CHAT_URL =
@@ -123,6 +126,7 @@ async function parseOpenAI(
   chunkText: string,
   signal: AbortSignal,
   forwardProvider: "openai" | "custom",
+  systemPrompt: string,
 ): Promise<Question[]> {
   const res = await forwardAiPost({
     provider: forwardProvider,
@@ -132,7 +136,7 @@ async function parseOpenAI(
     body: {
       model,
       messages: [
-        { role: "system", content: MCQ_EXTRACTION_SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         { role: "user", content: chunkText },
       ],
       response_format: { type: "json_object" },
@@ -188,6 +192,7 @@ async function parseAnthropic(
   model: string,
   chunkText: string,
   signal: AbortSignal,
+  systemPrompt: string,
 ): Promise<Question[]> {
   const res = await forwardAiPost({
     provider: "anthropic",
@@ -197,7 +202,7 @@ async function parseAnthropic(
     body: {
       model,
       max_tokens: 4096,
-      system: MCQ_EXTRACTION_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: "user", content: chunkText }],
     },
   });
@@ -263,6 +268,7 @@ export async function parseChunkOnce(
       chunkText,
       signal,
       "openai",
+      MCQ_EXTRACTION_SYSTEM_PROMPT,
     );
   }
   if (provider === "custom") {
@@ -273,7 +279,61 @@ export async function parseChunkOnce(
       chunkText,
       signal,
       "custom",
+      MCQ_EXTRACTION_SYSTEM_PROMPT,
     );
   }
-  return parseAnthropic(apiKey, endpoint, modelId, chunkText, signal);
+  return parseAnthropic(
+    apiKey,
+    endpoint,
+    modelId,
+    chunkText,
+    signal,
+    MCQ_EXTRACTION_SYSTEM_PROMPT,
+  );
+}
+
+/**
+ * Text-only: at most one MCQ from a small OCR chunk (OpenAI / Anthropic / custom).
+ */
+export async function parseChunkSingleMcqOnce(
+  params: ParseChunkOnceParams,
+): Promise<Question | null> {
+  const { provider, apiKey, apiUrl, model, chunkText, signal } = params;
+  const endpoint = resolveChatApiUrl(provider, apiUrl);
+  const modelId = resolveModelId(provider, model);
+  let qs: Question[];
+  if (provider === "openai") {
+    qs = await parseOpenAI(
+      apiKey,
+      endpoint,
+      modelId,
+      chunkText,
+      signal,
+      "openai",
+      MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+    );
+  } else if (provider === "custom") {
+    qs = await parseOpenAI(
+      apiKey,
+      endpoint,
+      modelId,
+      chunkText,
+      signal,
+      "custom",
+      MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+    );
+  } else {
+    qs = await parseAnthropic(
+      apiKey,
+      endpoint,
+      modelId,
+      chunkText,
+      signal,
+      MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+    );
+  }
+  if (qs.length === 0) {
+    return null;
+  }
+  return qs[0] ?? null;
 }
