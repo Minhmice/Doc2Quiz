@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: Ready to plan
 stopped_at: Phase 05 execution complete (no pending plans)
-last_updated: "2026-04-08T12:00:00.000Z"
+last_updated: "2026-04-08T18:00:00.000Z"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 06 — pipeline hardening / next milestone items
+**Current focus:** Phase 7 — layout-aware chunk-based parsing (token-optimized); run `/gsd-plan-phase 7` after optional research.
 
 ## Current Status
 
@@ -29,6 +29,8 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 3 (Question Review): Complete
 - Phase 4 (Practice Engine): Complete
 - Phase 5 (Score & Repeat): Complete
+- Phase 6 (Pipeline Hardening & Observability): In progress (see 06-CONTEXT)
+- Phase 7 (Layout-aware chunk parsing): Added — not planned yet (`07-CONTEXT.md`)
 
 ## Last Session
 
