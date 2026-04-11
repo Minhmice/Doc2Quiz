@@ -277,7 +277,7 @@
 
 **Goal:** Hợp nhất chiến lược parse text/OCR/vision thành một engine rõ ràng: text pipeline hiện có nhưng chưa nối vào UI parse chính; UI đang nghiêng về vision; cần policy chọn mode phù hợp theo loại tài liệu (native text vs scanned vs hybrid).
 
-**Status:** Not planned yet
+**Status:** Planned — `12-01-PLAN.md`, `12-02-PLAN.md` (execute wave 1 then wave 2)
 
 **Depends on:** Phase 11 (orchestration/state machine split makes a clean seam for engine + policy).
 
@@ -293,7 +293,57 @@
 - `src/components/ai/AiParseSection.tsx` (and post–Phase 11 hook/presenters)
 - `src/lib/pdf/extractText.ts`, layout/OCR/chunk modules under `src/lib/`
 
-**Plans:** 0 — run `/gsd-plan-phase 12` to break down.
+**Plans:** 2 — `12-01-PLAN.md` (pure `parseRoutePolicy` lib), `12-02-PLAN.md` (wire `getDocument` + policy into `AiParseSection` / strategy panel + logs). Execute wave 1 then wave 2.
+
+---
+
+## Phase 13: Monitoring & error reporting (pipeline observability)
+
+**Goal:** Bổ sung **monitoring** và **error reporting** ngoài `pipelineLog` cục bộ — hiện không có remote log shipping, analytics hay Sentry. Với pipeline AI nhiều bước, cần **observability** để biết lỗi nằm ở **render PDF**, **OCR**, **vision**, **mapping**, hay **persistence**, không chỉ thông báo lỗi chung.
+
+**Status:** Not planned yet
+
+**Depends on:** Phase 6 (pipeline logging / verbosity); planner may sequence with Phase 12 or earlier — observability is cross-cutting.
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- **Structured errors + correlation** — run/step id across stages; never log API keys or raw PDF bytes in remote sinks.
+- **Remote sink (choose in plan)** — e.g. Sentry (client/server), OTel, or log drain; env-gated; off by default for offline-first local dev.
+- **Stage alignment** — reuse or explicitly map `PipelineDomain` / existing `pipelineLog` stages to spans or Sentry tags.
+- **Privacy posture** — opt-in levels: metadata-only vs sampled content; document in README / CONTEXT.
+
+**Canonical refs:**
+- `src/lib/logging/pipelineLogger.ts`
+- `src/lib/ai/runOcrSequential.ts`, `runVisionSequential.ts`, `runLayoutChunkParse.ts`
+- `src/lib/db/studySetDb.ts`, `src/components/ai/AiParseSection.tsx`
+
+**Plans:** 0 — run `/gsd-plan-phase 13` to break down.
+
+---
+
+## Phase 14: Page mapping & provenance quality
+
+**Goal:** Today page mapping is **best-effort** and callers may **swallow** mapping errors while the **draft still saves**—good short-term UX but produces data that **looks fine** with **wrong or unknown provenance**. This phase makes **quality and uncertainty explicit**: no relying on silent best-effort alone; **elevate warnings**; add **question confidence / quality flags** so users and downstream steps can tell mapped vs uncertain vs failed.
+
+**Status:** Context gathered — see `14-CONTEXT.md` (D-01..D-10); not planned yet (no PLAN.md)
+
+**Depends on:** Phase 7 (mapping + merge surfaces exist today). Phase 13 (observability) can **amplify** attribution in plan/execute but is not a hard prerequisite—confirm in `/gsd-discuss-phase 14` if ordering should change.
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- **No silent swallow** — mapping failures, partial matches, and heuristic-only attachment must surface as **user-visible warnings** (parse UI, review strip, or draft banner), not only `console` / swallowed `catch` paths.
+- **Quality flags / question confidence** — first-class or derived fields (e.g. provenance tier, mapping confidence) distinct from “save succeeded.”
+- **Honest drafts** — saving with uncertain page links remains allowed, but **labeled** in UI and persisted representation so it is not indistinguishable from fully mapped sets.
+- **Documentation** — align docs that describe “best-effort” mapping with the new contract (visible degradation, not silent accept).
+
+**Canonical refs:**
+- `src/lib/ai/mapQuestionsToPages.ts` and call sites (OCR / vision / chunk merge, `AiParseSection`)
+- `src/lib/db/studySetDb.ts`, `src/types/question.ts`, review / parse UI
+- `.planning/codebase/WORKFLOW-OCR-AI-QUIZ.md` (or equivalent) where mapping semantics are described
+
+**Plans:** 0 — run `/gsd-plan-phase 14` to break down.
 
 ---
 
@@ -312,7 +362,9 @@
 | 9 | Math / LaTeX notation in stems & options (`docs/NOTES-latex-math-rendering.md`) | Not planned yet |
 | 10 | Persistent vision staging (object storage / signed URLs) | Complete |
 | 11 | Split `AiParseSection` (lib + presenters; hook/FSM optional) | Complete |
-| 12 | Unified parse engine (text/OCR/vision + document-type policy) | Not planned yet |
+| 12 | Unified parse engine (text/OCR/vision + document-type policy) | Planned (12-01, 12-02) |
+| 13 | Monitoring & error reporting (pipeline observability) | Not planned yet |
+| 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
 

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
+status: Ready to execute
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T11:17:59.891Z"
+last_updated: "2026-04-11T11:20:45.038Z"
 progress:
-  total_phases: 12
+  total_phases: 14
   completed_phases: 10
-  total_plans: 23
+  total_plans: 25
   completed_plans: 23
-  percent: 100
+  percent: 92
 ---
 
 # Doc2Quiz — State
@@ -42,7 +42,11 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
+- Phase 14 discuss (`/gsd-discuss-phase 14`): `14-CONTEXT.md` — D-01..D-10: bỏ catch rỗng quanh `applyQuestionPageMapping` (vision), toast + summary khi uncertain/unresolved, chip review, ngưỡng confidence ~0.45, cập nhật WORKFLOW doc; không chặn persist (session không chọn gray area — defaults khóa theo audit code).
+- Phase 14 added: **Page mapping & provenance quality** — không nuốt lỗi mapping best-effort mà không nâng cảnh báo; cờ chất lượng / độ tin cậy câu hỏi; draft lưu với page link không chắc phải **gắn nhãn** rõ, tránh dữ liệu “có vẻ ổn” nhưng provenance sai (`/gsd-add-phase`).
+- Phase 13 added: Monitoring & error reporting / pipeline observability — beyond local `pipelineLog`; remote shipping (Sentry, OTel, or log drain), stage-tagged errors for PDF render vs OCR vs vision vs mapping vs persistence; roadmap cleaned + dir `13-monitoring-error-reporting-observability` (`/gsd-add-phase`).
 - Phase 12 added: Hợp nhất chiến lược parse text/OCR/vision thành một engine rõ ràng; nối text pipeline vào UI parse chính; policy chọn mode theo loại tài liệu (`/gsd-add-phase`).
+- Phase 12 plan (`/gsd-plan-phase 12`): `12-01-PLAN.md` (pure `parseRoutePolicy.ts`), `12-02-PLAN.md` (IDB `getDocument` + policy logs + strategy panel hint); Nyquist skipped (research off in config); UI-SPEC not generated — engine-first scope.
 - Phase 10 plan (`/gsd-plan-phase 10`): `10-01-PLAN.md` — verify/harden vision staging (POST `Cache-Control`, README TTL/abuse notes, `10-01-SUMMARY.md`); checker passed; Nyquist skipped (research off).
 - Phase 11 added: Split `AiParseSection` — orchestration hook + parse state machine + presenter components (avoid god-component: OCR, chunks, vision fallback, progress in one file). Roadmap entry cleaned + phase dir renamed to `11-split-aiparsesection-orchestration` (`/gsd-add-phase`).
 - Phase 10 added: Persistent vision staging — replace in-memory vision staging with object storage or signed URLs so serverless multi-instance deploys do not lose staged images between POST and upstream GET (`/gsd-add-phase`).
