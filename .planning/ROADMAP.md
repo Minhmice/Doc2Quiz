@@ -220,7 +220,7 @@
 - `src/types/question.ts` — `Question` text fields to wrap.
 - Practice/review surfaces (grep `question` / `options` in `src/components` during plan).
 
-**Plans:** 0 — run `/gsd-discuss-phase 9` then `/gsd-plan-phase 9`.
+**Plans:** 2 — `09-01-PLAN.md` (MathJax + `splitMathSegments` + `MathText`), `09-02-PLAN.md` (wire review / AI / play / flashcards). Execute wave 1 then wave 2.
 
 ---
 
