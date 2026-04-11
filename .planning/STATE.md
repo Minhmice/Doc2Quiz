@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
+status: Milestone complete
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T11:31:16.918Z"
+last_updated: "2026-04-11T11:56:27.697Z"
 progress:
-  total_phases: 15
-  completed_phases: 12
-  total_plans: 29
-  completed_plans: 27
-  percent: 93
+  total_phases: 16
+  completed_phases: 15
+  total_plans: 33
+  completed_plans: 33
+  percent: 100
 ---
 
 # Doc2Quiz — State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 7 — layout-aware chunk parsing executed (`07-01` / `07-02` complete); verify in-app with Fast + OCR.
+**Current focus:** Phase 16 — Learning vs parse boundary
 
 ## Current Status
 
@@ -42,7 +42,11 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
+- Phase 16 plan (`/gsd-plan-phase 16`): `16-01-PLAN.md`, `16-02-PLAN.md` — architecture doc + `@/lib/learning` facade for review mapping; research off; plan-checker passed; Nyquist/VALIDATION skipped (no RESEARCH).
+- Phase 16 added: Tách rõ "domain học tập" khỏi "domain parse tài liệu" — boundary ingestion/parsing vs learning/session analytics; giảm coupling feature học với OCR/vision (`/gsd-add-phase`).
 - Phase 15 added: Server/background worker mode — PDF render + parse queue khỏi client khi scale (client-heavy: pdf.js, IDB, OCR/vision orchestration); tùy chọn opt-in, giữ local path (`/gsd-add-phase`).
+- Phase 15 plan (`/gsd-plan-phase 15`): `15-01-PLAN.md`, `15-02-PLAN.md` — scale-mode doc + types + env + `/api/parse-jobs` stubs; Nyquist skipped (research off); no UI-SPEC (infra-first).
+- Phase 15 execute: scale-mode doc + `parseJob` types + `serverParse/env` + `/api/parse-jobs` route stubs (`15-01-SUMMARY.md`, `15-02-SUMMARY.md`); `phase complete 15`.
 - Phase 12 execute: `parseRoutePolicy.ts` + `AiParseSection` / `AiParseParseStrategyPanel` wiring (`12-01-SUMMARY.md`, `12-02-SUMMARY.md`); `phase complete 12`.
 - Phase 14 discuss (`/gsd-discuss-phase 14`): `14-CONTEXT.md` — D-01..D-10: bỏ catch rỗng quanh `applyQuestionPageMapping` (vision), toast + summary khi uncertain/unresolved, chip review, ngưỡng confidence ~0.45, cập nhật WORKFLOW doc; không chặn persist (session không chọn gray area — defaults khóa theo audit code).
 - Phase 14 plan (`/gsd-plan-phase 14`): `14-01-PLAN.md`, `14-02-PLAN.md`, `14-UI-SPEC.md` — plan-checker fixes: `depends_on: ["14-01"]`, `QuestionPreviewList` cho D-06, task D-03 OCR toast, `npm run build` cuối mỗi wave.

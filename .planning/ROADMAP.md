@@ -388,7 +388,7 @@
 - `docs/ARCHITECTURE-domain-boundaries.md` — parse vs learning domains, dependency direction, forbidden imports, ESLint strategy (documented future unless flat-config extended).
 - `src/lib/learning/**` — stable barrel + thin facade for review-facing helpers (e.g. mapping quality re-exports); `npm run lint` + `npm run build` green.
 
-**Plans:** 2 plans in 2 waves
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] `16-01-PLAN.md` — Boundary definition: architecture doc + `@/lib/ai` inventory appendix (non-breaking).
