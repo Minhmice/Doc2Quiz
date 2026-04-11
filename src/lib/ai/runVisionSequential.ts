@@ -2,6 +2,7 @@ import type { PageImageResult } from "@/lib/pdf/renderPagesToImages";
 import type { Question } from "@/types/question";
 import { dedupeQuestionsByStem } from "@/lib/ai/dedupeQuestions";
 import { FatalParseError, isAbortError } from "@/lib/ai/errors";
+import { reportPipelineError } from "@/lib/observability/reportPipelineError";
 import { putMediaBlob } from "@/lib/db/studySetDb";
 import {
   parseVisionPage,
@@ -150,6 +151,10 @@ export async function runVisionSequential(options: {
           if (isAbortError(e)) {
             break;
           }
+          reportPipelineError("VISION", "page", e, {
+            pageIndex: page.pageIndex,
+            pageCount: pages.length,
+          });
         }
       }
 
@@ -208,6 +213,10 @@ export async function runVisionSequential(options: {
         if (isAbortError(e)) {
           break;
         }
+        reportPipelineError("VISION", "page", e, {
+          pageIndex: page.pageIndex,
+          pageCount: 1,
+        });
       }
     }
     if (!signal.aborted && !ok) {
@@ -263,6 +272,11 @@ export async function runVisionSequential(options: {
         if (isAbortError(e)) {
           break;
         }
+        reportPipelineError("VISION", "page-pair", e, {
+          pageIndex: left.pageIndex,
+          pageCount: pages.length,
+          runKind: "pair",
+        });
       }
     }
 

@@ -124,6 +124,15 @@ http://localhost:3000
 
 * **`BLOB_READ_WRITE_TOKEN`** — Optional. When set (e.g. on Vercel after creating a Blob store), vision image staging uses [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) so serverless multi-instance deployments do not lose staged images between POST and upstream GET. If unset, staging stays in-process memory (typical for local development).
 
+### Observability (optional Sentry)
+
+* **`SENTRY_DSN`** — Optional. When set on the **server** runtime, uncaught errors and pipeline failures reported via `reportPipelineError` can be sent to [Sentry](https://sentry.io). If unset, the Sentry SDK stays disabled and **nothing** is shipped remotely.
+* **`NEXT_PUBLIC_SENTRY_DSN`** — Optional. Browser-side Sentry; omit to keep **client** capture off while still allowing server-only reporting.
+
+Local **`pipelineLog`** (console) remains the default for development; Sentry is **additive**. Do **not** put API keys, raw PDF bytes, full `data:` URLs, or full question stems into Sentry context—tags are limited to pipeline stage metadata (see `src/lib/observability/reportPipelineError.ts`). Tighten scrubbing in `beforeSend` in `sentry.*.config.ts` if your deployment needs stricter redaction.
+
+`next.config.ts` is **not** wrapped with `withSentryConfig` in this repo (no source-map upload token required for local builds); stacks still appear in Sentry without demangled frames until you add release + auth token per Sentry docs.
+
 ### Vision staging (production)
 
 1. In Vercel: **Storage → Blob** — create or attach a store to the project.

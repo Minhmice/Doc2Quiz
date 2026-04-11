@@ -5,6 +5,7 @@ import {
   expandChunkText,
 } from "@/lib/ai/layoutChunksFromOcr";
 import { isPipelineVerbose, pipelineLog } from "@/lib/logging/pipelineLogger";
+import { reportPipelineError } from "@/lib/observability/reportPipelineError";
 import type { LayoutChunk, OcrRunResult } from "@/types/ocr";
 import type { Question } from "@/types/question";
 
@@ -163,6 +164,12 @@ export async function runLayoutChunkParse(
       if (e instanceof FatalParseError) {
         throw e;
       }
+      reportPipelineError("VISION", "chunk-parse", e, {
+        pageIndex: chunk.pageIndex,
+        ...(studySetId?.trim()
+          ? { studySetId: studySetId.trim() }
+          : {}),
+      });
       outcome = {
         ok: false,
         error: e instanceof Error ? e.message : String(e),

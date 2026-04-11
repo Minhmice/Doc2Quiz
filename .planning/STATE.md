@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
+status: Ready to plan
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T11:27:35.532Z"
+last_updated: "2026-04-11T11:31:16.918Z"
 progress:
-  total_phases: 14
-  completed_phases: 11
+  total_phases: 15
+  completed_phases: 12
   total_plans: 29
-  completed_plans: 25
-  percent: 86
+  completed_plans: 27
+  percent: 93
 ---
 
 # Doc2Quiz — State
@@ -42,6 +42,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
+- Phase 15 added: Server/background worker mode — PDF render + parse queue khỏi client khi scale (client-heavy: pdf.js, IDB, OCR/vision orchestration); tùy chọn opt-in, giữ local path (`/gsd-add-phase`).
 - Phase 12 execute: `parseRoutePolicy.ts` + `AiParseSection` / `AiParseParseStrategyPanel` wiring (`12-01-SUMMARY.md`, `12-02-SUMMARY.md`); `phase complete 12`.
 - Phase 14 discuss (`/gsd-discuss-phase 14`): `14-CONTEXT.md` — D-01..D-10: bỏ catch rỗng quanh `applyQuestionPageMapping` (vision), toast + summary khi uncertain/unresolved, chip review, ngưỡng confidence ~0.45, cập nhật WORKFLOW doc; không chặn persist (session không chọn gray area — defaults khóa theo audit code).
 - Phase 14 plan (`/gsd-plan-phase 14`): `14-01-PLAN.md`, `14-02-PLAN.md`, `14-UI-SPEC.md` — plan-checker fixes: `depends_on: ["14-01"]`, `QuestionPreviewList` cho D-06, task D-03 OCR toast, `npm run build` cuối mỗi wave.

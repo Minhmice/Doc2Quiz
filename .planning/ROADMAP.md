@@ -301,7 +301,7 @@
 
 **Goal:** Bổ sung **monitoring** và **error reporting** ngoài `pipelineLog` cục bộ — hiện không có remote log shipping, analytics hay Sentry. Với pipeline AI nhiều bước, cần **observability** để biết lỗi nằm ở **render PDF**, **OCR**, **vision**, **mapping**, hay **persistence**, không chỉ thông báo lỗi chung.
 
-**Status:** Planned — ready to execute (`13-01`, `13-02`, `13-VALIDATION.md`)
+**Status:** Complete — `13-01-SUMMARY.md`, `13-02-SUMMARY.md`
 
 **Depends on:** Phase 6 (pipeline logging / verbosity); planner may sequence with Phase 12 or earlier — observability is cross-cutting.
 
@@ -318,7 +318,7 @@
 - `src/lib/ai/runOcrSequential.ts`, `runVisionSequential.ts`, `runLayoutChunkParse.ts`
 - `src/lib/db/studySetDb.ts`, `src/components/ai/AiParseSection.tsx`
 
-**Plans:** 2 — `13-01-PLAN.md` (Sentry/bootstrap + README), `13-02-PLAN.md` (`reportPipelineError` + wire OCR/vision/chunk). Execute wave 1 then wave 2.
+**Plans:** 2/2 plans complete
 
 ---
 
@@ -347,6 +347,31 @@
 
 ---
 
+## Phase 15: Server-side heavy jobs — PDF render & parse queue (scale mode)
+
+**Goal:** Chuyển các job nặng khỏi client khi scale: hiện app client-heavy (pdf.js canvas, IndexedDB, settings local, OCR/vision orchestration trong browser). File lớn / máy yếu dễ làm UX hụt. Cần **server hoặc background worker mode** cho PDF render (page images) và **parse queue** (tách khỏi main thread UX), vẫn tôn trọng offline-first / opt-in khi plan chi tiết.
+
+**Status:** Not planned yet
+
+**Depends on:** Phase 10 (durable staging / object storage cho bytes handoff); Phase 13 (observability cho job/step correlation). Phase 14 không chặn worker — planner có thể xếp song song slice infra nếu hợp lý.
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- **Execution plane** — API hoặc worker process chạy pdf render (hoặc headless pipeline tương đương), enqueue parse steps, trả job id + progress channel (SSE / poll / websocket — chọn khi plan).
+- **Client thin mode** — upload + subscribe progress + nhận kết quả; không giữ toàn bộ canvas render + parse state machine trên máy yếu khi mode bật.
+- **Queue semantics** — retry, cancel, fairness, giới hạn kích thước; rõ ràng privacy (payload nào ở server, TTL).
+- **Compatibility** — local-only path vẫn hoạt động khi không cấu hình server (feature flag / env).
+
+**Canonical refs:**
+- `src/lib/pdf/renderPagesToImages.ts`, `src/components/ai/AiParseSection.tsx`
+- `src/app/api/ai/**`, vision staging routes
+- `src/lib/db/studySetDb.ts` (sync model với server draft nếu có)
+
+**Plans:** 0 — run `/gsd-plan-phase 15` to break down.
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -363,8 +388,9 @@
 | 10 | Persistent vision staging (object storage / signed URLs) | Complete |
 | 11 | Split `AiParseSection` (lib + presenters; hook/FSM optional) | Complete |
 | 12 | Unified parse engine (text/OCR/vision + document-type policy) | Complete |
-| 13 | Monitoring & error reporting (pipeline observability) | Planned |
+| 13 | Monitoring & error reporting (pipeline observability) | Complete |
 | 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Planned |
+| 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
 

@@ -1,5 +1,6 @@
 import { isAbortError } from "@/lib/ai/errors";
 import { pipelineLog } from "@/lib/logging/pipelineLogger";
+import { reportPipelineError } from "@/lib/observability/reportPipelineError";
 import { runOcrPage } from "@/lib/ai/ocrAdapter";
 import { verifyOcrPageRegions } from "@/lib/ai/ocrRegionVerify";
 import { DEFAULT_OCR_COORD_REF } from "@/lib/ai/ocrValidate";
@@ -120,6 +121,10 @@ export async function runOcrSequential(opts: {
       if (isAbortError(e)) {
         break;
       }
+      reportPipelineError("OCR", "page", e, {
+        pageIndex: page.pageIndex,
+        pageCount: pages.length,
+      });
       pushFailedPage(
         page.pageIndex,
         e instanceof Error ? e.message : "OCR page threw unexpectedly.",
