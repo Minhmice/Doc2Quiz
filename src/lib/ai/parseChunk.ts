@@ -69,6 +69,8 @@ export type ParseChunkOnceParams = {
   model?: string;
   chunkText: string;
   signal: AbortSignal;
+  /** Session / debug only — never persisted to IDB. */
+  onRawAssistantText?: (text: string) => void;
 };
 
 export function resolveChatApiUrl(
@@ -148,6 +150,7 @@ async function parseOpenAI(
   forwardProvider: "openai" | "custom",
   systemPrompt: string,
   extractQuestions: (content: string) => Question[] = questionsFromAssistantContent,
+  onRawAssistantText?: (text: string) => void,
 ): Promise<Question[]> {
   const res = await forwardAiPost({
     provider: forwardProvider,
@@ -204,6 +207,7 @@ async function parseOpenAI(
     throw new Error("Empty OpenAI message content");
   }
 
+  onRawAssistantText?.(content);
   return extractQuestions(content);
 }
 
@@ -215,6 +219,7 @@ async function parseAnthropic(
   signal: AbortSignal,
   systemPrompt: string,
   extractQuestions: (content: string) => Question[] = questionsFromAssistantContent,
+  onRawAssistantText?: (text: string) => void,
 ): Promise<Question[]> {
   const res = await forwardAiPost({
     provider: "anthropic",
@@ -273,6 +278,7 @@ async function parseAnthropic(
     throw new Error("Empty Anthropic message content");
   }
 
+  onRawAssistantText?.(joined);
   return extractQuestions(joined);
 }
 
@@ -323,7 +329,8 @@ export async function parseChunkOnce(
 export async function parseChunkSingleMcqOnce(
   params: ParseChunkOnceParams,
 ): Promise<Question | null> {
-  const { provider, apiKey, apiUrl, model, chunkText, signal } = params;
+  const { provider, apiKey, apiUrl, model, chunkText, signal, onRawAssistantText } =
+    params;
   const endpoint = resolveChatApiUrl(provider, apiUrl);
   const modelId = resolveModelId(provider, model);
   let qs: Question[];
@@ -337,6 +344,7 @@ export async function parseChunkSingleMcqOnce(
       "openai",
       MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
       singleMcqQuestionsFromAssistantContent,
+      onRawAssistantText,
     );
   } else if (provider === "custom") {
     qs = await parseOpenAI(
@@ -348,6 +356,7 @@ export async function parseChunkSingleMcqOnce(
       "custom",
       MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
       singleMcqQuestionsFromAssistantContent,
+      onRawAssistantText,
     );
   } else {
     qs = await parseAnthropic(
@@ -358,6 +367,7 @@ export async function parseChunkSingleMcqOnce(
       signal,
       MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
       singleMcqQuestionsFromAssistantContent,
+      onRawAssistantText,
     );
   }
   if (qs.length === 0) {
