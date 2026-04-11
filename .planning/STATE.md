@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to plan
-stopped_at: Phase 07 context updated (timing D-27–D-29)
-last_updated: "2026-04-11T02:37:50.933Z"
+stopped_at: Phase 08 context gathered (flashcards)
+last_updated: "2026-04-11T02:39:42.300Z"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 5
   total_plans: 17
   completed_plans: 15
@@ -34,9 +34,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Phase 07 context updated (timing D-27–D-29)
+**Stopped at:** Phase 08 context gathered (flashcards)
 **Date:** 2026-04-08
-**Resume file:** .planning/phases/07-layout-aware-chunk-based-parsing-token-optimized/07-CONTEXT.md
+**Resume file:** .planning/phases/08-flashcards-mode/08-CONTEXT.md
 
 ## Accumulated Context
 
