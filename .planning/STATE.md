@@ -45,7 +45,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 7 added: Layout-aware chunk-based parsing (token-optimized) — OCR blocks → semantic chunks → per-chunk text AI parse → merge; full-page vision as fallback; see `07-CONTEXT.md`.
 - Phase 7 discuss (`/gsd-discuss-phase 7`): gray areas closed in `07-CONTEXT.md` (D-16–D-26: OCR prereq, providers, sort key, hybrid threshold 85%, bulk fallback rules, Question optional fields, debug UI).
 - Phase 7 plan (`/gsd-plan-phase 7`): `07-01-PLAN.md`, `07-02-PLAN.md` added — ready for `/gsd-execute-phase 7` or manual execution.
-- Phase 9 added: 9 — placeholder title from `/gsd-add-phase`; edit `ROADMAP.md` §Phase 9 for a real name/goal before `/gsd-discuss-phase 9`.
+- Phase 9: **Math & notation preview (LaTeX-first)** — roadmap goal/deliverables set; math-first MCQ + preview; other subjects reuse notation layer when still formula/LaTeX; `docs/NOTES-latex-math-rendering.md` extended with stack comparison table.
 
 ## Config
 

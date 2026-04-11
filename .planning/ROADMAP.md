@@ -193,19 +193,34 @@
 
 ---
 
-## Phase 9: 9
+## Phase 9: Math & notation preview (LaTeX-first, subject-ready)
 
-**Goal:** [To be planned]
+**Goal:** Render **mathematical notation** in MCQ stems and options so quizzes work for **math-heavy material** first, with a **preview** of symbols/layout (fractions, roots, subscripts, Greek letters, etc.) — not “prettier plain text.” Lay groundwork so **other subjects** (physics, chemistry, …) can reuse the same **notation layer** later; **v1 of this phase focuses on math** (inline/display TeX-style delimiters from PDF/AI).
 
-**Requirements:** TBD
+**Requirements:** TBD (promote from backlog when CONTEXT locked) — aligns with offline-first, no new cloud dependency for rendering.
 
-**Depends on:** Phase 8
+**Depends on:** Phase 8 (or parallel if flashcards land later; confirm in discuss)
 
-**Plans:** 0 plans
+**Non-goals (defer):** Full subject-specific parsers (chem SMILES, circuit diagrams), new AI prompt formats solely for notation, spaced repetition.
 
-Plans:
+**Deliverables (v1 scope — refine in `/gsd-discuss-phase 9`):**
+- **Shared renderer:** One component (e.g. `MathText` / `RichQuestionText`) used everywhere stems/options surface — review, practice, previews (`QuestionCard`, `McqOptionsPreview`, `QuestionEditor`, play shell).
+- **Math first:** Correct layout for typical exam LaTeX: `$...$`, `$$...$$`, `\frac`, `\sqrt`, subscripts/superscripts, Greek; graceful **fallback** when input is invalid TeX (show raw or error chip — decide in CONTEXT).
+- **Preview:** User can **see rendered math** while editing/reviewing (WYSIWYG-ish), not only after save.
+- **Safety:** Untrusted strings from AI/user — no raw `dangerouslySetInnerHTML` from delimiters alone; pin **KaTeX ≥ 0.16.21** (or chosen stack) and avoid risky `trust` / `\htmlData`-class vectors; sanitize or use library APIs only.
+- **Stack choice (for discuss):** Default research lean — **KaTeX** (bundle size, sync render, App Router + CSS import); **MathJax 3** if CONTEXT locks “max LaTeX compatibility / accessibility”; note **MathML-native** path only if product wants native browser math (narrow support tradeoffs).
 
-- [ ] TBD (run `/gsd-plan-phase 9` to break down)
+**Research summary (for planner; cite upstream docs in RESEARCH):**
+- KaTeX: fast, smaller bundle, good for `$...$` MCQ text; security: keep current patch level, untrusted input discipline.
+- MathJax 3: broader TeX, heavier; better a11y story in some setups; async `typeset` integration cost in React.
+- Alternatives to skim in discuss: **Temml** (MathML-oriented fork of KaTeX ecosystem), **markdown pipeline** (`remark-math` + `rehype-katex`) if stems become mini-markdown — only if CONTEXT says yes.
+
+**Canonical refs:**
+- `docs/NOTES-latex-math-rendering.md` — problem statement, delimiter strategy, integration touchpoints (Vietnamese notes + implementation checklist).
+- `src/types/question.ts` — `Question` text fields to wrap.
+- Practice/review surfaces (grep `question` / `options` in `src/components` during plan).
+
+**Plans:** 0 — run `/gsd-discuss-phase 9` then `/gsd-plan-phase 9`.
 
 ---
 
@@ -221,7 +236,7 @@ Plans:
 | 6 | (hardening — see 06-CONTEXT) | In progress |
 | 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Complete |
 | 8 | (flashcards — see `docs/BACKLOG-flashcards.md`, 08-CONTEXT) | Discuss |
-| 9 | TBD | Not planned yet |
+| 9 | Math / LaTeX notation in stems & options (`docs/NOTES-latex-math-rendering.md`) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
 

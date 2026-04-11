@@ -40,3 +40,20 @@ Chỉ lưu hướng dẫn; **chưa** cài package, **chưa** sửa UI.
 ---
 
 *Cập nhật khi bắt đầu phase triển khai: ghi rõ package đã chọn, cách bundle CSS trong Next.js App Router, và quy tắc an toàn cho chuỗi từ AI.*
+
+---
+
+## Research bổ sung (tóm tắt — 2026)
+
+Mục tiêu sản phẩm: **môn Toán trước** (preview đủ ký hiệu/layout), kiến trúc mở rộng sau cho môn khác **không** đồng nghĩa phải hỗ trợ mọi loại nội dung trong một phase.
+
+| Hướng | Ưu | Nhược / lưu ý |
+|--------|-----|----------------|
+| **KaTeX** | Nhẹ, render đồng bộ, font bundle ổn định, phổ biến với Next.js (`katex` + CSS; hoặc `react-katex` / tách segment `$...$` rồi `renderToString` có kiểm soát) | Subset LaTeX; cần **phiên bản đã vá** (ví dụ ≥ 0.16.21) cho lỗ hổng liên quan `\htmlData` khi render chuỗi không tin cậy — không bật `trust` bừa bãi. |
+| **MathJax 3** | Hỗ trợ TeX rộng hơn, một số tình huống a11y tốt hơn | Bundle nặng hơn; tích hợp React thường `typeset()` sau mount — cần pattern rõ để tránh flicker / race. |
+| **Pipeline MDX** (`remark-math` + `rehype-katex` / `rehype-mathjax`) | Hợp nếu toàn bộ stem là markdown | Doc2Quiz hiện lưu **plain string** MCQ; chỉ nên dùng nếu CONTEXT quyết định “stem = markdown nhỏ” — không mặc định. |
+| **MathML / Temml** | Chuẩn W3C / hướng MathML | Trình duyệt & ecosystem thực tế — đánh giá kỹ trước khi chọn làm path chính. |
+
+**Đa môn:** Phase 9 nên ship **lớp hiển thị notation** (công thức + ký hiệu toán). Môn khác (Lý, Hóa, …) tận dụng cùng component nếu vẫn là **LaTeX/công thức**; **hình vẽ, phản ứng hóa, mạch điện** = phase/backlog riêng.
+
+**Tài liệu tham chiếu:** [KaTeX browser](https://katex.org/docs/browser.html), [MathJax 3 docs](https://docs.mathjax.org/), so sánh thực nghiệm kiểu [intmath KaTeX vs MathJax](https://www.intmath.com/cg5/katex-mathjax-comparison.php) (độ trễ + font).
