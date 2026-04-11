@@ -269,7 +269,7 @@
 - `src/components/ai/AiParseSection.tsx`
 - `.planning/codebase/WORKFLOW-OCR-AI-QUIZ.md` (if present)
 
-**Plans:** 2 — `11-01-PLAN.md` (lib extraction: preferences + attach images), `11-02-PLAN.md` (presenter components). Execute wave 1 then wave 2. Optional follow-up `11-03`: dedicated `useAiParseOrchestration` hook + explicit parse state machine module if still needed after 01/02 land.
+**Plans:** 2/2 plans complete
 
 ---
 
@@ -288,6 +288,7 @@
 | 9 | Math / LaTeX notation in stems & options (`docs/NOTES-latex-math-rendering.md`) | Not planned yet |
 | 10 | Persistent vision staging (object storage / signed URLs) | Complete |
 | 11 | Split `AiParseSection` (hook + state machine + presenters) | Planned (11-01, 11-02; optional 11-03 hook/FSM) |
+| 12 | Unified parse engine (text/OCR/vision + document-type policy) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
 

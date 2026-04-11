@@ -33,19 +33,32 @@ import {
   runVisionSequential,
   type RunVisionSequentialResult,
 } from "@/lib/ai/runVisionSequential";
+import { attachPageImagesForQuestions } from "@/lib/ai/attachPageImagesForQuestions";
+import type { ParseStrategy } from "@/lib/ai/parseLocalStorage";
+import {
+  persistAttachPageImageToStorage,
+  persistEnableOcrToStorage,
+  persistParseStrategyToStorage,
+  readAttachPageImagePreference,
+  readEnableOcrPreference,
+  readParseStrategyPreference,
+} from "@/lib/ai/parseLocalStorage";
 import {
   getKeyForProvider,
   getModelForProvider,
   getProvider,
   getUrlForProvider,
 } from "@/lib/ai/storage";
+import { AiParseActions } from "@/components/ai/AiParseActions";
+import { AiParseParseStrategyPanel } from "@/components/ai/AiParseParseStrategyPanel";
+import { AiParsePreferenceToggles } from "@/components/ai/AiParsePreferenceToggles";
+import { AiParseSectionHeader } from "@/components/ai/AiParseSectionHeader";
 import { useParseProgress } from "@/components/ai/ParseProgressContext";
 import {
   ensureStudySetDb,
   getDraftQuestions,
   getParseProgressRecord,
   putDraftQuestions,
-  putMediaBlob,
   putParseProgressRecord,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
@@ -64,107 +77,11 @@ import type { OcrRunResult } from "@/types/ocr";
 import type { Question } from "@/types/question";
 import type { ParseProgressPhase } from "@/types/studySet";
 import { QuestionPreviewList } from "@/components/ai/QuestionPreviewList";
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-const LS_ATTACH_PAGE_IMAGE = "doc2quiz:parse:attachPageImage";
-const LS_ENABLE_OCR = "doc2quiz:parse:enableOcr";
-const LS_PARSE_STRATEGY = "doc2quiz:parse:strategy";
-
-export type ParseStrategy = "fast" | "accurate" | "hybrid";
-
-async function attachPageImagesForQuestions(
-  studySetId: string,
-  pages: PageImageResult[],
-  questions: Question[],
-): Promise<number> {
-  const pageByIndex = new Map(pages.map((p) => [p.pageIndex, p]));
-  const cache = new Map<number, string>();
-  let fails = 0;
-  for (const q of questions) {
-    if (q.questionImageId) {
-      continue;
-    }
-    const idx = q.sourcePageIndex;
-    if (!idx) {
-      continue;
-    }
-    const page = pageByIndex.get(idx);
-    if (!page) {
-      fails++;
-      continue;
-    }
-    let mediaId = cache.get(idx);
-    if (!mediaId) {
-      try {
-        const res = await fetch(page.dataUrl);
-        if (!res.ok) {
-          fails++;
-          continue;
-        }
-        const blob = await res.blob();
-        mediaId = await putMediaBlob(studySetId, blob);
-        cache.set(idx, mediaId);
-      } catch {
-        fails++;
-        continue;
-      }
-    }
-    q.questionImageId = mediaId;
-    q.sourceImageMediaId = mediaId;
-    q.imagePageIndex = idx;
-  }
-  return fails;
-}
-
-function readAttachPageImagePreference(): boolean {
-  if (typeof window === "undefined") {
-    return true;
-  }
-  try {
-    const v = localStorage.getItem(LS_ATTACH_PAGE_IMAGE);
-    if (v === null) {
-      return true;
-    }
-    return v === "1";
-  } catch {
-    return true;
-  }
-}
-
-function readEnableOcrPreference(): boolean {
-  if (typeof window === "undefined") {
-    return true;
-  }
-  try {
-    const v = localStorage.getItem(LS_ENABLE_OCR);
-    if (v === null) {
-      return true;
-    }
-    return v === "1";
-  } catch {
-    return true;
-  }
-}
-
-function readParseStrategyPreference(): ParseStrategy {
-  if (typeof window === "undefined") {
-    return "accurate";
-  }
-  try {
-    const v = localStorage.getItem(LS_PARSE_STRATEGY);
-    if (v === "fast" || v === "hybrid") {
-      return v;
-    }
-    return "accurate";
-  } catch {
-    return "accurate";
-  }
-}
+export type { ParseStrategy } from "@/lib/ai/parseLocalStorage";
 
 export type ParseRunResult = {
   ok: boolean;
@@ -447,29 +364,17 @@ export const AiParseSection = forwardRef<
 
   const setAttachPageImagePreference = useCallback((next: boolean) => {
     setAttachPageImage(next);
-    try {
-      localStorage.setItem(LS_ATTACH_PAGE_IMAGE, next ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
+    persistAttachPageImageToStorage(next);
   }, []);
 
   const setEnableOcrPreference = useCallback((next: boolean) => {
     setEnableOcr(next);
-    try {
-      localStorage.setItem(LS_ENABLE_OCR, next ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
+    persistEnableOcrToStorage(next);
   }, []);
 
   const setParseStrategyPreference = useCallback((next: ParseStrategy) => {
     setParseStrategy(next);
-    try {
-      localStorage.setItem(LS_PARSE_STRATEGY, next);
-    } catch {
-      /* ignore */
-    }
+    persistParseStrategyToStorage(next);
   }, []);
 
   const persistQuestions = useCallback(
@@ -1710,123 +1615,6 @@ export const AiParseSection = forwardRef<
   const attachEffectiveForUi =
     attachPageImage && studySetId.trim().length > 0;
 
-  const attachPageImageControl = (
-    <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3">
-      <div className="flex cursor-pointer items-start gap-3">
-        <input
-          id={attachCheckboxId}
-          type="checkbox"
-          className="mt-1 size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
-          checked={attachPageImage}
-          onChange={(e) => setAttachPageImagePreference(e.target.checked)}
-        />
-        <div className="min-w-0 space-y-1">
-          <Label
-            htmlFor={attachCheckboxId}
-            className="cursor-pointer text-sm font-medium leading-none text-foreground"
-          >
-            Attach page image to parsed questions
-          </Label>
-          <p className="text-sm text-muted-foreground">
-            Each parsed question will keep a reference image from its source PDF
-            page.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const ocrExtractionControl = (
-    <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3">
-      <div className="flex cursor-pointer items-start gap-3">
-        <input
-          id={ocrCheckboxId}
-          type="checkbox"
-          className="mt-1 size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
-          checked={enableOcr}
-          onChange={(e) => setEnableOcrPreference(e.target.checked)}
-        />
-        <div className="min-w-0 space-y-1">
-          <Label
-            htmlFor={ocrCheckboxId}
-            className="cursor-pointer text-sm font-medium leading-none text-foreground"
-          >
-            Run OCR before vision parse
-          </Label>
-          <p className="text-sm text-muted-foreground">
-            Extracts page text and layout into local storage for the OCR inspector
-            and future mapping. OCR errors never block vision parsing.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const parseStrategyControl = (
-    <div className="space-y-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
-      <Label
-        id={`${parseStrategyGroupId}-label`}
-        className="text-sm font-medium text-foreground"
-      >
-        Parse strategy
-      </Label>
-      <div
-        className="flex flex-col gap-2 text-sm"
-        role="radiogroup"
-        aria-labelledby={`${parseStrategyGroupId}-label`}
-      >
-        <label className="flex cursor-pointer items-start gap-2">
-          <input
-            type="radio"
-            className="mt-1 size-4 shrink-0 cursor-pointer accent-primary"
-            name={parseStrategyGroupId}
-            checked={parseStrategy === "fast"}
-            onChange={() => setParseStrategyPreference("fast")}
-          />
-          <span>
-            <span className="font-medium text-foreground">Fast</span>
-            <span className="block text-muted-foreground">
-              OCR layout chunks → small text prompts; full-page vision only if
-              chunks fail. Needs OCR enabled.
-            </span>
-          </span>
-        </label>
-        <label className="flex cursor-pointer items-start gap-2">
-          <input
-            type="radio"
-            className="mt-1 size-4 shrink-0 cursor-pointer accent-primary"
-            name={parseStrategyGroupId}
-            checked={parseStrategy === "hybrid"}
-            onChange={() => setParseStrategyPreference("hybrid")}
-          />
-          <span>
-            <span className="font-medium text-foreground">Hybrid</span>
-            <span className="block text-muted-foreground">
-              Uses Fast when OCR looks strong (≥85% pages successful, no failed
-              pages); otherwise full vision like Accurate.
-            </span>
-          </span>
-        </label>
-        <label className="flex cursor-pointer items-start gap-2">
-          <input
-            type="radio"
-            className="mt-1 size-4 shrink-0 cursor-pointer accent-primary"
-            name={parseStrategyGroupId}
-            checked={parseStrategy === "accurate"}
-            onChange={() => setParseStrategyPreference("accurate")}
-          />
-          <span>
-            <span className="font-medium text-foreground">Accurate</span>
-            <span className="block text-muted-foreground">
-              Full-page vision parse (same as before). Highest recall on hard
-              layouts.
-            </span>
-          </span>
-        </label>
-      </div>
-    </div>
-  );
-
   const showInlineProgress = !isEmbedded && isRunning;
   const showPreview = !isEmbedded;
 
@@ -1837,31 +1625,7 @@ export const AiParseSection = forwardRef<
     >
       {!isEmbedded ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2
-              id="ai-parse-heading"
-              className="text-lg font-semibold tracking-tight text-foreground"
-            >
-              Parse with AI
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              {hasKey ? (
-                <Badge
-                  variant="secondary"
-                  className="border border-emerald-500/30 bg-emerald-950/40 text-emerald-400"
-                >
-                  API key set
-                </Badge>
-              ) : (
-                <Link
-                  href="/settings"
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  Configure API in Settings
-                </Link>
-              )}
-            </div>
-          </div>
+          <AiParseSectionHeader hasKey={hasKey} />
           <p className="text-sm text-muted-foreground">
             Each PDF page is rendered and sent to a vision-capable model (OpenAI
             or Custom). Up to{" "}
@@ -1878,15 +1642,39 @@ export const AiParseSection = forwardRef<
             </Link>
             .
           </p>
-          {attachPageImageControl}
-          {ocrExtractionControl}
-          {parseStrategyControl}
+          <AiParsePreferenceToggles
+            attachCheckboxId={attachCheckboxId}
+            ocrCheckboxId={ocrCheckboxId}
+            attachPageImage={attachPageImage}
+            enableOcr={enableOcr}
+            onAttachChange={(e) =>
+              setAttachPageImagePreference(e.target.checked)
+            }
+            onOcrChange={(e) => setEnableOcrPreference(e.target.checked)}
+          />
+          <AiParseParseStrategyPanel
+            parseStrategy={parseStrategy}
+            parseStrategyGroupId={parseStrategyGroupId}
+            onSelectStrategy={setParseStrategyPreference}
+          />
         </>
       ) : hasKey && activePdfFile ? (
         <div className="space-y-3">
-          {attachPageImageControl}
-          {ocrExtractionControl}
-          {parseStrategyControl}
+          <AiParsePreferenceToggles
+            attachCheckboxId={attachCheckboxId}
+            ocrCheckboxId={ocrCheckboxId}
+            attachPageImage={attachPageImage}
+            enableOcr={enableOcr}
+            onAttachChange={(e) =>
+              setAttachPageImagePreference(e.target.checked)
+            }
+            onOcrChange={(e) => setEnableOcrPreference(e.target.checked)}
+          />
+          <AiParseParseStrategyPanel
+            parseStrategy={parseStrategy}
+            parseStrategyGroupId={parseStrategyGroupId}
+            onSelectStrategy={setParseStrategyPreference}
+          />
         </div>
       ) : null}
 
@@ -2005,20 +1793,12 @@ export const AiParseSection = forwardRef<
       ) : null}
 
       {!isEmbedded ? (
-        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
-          <Button
-            type="button"
-            onClick={() => void handleUnifiedParse()}
-            disabled={unifiedParseDisabled}
-          >
-            Parse
-          </Button>
-          {isRunning ? (
-            <Button type="button" variant="destructive" onClick={handleCancel}>
-              Cancel parsing (stop AI processing)
-            </Button>
-          ) : null}
-        </div>
+        <AiParseActions
+          isRunning={isRunning}
+          unifiedParseDisabled={unifiedParseDisabled}
+          onParse={handleUnifiedParse}
+          onCancel={handleCancel}
+        />
       ) : null}
     </section>
   );
