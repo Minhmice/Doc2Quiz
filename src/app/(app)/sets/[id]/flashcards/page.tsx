@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { PlaySession } from "@/components/play/PlaySession";
+import { FlashcardSession } from "@/components/flashcards/FlashcardSession";
 import { ensureStudySetDb, getStudySetMeta } from "@/lib/db/studySetDb";
 
-function StudySetPlayPageInner() {
+function StudySetFlashcardsPageInner() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const id = typeof params.id === "string" ? params.id : "";
-  const reviewMistakesOnly = searchParams.get("review") === "mistakes";
 
   const [headline, setHeadline] = useState("");
   const [subtitle, setSubtitle] = useState<string | undefined>();
@@ -51,7 +49,10 @@ function StudySetPlayPageInner() {
     return (
       <div>
         <p className="text-red-400">{loadError}</p>
-        <Link href="/dashboard" className="mt-4 inline-block text-[var(--d2q-accent-hover)]">
+        <Link
+          href="/dashboard"
+          className="mt-4 inline-block text-[var(--d2q-accent-hover)]"
+        >
           ← Library
         </Link>
       </div>
@@ -61,8 +62,8 @@ function StudySetPlayPageInner() {
   return (
     <div>
       <header className="mb-6 space-y-1">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--d2q-text)] sm:text-3xl">
-          Take quiz · {headline || "…"}
+        <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--d2q-text)] sm:text-3xl">
+          Flashcards · {headline || "…"}
         </h1>
         {subtitle ? (
           <p className="text-sm font-medium text-[var(--d2q-muted)]">
@@ -72,35 +73,42 @@ function StudySetPlayPageInner() {
         {sourceName ? (
           <p className="text-xs text-[var(--d2q-muted)]">Source: {sourceName}</p>
         ) : null}
-        <p className="mt-1 text-sm text-[var(--d2q-muted)]">
-          {reviewMistakesOnly
-            ? "Reviewing questions you missed last time. Keys 1–4 pick an answer."
-            : "Uses your approved bank. Keys 1–4 pick an answer."}
+        <p className="mt-1 text-xs font-semibold text-muted-foreground">
+          Space flips the card. Left arrow and right arrow move between cards.
         </p>
-        <p className="mt-2">
+        <div className="mt-2 flex flex-wrap gap-4">
           <Link
-            href={`/sets/${id}/flashcards`}
-            className="text-xs font-semibold text-[var(--d2q-accent-hover)] hover:underline"
+            href={`/sets/${id}/play`}
+            className="text-base font-medium text-[var(--d2q-accent-hover)] hover:underline"
           >
-            Flashcards
+            Take quiz
           </Link>
-        </p>
+          <Link
+            href={`/sets/${id}/review`}
+            className="text-base font-medium text-[var(--d2q-accent-hover)] hover:underline"
+          >
+            Review questions
+          </Link>
+        </div>
       </header>
-      <PlaySession studySetId={id} reviewMistakesOnly={reviewMistakesOnly} />
+      <FlashcardSession studySetId={id} />
     </div>
   );
 }
 
-export default function StudySetPlayPage() {
+export default function StudySetFlashcardsPage() {
   return (
     <Suspense
       fallback={
-        <p className="text-sm text-muted-foreground" role="status">
+        <p
+          className="text-xs font-semibold text-muted-foreground"
+          role="status"
+        >
           Loading…
         </p>
       }
     >
-      <StudySetPlayPageInner />
+      <StudySetFlashcardsPageInner />
     </Suspense>
   );
 }

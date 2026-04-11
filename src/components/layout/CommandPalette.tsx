@@ -13,7 +13,13 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { PlusIcon, SettingsIcon, BookOpenIcon, SearchIcon } from "lucide-react";
+import {
+  PlusIcon,
+  SettingsIcon,
+  BookOpenIcon,
+  SearchIcon,
+  LayersIcon,
+} from "lucide-react";
 import { FOCUS_LIBRARY_SEARCH_EVENT } from "@/lib/appEvents";
 
 export function CommandPalette() {
@@ -85,6 +91,10 @@ export function CommandPalette() {
               <CommandItem onSelect={() => go(`/sets/${studySetId}/play`)}>
                 <BookOpenIcon />
                 Take quiz
+              </CommandItem>
+              <CommandItem onSelect={() => go(`/sets/${studySetId}/flashcards`)}>
+                <LayersIcon />
+                Flashcards
               </CommandItem>
             </CommandGroup>
           </>

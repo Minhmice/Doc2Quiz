@@ -18,7 +18,11 @@ function currentStepFromPathname(pathname: string): StudyFlowStep {
   if (pathname.includes("/review")) {
     return "review";
   }
-  if (pathname.includes("/play") || pathname.includes("/practice")) {
+  if (
+    pathname.includes("/play") ||
+    pathname.includes("/practice") ||
+    pathname.includes("/flashcards")
+  ) {
     return "play";
   }
   if (pathname.includes("/done")) {
