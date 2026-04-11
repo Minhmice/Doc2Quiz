@@ -326,7 +326,7 @@
 
 **Goal:** Today page mapping is **best-effort** and callers may **swallow** mapping errors while the **draft still saves**—good short-term UX but produces data that **looks fine** with **wrong or unknown provenance**. This phase makes **quality and uncertainty explicit**: no relying on silent best-effort alone; **elevate warnings**; add **question confidence / quality flags** so users and downstream steps can tell mapped vs uncertain vs failed.
 
-**Status:** Context gathered — see `14-CONTEXT.md` (D-01..D-10); not planned yet (no PLAN.md)
+**Status:** Planned — ready to execute
 
 **Depends on:** Phase 7 (mapping + merge surfaces exist today). Phase 13 (observability) can **amplify** attribution in plan/execute but is not a hard prerequisite—confirm in `/gsd-discuss-phase 14` if ordering should change.
 
@@ -343,7 +343,7 @@
 - `src/lib/db/studySetDb.ts`, `src/types/question.ts`, review / parse UI
 - `.planning/codebase/WORKFLOW-OCR-AI-QUIZ.md` (or equivalent) where mapping semantics are described
 
-**Plans:** 0 — run `/gsd-plan-phase 14` to break down.
+**Plans:** 2 — `14-01-PLAN.md` (mappingQuality + MAPPING log + AiParseSection: no silent swallow, aggregate warnings, OCR load visibility, build), `14-02-PLAN.md` (review + parse preview badges, WORKFLOW doc, build). See `14-CONTEXT.md`, `14-UI-SPEC.md`.
 
 ---
 
@@ -364,7 +364,7 @@
 | 11 | Split `AiParseSection` (lib + presenters; hook/FSM optional) | Complete |
 | 12 | Unified parse engine (text/OCR/vision + document-type policy) | Complete |
 | 13 | Monitoring & error reporting (pipeline observability) | Planned |
-| 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Not planned yet |
+| 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Planned |
 
 v1 requirements covered: 23 / 23 ✓
 
