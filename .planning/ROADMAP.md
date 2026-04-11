@@ -228,7 +228,7 @@
 
 **Goal:** Make vision image staging reliable on serverless multi-instance deploys by persisting staged bytes outside process memory (object storage or time-limited signed URLs), keeping current limits (size cap, short-lived access) and URLs that upstream vision providers can fetch over HTTPS.
 
-**Status:** Planned — ready to execute
+**Status:** Complete
 
 **Depends on:** None (cross-cutting infrastructure)
 
@@ -286,7 +286,7 @@
 | 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Complete |
 | 8 | (flashcards — see `docs/BACKLOG-flashcards.md`, 08-CONTEXT) | Discuss |
 | 9 | Math / LaTeX notation in stems & options (`docs/NOTES-latex-math-rendering.md`) | Not planned yet |
-| 10 | Persistent vision staging (object storage / signed URLs) | Planned |
+| 10 | Persistent vision staging (object storage / signed URLs) | Complete |
 | 11 | Split `AiParseSection` (hook + state machine + presenters) | Planned (11-01, 11-02; optional 11-03 hook/FSM) |
 
 v1 requirements covered: 23 / 23 ✓
