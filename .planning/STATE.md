@@ -44,6 +44,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 - Phase 12 execute: `parseRoutePolicy.ts` + `AiParseSection` / `AiParseParseStrategyPanel` wiring (`12-01-SUMMARY.md`, `12-02-SUMMARY.md`); `phase complete 12`.
 - Phase 14 discuss (`/gsd-discuss-phase 14`): `14-CONTEXT.md` — D-01..D-10: bỏ catch rỗng quanh `applyQuestionPageMapping` (vision), toast + summary khi uncertain/unresolved, chip review, ngưỡng confidence ~0.45, cập nhật WORKFLOW doc; không chặn persist (session không chọn gray area — defaults khóa theo audit code).
+- Phase 14 plan (`/gsd-plan-phase 14`): `14-01-PLAN.md`, `14-02-PLAN.md`, `14-UI-SPEC.md` — plan-checker fixes: `depends_on: ["14-01"]`, `QuestionPreviewList` cho D-06, task D-03 OCR toast, `npm run build` cuối mỗi wave.
 - Phase 14 added: **Page mapping & provenance quality** — không nuốt lỗi mapping best-effort mà không nâng cảnh báo; cờ chất lượng / độ tin cậy câu hỏi; draft lưu với page link không chắc phải **gắn nhãn** rõ, tránh dữ liệu “có vẻ ổn” nhưng provenance sai (`/gsd-add-phase`).
 - Phase 13 added: Monitoring & error reporting / pipeline observability — beyond local `pipelineLog`; remote shipping (Sentry, OTel, or log drain), stage-tagged errors for PDF render vs OCR vs vision vs mapping vs persistence; roadmap cleaned + dir `13-monitoring-error-reporting-observability` (`/gsd-add-phase`).
 - Phase 12 added: Hợp nhất chiến lược parse text/OCR/vision thành một engine rõ ràng; nối text pipeline vào UI parse chính; policy chọn mode theo loại tài liệu (`/gsd-add-phase`).
