@@ -254,22 +254,46 @@
 
 **Goal:** Decompose `AiParseSection` (documented as a large client component owning OCR, layout chunks, vision fallback, and progress) into **orchestration hook + parse state machine + presenter components** so the parse UI does not become a god-component.
 
-**Status:** Not planned yet
+**Status:** Complete — `11-01-SUMMARY.md`, `11-02-SUMMARY.md` (lib extraction + presenters); optional **11-03** for dedicated orchestration hook + explicit FSM remains backlog if desired.
 
 **Depends on:** Phase 7 (current chunk/vision/OCR flow concentrated in `AiParseSection`); planner may sequence after Phase 6 hardening as needed.
 
 **Requirements:** TBD
 
 **Deliverables (high level):**
-- **Orchestration hook** — wires providers, file/text inputs, mode selection, and side-effects; thin route/shell for the section.
-- **Parse state machine** — explicit states/transitions for OCR → chunk → AI → merge → vision fallback → progress/errors (testable, loggable).
-- **Presenter components** — progress, inspector/debug, mode toggles, error surfaces; no business logic lumped with layout.
+- **Orchestration hook** — deferred to optional follow-up; parse pipeline still lives in `AiParseSection` `useCallback` graph.
+- **Parse state machine** — not implemented as standalone module this phase (optional 11-03).
+- **Presenter components** — `AiParseSectionHeader`, `AiParsePreferenceToggles`, `AiParseParseStrategyPanel`, `AiParseActions`.
 
 **Canonical refs:**
 - `src/components/ai/AiParseSection.tsx`
 - `.planning/codebase/WORKFLOW-OCR-AI-QUIZ.md` (if present)
 
 **Plans:** 2/2 plans complete
+
+---
+
+## Phase 12: Unified parse engine — text / OCR / vision + document policy
+
+**Goal:** Hợp nhất chiến lược parse text/OCR/vision thành một engine rõ ràng: text pipeline hiện có nhưng chưa nối vào UI parse chính; UI đang nghiêng về vision; cần policy chọn mode phù hợp theo loại tài liệu (native text vs scanned vs hybrid).
+
+**Status:** Not planned yet
+
+**Depends on:** Phase 11 (orchestration/state machine split makes a clean seam for engine + policy).
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- **Single product-facing parse engine** — one place that owns text → OCR → chunk AI → vision fallback ordering, not parallel silos.
+- **Wire text pipeline into primary parse UI** — default path uses extracted/layout text when sufficient; vision is escalation, not the implied default.
+- **Document-type / signal-based mode policy** — explicit rules (e.g. empty text layer, OCR confidence, page mix) for choosing best mode; user override remains possible.
+- **Telemetry or debug surfacing** — enough signal to verify policy choices in dev/UAT.
+
+**Canonical refs:**
+- `src/components/ai/AiParseSection.tsx` (and post–Phase 11 hook/presenters)
+- `src/lib/pdf/extractText.ts`, layout/OCR/chunk modules under `src/lib/`
+
+**Plans:** 0 — run `/gsd-plan-phase 12` to break down.
 
 ---
 
@@ -287,7 +311,7 @@
 | 8 | (flashcards — see `docs/BACKLOG-flashcards.md`, 08-CONTEXT) | Discuss |
 | 9 | Math / LaTeX notation in stems & options (`docs/NOTES-latex-math-rendering.md`) | Not planned yet |
 | 10 | Persistent vision staging (object storage / signed URLs) | Complete |
-| 11 | Split `AiParseSection` (hook + state machine + presenters) | Planned (11-01, 11-02; optional 11-03 hook/FSM) |
+| 11 | Split `AiParseSection` (lib + presenters; hook/FSM optional) | Complete |
 | 12 | Unified parse engine (text/OCR/vision + document-type policy) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
