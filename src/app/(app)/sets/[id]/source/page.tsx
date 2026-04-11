@@ -56,6 +56,15 @@ export default function StudySetSourcePage() {
     questions: Question[];
   } | null>(null);
   const [ocrInspectorKey, setOcrInspectorKey] = useState(0);
+  const [chunkInspect, setChunkInspect] = useState<{
+    chunkParseDebug: ParseRunResult["chunkParseDebug"] | null;
+    lastParseRunWallMs: number | null;
+    usedVisionFallback: boolean;
+  }>({
+    chunkParseDebug: null,
+    lastParseRunWallMs: null,
+    usedVisionFallback: false,
+  });
 
   const load = useCallback(async () => {
     if (!id) {
@@ -182,6 +191,16 @@ export default function StudySetSourcePage() {
   const handleParseFinished = useCallback(
     (r: ParseRunResult) => {
       clearRedirectTimer();
+      setChunkInspect({
+        chunkParseDebug: r.chunkParseDebug ?? null,
+        lastParseRunWallMs:
+          typeof r.lastParseRunWallMs === "number" &&
+          Number.isFinite(r.lastParseRunWallMs)
+            ? r.lastParseRunWallMs
+            : null,
+        usedVisionFallback: r.usedVisionFallback ?? false,
+      });
+      setOcrInspectorKey((k) => k + 1);
       if (r.ok && !r.aborted) {
         setParseResult({
           questions: r.questions,
@@ -290,6 +309,9 @@ export default function StudySetSourcePage() {
         studySetId={id}
         pdfFile={pdfFile}
         reloadKey={ocrInspectorKey}
+        chunkParseDebug={chunkInspect.chunkParseDebug}
+        lastParseRunWallMs={chunkInspect.lastParseRunWallMs}
+        usedVisionFallback={chunkInspect.usedVisionFallback}
       />
 
       <QuestionMappingDebug

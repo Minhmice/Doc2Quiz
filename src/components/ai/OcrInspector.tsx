@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useState } from "react";
+import type { ParseRunResult } from "@/components/ai/AiParseSection";
 import { getOcrResult } from "@/lib/ai/ocrDb";
 import { verifyOcrPageRegions } from "@/lib/ai/ocrRegionVerify";
 import { renderSinglePdfPageToDataUrl } from "@/lib/pdf/renderPagesToImages";
@@ -27,6 +28,10 @@ type OcrInspectorProps = {
   pdfFile?: File | null;
   /** Increment when IndexedDB OCR row may have changed (e.g. after parse). */
   reloadKey?: number;
+  /** Session-only chunk parse debug from last parse (not IDB). */
+  chunkParseDebug?: ParseRunResult["chunkParseDebug"] | null;
+  lastParseRunWallMs?: number | null;
+  usedVisionFallback?: boolean;
 };
 
 function statusVariant(
@@ -45,6 +50,9 @@ export function OcrInspector({
   studySetId,
   pdfFile = null,
   reloadKey = 0,
+  chunkParseDebug = null,
+  lastParseRunWallMs = null,
+  usedVisionFallback = false,
 }: OcrInspectorProps) {
   const pageSelectId = useId();
   const overlaySwitchId = useId();
@@ -396,6 +404,112 @@ export function OcrInspector({
             ) : null}
           </div>
         </div>
+
+        {chunkParseDebug != null ||
+        (lastParseRunWallMs != null && Number.isFinite(lastParseRunWallMs)) ? (
+          <details className="rounded-md border border-border/80 bg-muted/20 p-2">
+            <summary className="cursor-pointer text-sm font-semibold text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring">
+              Chunk parse debug
+            </summary>
+            <div className="mt-3 space-y-3">
+              {lastParseRunWallMs != null && Number.isFinite(lastParseRunWallMs) ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-mono tabular-nums text-muted-foreground">
+                    Parse time: {(lastParseRunWallMs / 1000).toFixed(1)}s
+                  </p>
+                  {usedVisionFallback ? (
+                    <p className="text-sm text-muted-foreground">
+                      Includes full-page vision fallback.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {chunkParseDebug == null ? null : chunkParseDebug.reason ===
+                "vision_only_parse" ? (
+                <p className="text-sm text-muted-foreground">
+                  No chunk AI calls in this run (Accurate / vision-only).
+                </p>
+              ) : chunkParseDebug.reason === "no_layout_chunks" &&
+                chunkParseDebug.byChunk.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No layout chunks built from this OCR run.
+                </p>
+              ) : chunkParseDebug.byChunk.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No chunk rows.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        <th className="py-1 pr-2 font-semibold">Chunk id</th>
+                        <th className="py-1 pr-2 font-semibold">Outcome</th>
+                        <th className="py-1 pr-2 font-semibold">Expanded retry</th>
+                        <th className="py-1 pr-2 font-semibold">AI time</th>
+                        <th className="py-1 font-semibold">Attempts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chunkParseDebug.byChunk.map((row) => {
+                        const raw = chunkParseDebug.rawByChunkId?.[row.layoutChunkId];
+                        return (
+                          <Fragment key={row.layoutChunkId}>
+                            <tr className="border-b border-border/60 align-top">
+                              <td className="py-1 pr-2 font-mono text-xs">
+                                {row.layoutChunkId}
+                              </td>
+                              <td className="py-1 pr-2 text-xs">
+                                {row.outcome.ok ? "OK" : row.outcome.error}
+                              </td>
+                              <td className="py-1 pr-2 text-xs">
+                                {row.usedExpandedText ? "Yes" : "No"}
+                              </td>
+                              <td className="py-1 pr-2 font-mono text-xs tabular-nums">
+                                <span>{Math.round(row.chunkAiWallMs)} ms</span>
+                                {row.attemptWallMs && row.attemptWallMs.length > 1 ? (
+                                  <details className="mt-1">
+                                    <summary className="cursor-pointer text-xs font-semibold">
+                                      Per attempt
+                                    </summary>
+                                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                                      {row.attemptWallMs
+                                        .map(
+                                          (ms, i) =>
+                                            `Attempt ${i + 1}: ${Math.round(ms)}ms`,
+                                        )
+                                        .join(" · ")}
+                                    </p>
+                                  </details>
+                                ) : null}
+                              </td>
+                              <td className="py-1 font-mono text-xs tabular-nums">
+                                {row.parseAttempts}
+                              </td>
+                            </tr>
+                            {raw ? (
+                              <tr>
+                                <td colSpan={5} className="pb-2 pt-0">
+                                  <details>
+                                    <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                                      Raw output
+                                    </summary>
+                                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-2 font-mono text-xs">
+                                      {raw}
+                                    </pre>
+                                  </details>
+                                </td>
+                              </tr>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </details>
+        ) : null}
       </CardContent>
     </Card>
   );
