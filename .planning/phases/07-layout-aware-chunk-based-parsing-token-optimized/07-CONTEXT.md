@@ -1,8 +1,8 @@
 # Phase 7: Layout-aware chunk-based parsing (token-optimized) — Context
 
 **Gathered:** 2026-04-08  
-**Discussed:** 2026-04-08 (`/gsd-discuss-phase 7` — auto-resolve gray areas; no interactive branch)  
-**Status:** Planned — execute `07-01-PLAN.md` then `07-02-PLAN.md` (`/gsd-execute-phase 7` or manual)
+**Discussed:** 2026-04-08 (`/gsd-discuss-phase 7` — auto-resolve gray areas; no interactive branch); 2026-04-11 (timing granularity — interactive)  
+**Status:** Planned — **replan recommended** after timing decisions (`/gsd-plan-phase 7`); then execute `07-01-PLAN.md` then `07-02-PLAN.md`
 
 <domain>
 ## Phase Boundary
@@ -77,6 +77,11 @@ Out of scope unless pulled in later: multi-user cloud, adaptive learning across 
 ### Debug UI
 - **D-26:** **Chunk → AI output** hiển thị trong **mở rộng OcrInspector** hoặc panel debug cạnh parse (cùng study set); không chặn happy path nếu user không mở.
 
+### Parse timing (discuss 2026-04-11)
+- **D-27:** Đo và hiển thị **wall-clock từng chunk** cho **một vòng gọi AI text-MCQ trên một layout chunk** (monotonic `performance.now()` hoặc tương đương bọc quanh `parseChunkSingleMcqOnce` / lời gọi tương đương). Đây là **mức chi tiết chính** để so sánh chunk chậm, retry, hay model.
+- **D-28:** Hiển thị thêm **một số tổng** — thời gian **cả một lần parse** từ lúc user bắt đầu parse đến trạng thái terminal (draft + UI xong / dừng lỗi). **Không bắt buộc** tách nhỏ OCR / raster PDF / từng bước IDB trong lock này; có thể bổ sung sau nếu metric vẫn thiếu.
+- **D-29:** Bảng/danh sách **per-chunk duration** đi cùng kênh debug **D-26**; dòng **tổng (D-28)** có thể nằm ở vùng tóm tắt parse chính nếu planner/UI giữ gọn, không che happy path. Logging `pipelineLog` `info` theo cờ **06-CONTEXT D-05** (chỉ dev / `NEXT_PUBLIC_D2Q_PIPELINE_DEBUG`) — không bắt buộc schema IDB mới trừ khi plan sau thêm tùy chọn.
+
 </decisions>
 
 <specifics>
@@ -95,7 +100,7 @@ Implement layout-aware chunk-based parsing using existing OCR results.
 3. **Merge:** dedupe by stem; validate 4 options; normalize output to existing `Question` shape.
 4. **Fallback:** if chunk parsing fails → **existing full-page vision** parsing.
 5. **Confidence:** mark weak parses.
-6. **Debug:** show **chunk → AI output** mapping in inspector.
+6. **Debug:** show **chunk → AI output** mapping in inspector, plus **per-chunk** and **run total** timings (**D-27–D-29**).
 
 **Constraints:**
 
@@ -140,6 +145,7 @@ Implement layout-aware chunk-based parsing using existing OCR results.
 
 ### Integration points
 - **`AiParseSection`**: nhánh mode (Fast / Accurate / Hybrid), orchestration OCR→chunk→merge→fallback vision.
+- **`runLayoutChunkParse` (07-02):** accumulator **chunkId → durationMs** + **runStartedAt/runFinishedAt** (hoặc tương đương) để UI/debug (**D-27–D-28**).
 - **IndexedDB**: draft questions unchanged; optional **parse debug** chỉ trong memory hoặc `parseProgress` record nếu đã có schema.
 
 </code_context>
@@ -147,6 +153,7 @@ Implement layout-aware chunk-based parsing using existing OCR results.
 <deferred>
 ## Deferred Ideas
 
+- **Đo chi tiết từng bước pipeline** (từng trang OCR, rasterize, merge/dedupe riêng, IDB) — không lock trong discuss 2026-04-11; làm sau nếu chỉ D-27–D-28 chưa đủ để tối ưu.
 - Per-question **image crop** from bbox (may overlap Phase 6 deferred work; coordinate when implementing).
 - **Adaptive learning** (weak-topic quiz selection) — future phase.
 - Full **multi-user cloud** architecture — future milestone.
