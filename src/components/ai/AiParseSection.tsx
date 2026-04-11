@@ -24,7 +24,10 @@ import {
   resolveModelId,
 } from "@/lib/ai/parseChunk";
 import { buildLayoutChunksFromRun } from "@/lib/ai/layoutChunksFromOcr";
-import { runLayoutChunkParse } from "@/lib/ai/runLayoutChunkParse";
+import {
+  runLayoutChunkParse,
+  type ChunkParseResult,
+} from "@/lib/ai/runLayoutChunkParse";
 import { runOcrSequential } from "@/lib/ai/runOcrSequential";
 import {
   runVisionSequential,
@@ -168,6 +171,16 @@ export type ParseRunResult = {
   aborted: boolean;
   fatalError: string | null;
   questions: Question[];
+  /** D-28: monotonic wall ms for full run when terminal (set by runUnifiedParseInternal). */
+  lastParseRunWallMs?: number;
+  /** True when chunk path merged full-page vision fallback */
+  usedVisionFallback?: boolean;
+  /** Session-only chunk debug for OcrInspector (not IDB) */
+  chunkParseDebug?: {
+    byChunk: ChunkParseResult[];
+    rawByChunkId?: Record<string, string>;
+    reason?: "completed" | "vision_only_parse" | "no_layout_chunks";
+  };
 };
 
 export type AiParseSectionHandle = {
@@ -248,8 +261,17 @@ export const AiParseSection = forwardRef<
     renderTot: 0,
     thumbs: [],
   });
+  /** Hybrid path: OCR gate chose full vision (UI-SPEC optional one-liner). */
+  const [hybridOcrGateNote, setHybridOcrGateNote] = useState<string | null>(null);
+  /** Last completed unified parse timing for summary lines (D-28). */
+  const [terminalParseRun, setTerminalParseRun] = useState<{
+    wallMs: number;
+    usedVisionFallback: boolean;
+  } | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  /** Latest raw assistant text per layout chunk id (session-only; cleared each chunk run). */
+  const chunkRawByIdRef = useRef<Record<string, string>>({});
   const lastIdbWriteRef = useRef(0);
   const prevRunningRef = useRef(false);
   const consumedAutoKeyRef = useRef<string | number | null>(null);
@@ -529,6 +551,7 @@ export const AiParseSection = forwardRef<
       const enableOcrEffective =
         enableOcr && studySetId.trim().length > 0 && visionForwardReady;
 
+      // D-16: Fast/Hybrid chunk path expects OCR prefetch (`runOcrSequential` → `putOcrResult`) when OCR is enabled.
       if (enableOcrEffective) {
         setParseMode("ocr");
         setProgress({ current: 0, total: pages.length, status: "running" });
@@ -779,6 +802,11 @@ export const AiParseSection = forwardRef<
         aborted,
         fatalError: fatal,
         questions: result.questions,
+        chunkParseDebug: {
+          byChunk: [],
+          reason: "vision_only_parse" as const,
+        },
+        usedVisionFallback: false,
       };
     },
     [studySetId, persistQuestions],
@@ -794,6 +822,7 @@ export const AiParseSection = forwardRef<
       timeStamp: () => string,
     ): Promise<ParseRunResult> => {
       const chunks = buildLayoutChunksFromRun(ocrForMapping);
+      chunkRawByIdRef.current = {};
       setParseMode("chunk");
       setProgress({
         current: 0,
@@ -805,7 +834,8 @@ export const AiParseSection = forwardRef<
         run: ocrForMapping,
         chunks,
         signal: controller.signal,
-        parse: (userContent, signal) =>
+        studySetId: studySetId.trim() || undefined,
+        parse: (userContent, signal, meta) =>
           parseChunkSingleMcqOnce({
             provider,
             apiKey,
@@ -813,6 +843,11 @@ export const AiParseSection = forwardRef<
             model: modelInput,
             chunkText: userContent,
             signal,
+            onRawAssistantText: meta
+              ? (text) => {
+                  chunkRawByIdRef.current[meta.layoutChunkId] = text;
+                }
+              : undefined,
           }),
         progress: (done, total) => {
           setProgress({ current: done, total, status: "running" });
@@ -827,7 +862,9 @@ export const AiParseSection = forwardRef<
       });
 
       let merged = chunkOut.questions;
+      let usedVisionFallback = false;
       if (chunkOut.needsVisionFallback) {
+        usedVisionFallback = true;
         pipelineLog("VISION", "layout-chunk", "info", "vision fallback after chunk parse", {
           studySetId: studySetId.trim(),
         });
@@ -911,11 +948,20 @@ export const AiParseSection = forwardRef<
         await persistQuestions(merged);
       }
 
+      const chunkParseDebug: NonNullable<ParseRunResult["chunkParseDebug"]> = {
+        byChunk: chunkOut.byChunk,
+        rawByChunkId: { ...chunkRawByIdRef.current },
+        reason:
+          chunks.length === 0 ? "no_layout_chunks" : ("completed" as const),
+      };
+
       return {
         ok: !controller.signal.aborted,
         aborted: controller.signal.aborted,
         fatalError: null,
         questions: merged,
+        usedVisionFallback,
+        chunkParseDebug,
       };
     },
     [
@@ -1276,6 +1322,7 @@ export const AiParseSection = forwardRef<
 
     setError(null);
     setSummary(null);
+    setHybridOcrGateNote(null);
 
     const apiKey = keyInput.trim();
     if (!apiKey) {
@@ -1353,6 +1400,7 @@ export const AiParseSection = forwardRef<
           studySetId: studySetId.trim(),
           stats,
         });
+        setHybridOcrGateNote("OCR quality below threshold — using full-page vision.");
         setParseMode("vision");
         const { result, attachEffective } = await runVisionSequentialWithUi(
           pages,
@@ -1466,6 +1514,7 @@ export const AiParseSection = forwardRef<
     useCallback(async (): Promise<ParseRunResult> => {
       setError(null);
       setSummary(null);
+      setTerminalParseRun(null);
       try {
         await onBeforeParse?.();
       } catch (raw) {
@@ -1546,13 +1595,24 @@ export const AiParseSection = forwardRef<
         };
       }
 
+      /*
+       * D-28: wall clock for the whole user-triggered parse (after successful onBeforeParse)
+       * through terminal handlers — includes vision fallback, attachPageImages, persistQuestions
+       * when executed inside the same invoked parse for Fast/Hybrid chunk path.
+       */
+      const runWallT0 = performance.now();
+      let routed: ParseRunResult;
       if (parseStrategy === "accurate") {
-        return handleVisionParse();
+        routed = await handleVisionParse();
+      } else if (parseStrategy === "hybrid") {
+        routed = await handleHybridParse();
+      } else {
+        routed = await handleLayoutAwareParse();
       }
-      if (parseStrategy === "hybrid") {
-        return handleHybridParse();
-      }
-      return handleLayoutAwareParse();
+      return {
+        ...routed,
+        lastParseRunWallMs: performance.now() - runWallT0,
+      };
     }, [
       onBeforeParse,
       hasKey,
@@ -1600,6 +1660,17 @@ export const AiParseSection = forwardRef<
     consumedAutoKeyRef.current = key;
     void (async () => {
       const r = await runUnifiedParseInternal();
+      if (
+        typeof r.lastParseRunWallMs === "number" &&
+        Number.isFinite(r.lastParseRunWallMs)
+      ) {
+        setTerminalParseRun({
+          wallMs: r.lastParseRunWallMs,
+          usedVisionFallback: r.usedVisionFallback ?? false,
+        });
+      } else {
+        setTerminalParseRun(null);
+      }
       onEmbeddedParseFinished?.(r);
     })();
   }, [
@@ -1615,6 +1686,17 @@ export const AiParseSection = forwardRef<
 
   const handleUnifiedParse = useCallback(async () => {
     const r = await runUnifiedParseInternal();
+    if (
+      typeof r.lastParseRunWallMs === "number" &&
+      Number.isFinite(r.lastParseRunWallMs)
+    ) {
+      setTerminalParseRun({
+        wallMs: r.lastParseRunWallMs,
+        usedVisionFallback: r.usedVisionFallback ?? false,
+      });
+    } else {
+      setTerminalParseRun(null);
+    }
     if (isEmbedded) {
       onEmbeddedParseFinished?.(r);
     }
@@ -1824,7 +1906,33 @@ export const AiParseSection = forwardRef<
         <p className="text-sm text-muted-foreground">{hintMessage}</p>
       ) : null}
 
+      {hybridOcrGateNote ? (
+        <p className="text-sm text-muted-foreground">{hybridOcrGateNote}</p>
+      ) : null}
+
       {showInlineProgress ? (
+        <div className="space-y-2" aria-live="polite">
+          <p className="text-sm font-medium text-primary">
+            {visionRendering
+              ? "Rendering PDF pages as images…"
+              : parseMode === "ocr"
+                ? `OCR text extraction… ${progress.current} / ${progress.total} pages`
+                : parseMode === "chunk"
+                  ? `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
+                  : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
+          </p>
+          {!visionRendering && progress.total > 0 ? (
+            <Progress
+              value={Math.min(
+                100,
+                Math.round((100 * progress.current) / progress.total),
+              )}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {isEmbedded && isRunning ? (
         <div className="space-y-2" aria-live="polite">
           <p className="text-sm font-medium text-primary">
             {visionRendering
@@ -1854,9 +1962,39 @@ export const AiParseSection = forwardRef<
       ) : null}
 
       {!isEmbedded && summary ? (
-        <p className="text-sm text-foreground" aria-live="polite">
-          {summary}
-        </p>
+        <div className="space-y-1" aria-live="polite">
+          <p className="text-sm text-foreground">{summary}</p>
+          {terminalParseRun ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Parse time: {(terminalParseRun.wallMs / 1000).toFixed(1)}s
+              </p>
+              {terminalParseRun.usedVisionFallback ? (
+                <p className="text-sm text-muted-foreground">
+                  Includes full-page vision fallback.
+                </p>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isEmbedded && !isRunning && summary ? (
+        <div className="space-y-1" aria-live="polite">
+          <p className="text-sm text-foreground">{summary}</p>
+          {terminalParseRun ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Parse time: {(terminalParseRun.wallMs / 1000).toFixed(1)}s
+              </p>
+              {terminalParseRun.usedVisionFallback ? (
+                <p className="text-sm text-muted-foreground">
+                  Includes full-page vision fallback.
+                </p>
+              ) : null}
+            </>
+          ) : null}
+        </div>
       ) : null}
 
       {showPreview ? (
@@ -1877,7 +2015,7 @@ export const AiParseSection = forwardRef<
           </Button>
           {isRunning ? (
             <Button type="button" variant="destructive" onClick={handleCancel}>
-              Cancel
+              Cancel parsing (stop AI processing)
             </Button>
           ) : null}
         </div>
