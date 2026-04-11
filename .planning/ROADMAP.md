@@ -277,7 +277,7 @@
 
 **Goal:** Hợp nhất chiến lược parse text/OCR/vision thành một engine rõ ràng: text pipeline hiện có nhưng chưa nối vào UI parse chính; UI đang nghiêng về vision; cần policy chọn mode phù hợp theo loại tài liệu (native text vs scanned vs hybrid).
 
-**Status:** Planned — `12-01-PLAN.md`, `12-02-PLAN.md` (execute wave 1 then wave 2)
+**Status:** Complete — `12-01-SUMMARY.md`, `12-02-SUMMARY.md`
 
 **Depends on:** Phase 11 (orchestration/state machine split makes a clean seam for engine + policy).
 
@@ -293,7 +293,7 @@
 - `src/components/ai/AiParseSection.tsx` (and post–Phase 11 hook/presenters)
 - `src/lib/pdf/extractText.ts`, layout/OCR/chunk modules under `src/lib/`
 
-**Plans:** 2 — `12-01-PLAN.md` (pure `parseRoutePolicy` lib), `12-02-PLAN.md` (wire `getDocument` + policy into `AiParseSection` / strategy panel + logs). Execute wave 1 then wave 2.
+**Plans:** 2/2 plans complete
 
 ---
 
@@ -301,7 +301,7 @@
 
 **Goal:** Bổ sung **monitoring** và **error reporting** ngoài `pipelineLog` cục bộ — hiện không có remote log shipping, analytics hay Sentry. Với pipeline AI nhiều bước, cần **observability** để biết lỗi nằm ở **render PDF**, **OCR**, **vision**, **mapping**, hay **persistence**, không chỉ thông báo lỗi chung.
 
-**Status:** Not planned yet
+**Status:** Planned — ready to execute (`13-01`, `13-02`, `13-VALIDATION.md`)
 
 **Depends on:** Phase 6 (pipeline logging / verbosity); planner may sequence with Phase 12 or earlier — observability is cross-cutting.
 
@@ -318,7 +318,7 @@
 - `src/lib/ai/runOcrSequential.ts`, `runVisionSequential.ts`, `runLayoutChunkParse.ts`
 - `src/lib/db/studySetDb.ts`, `src/components/ai/AiParseSection.tsx`
 
-**Plans:** 0 — run `/gsd-plan-phase 13` to break down.
+**Plans:** 2 — `13-01-PLAN.md` (Sentry/bootstrap + README), `13-02-PLAN.md` (`reportPipelineError` + wire OCR/vision/chunk). Execute wave 1 then wave 2.
 
 ---
 
@@ -362,8 +362,8 @@
 | 9 | Math / LaTeX notation in stems & options (`docs/NOTES-latex-math-rendering.md`) | Not planned yet |
 | 10 | Persistent vision staging (object storage / signed URLs) | Complete |
 | 11 | Split `AiParseSection` (lib + presenters; hook/FSM optional) | Complete |
-| 12 | Unified parse engine (text/OCR/vision + document-type policy) | Planned (12-01, 12-02) |
-| 13 | Monitoring & error reporting (pipeline observability) | Not planned yet |
+| 12 | Unified parse engine (text/OCR/vision + document-type policy) | Complete |
+| 13 | Monitoring & error reporting (pipeline observability) | Planned |
 | 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
