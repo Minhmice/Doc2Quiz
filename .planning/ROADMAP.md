@@ -437,7 +437,7 @@ Plans:
 
 **Goal:** Định nghĩa `parseScore` thành contract chính thức — không chỉ badge: schema rõ cho **structure quality**, **provenance quality**, **OCR confidence**, **retry history**. Tách **`ocrQuality`** (theo trang / pipeline OCR) và **`questionQuality`** (MCQ sau parse); một trang OCR tốt không suy ra câu hỏi tốt — hai score không gộp làm một.
 
-**Status:** Planned — `18-01-PLAN.md`, `18-02-PLAN.md`
+**Status:** Complete — 2026-04-11 — `18-01-SUMMARY.md`, `18-02-SUMMARY.md`
 
 **Depends on:** Phase 17 (BYOK estimate). Schema + pure derivations do **not** require Phase 17 code; any UI next to the estimate panel waits for Phase 17.
 
@@ -448,11 +448,11 @@ Plans:
 - **`src/types/parseScore.ts`** — `parseScoreSchemaVersion`, `OcrPageQuality` / run-level OCR aggregates, `QuestionParseQuality` (structure + provenance), `ParseRetryHistory`.
 - **`src/lib/ai/deriveParseScores.ts`** — deterministic derivation + display DTO helper; optional thin bridge in `mappingQuality.ts` without breaking review badges.
 
-**Plans:** 2 plans in 2 waves
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] `18-01-PLAN.md` — Contract doc + `parseScore` types (`18-01-SUMMARY.md` after execute).
-- [ ] `18-02-PLAN.md` — `deriveParseScores` + optional `mappingQuality` re-export; `npm run lint` + `npm run build` (`18-02-SUMMARY.md` after execute).
+- [x] `18-01-PLAN.md` — Contract doc + `parseScore` types (`18-01-SUMMARY.md`).
+- [x] `18-02-PLAN.md` — `deriveParseScores` + `mappingQuality` re-exports; lint + build (`18-02-SUMMARY.md`).
 
 ---
 
@@ -460,7 +460,7 @@ Plans:
 
 **Goal:** Thiết kế **retry policy theo stage** — lỗi OCR, parse (LLM), validation cấu trúc MCQ, mapping trang, và persistence (IDB) **không** dùng chung một kiểu backoff/retry; mỗi stage có chính sách rõ (idempotent, user-prompt, abandon, v.v.). Làm rõ hành vi khi **provider không hỗ trợ** một mode (vision multimodal, chunk forward, v.v.). Thay cảnh báo muộn trong doc bằng **capability matrix** (mode × provider) hiển thị/disable sớm trong UI. **Đơn giản hóa BYOK:** bỏ nhánh GPT / Anthropic / Custom; chỉ **ba ô nhập** (một đường OpenAI-compatible: ví dụ base URL + API key + model id — planner chốt nhãn và migration từ `parseLocalStorage` / settings hiện tại).
 
-**Status:** Planned — `19-CONTEXT.md`, `19-01-PLAN.md`, `19-02-PLAN.md`
+**Status:** Complete — `19-01-SUMMARY.md`, `19-02-SUMMARY.md`
 
 **Depends on:** Phase 13 (stage-tagged observability); Phase 14 (mapping failure surfaces); Phase 17 (estimate UI có thể tái dùng copy/layout); Phase 18 (parseScore / retry history nếu cần nối contract). Phase 12 không chặn nhưng policy route nên đọc `parseRoutePolicy`.
 
@@ -468,11 +468,11 @@ Plans:
 
 **Deliverables (high level):** `forwardSettings` + migration; `parseCapabilities`; `pipelineStageRetry`; settings + parse + estimate wired; OCR/parse/IDB retries; docs.
 
-**Plans:** 2 — execute wave 1 then wave 2 (`19-02` depends_on `19-01`).
+**Plans:** 2/2 complete
 
 Plans:
-- [ ] `19-01-PLAN.md` — Forward BYOK module, migration, declarative `parseCapabilities`, `docs/BYOK-forward-only.md`, types (`19-01-SUMMARY.md` on complete).
-- [ ] `19-02-PLAN.md` — `pipelineStageRetry`, OCR/parse/IDB wiring, settings UI 3-field, `AiParseSection` + estimate gating, WORKFLOW doc (`19-02-SUMMARY.md` on complete).
+- [x] `19-01-PLAN.md` — Forward BYOK module, migration, declarative `parseCapabilities`, `docs/BYOK-forward-only.md` (`19-01-SUMMARY.md`).
+- [x] `19-02-PLAN.md` — `pipelineStageRetry`, OCR/parse/IDB wiring, settings UI 3-field, `AiParseSection` + capability gating, WORKFLOW doc (`19-02-SUMMARY.md`).
 
 ---
 
@@ -497,8 +497,8 @@ Plans:
 | 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Complete |
 | 16 | Learning vs parse domain boundary | Complete |
 | 17 | BYOK parse preview (calls / tokens / time before run) | Complete |
-| 18 | parseScore contract (ocrQuality vs questionQuality) | Planned (18-01, 18-02) |
-| 19 | Stage retries + capability matrix + minimal BYOK (3 fields) | Planned |
+| 18 | parseScore contract (ocrQuality vs questionQuality) | Complete |
+| 19 | Stage retries + capability matrix + minimal BYOK (3 fields) | Complete |
 
 v1 requirements covered: 23 / 23 ✓
 

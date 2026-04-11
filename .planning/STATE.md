@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T12:36:53.386Z"
+last_updated: "2026-04-11T18:30:00.000Z"
 progress:
   total_phases: 19
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 39
-  completed_plans: 35
-  percent: 90
+  completed_plans: 38
+  percent: 97
 ---
 
 # Doc2Quiz — State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Milestone execute queue shows 16/16 phases done; follow-on work is **optional hardening and UX** (e.g. Phase 6 observability, Phase 9 math polish, Phase 14 mapping-quality UX) — see `ROADMAP.md`, not blockers for the core loop.
+**Current focus:** Phase 18 complete (`parseScore` doc + types + `deriveParseScores`); next open work per `ROADMAP.md` (e.g. Phase 14, 6, 9).
 
 ## Current Status
 
@@ -42,10 +42,11 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
-- Phase 19 plan (`/gsd-plan-phase 19`): `19-CONTEXT.md`, `19-01-PLAN.md` (wave 1 — forwardSettings, parseCapabilities, doc), `19-02-PLAN.md` (wave 2 — retries, UI 3-field, AiParseSection, WORKFLOW); roadmap Phase 19 → **Planned**.
+- Phase 19 execute (`/gsd-execute-phase 19`): `forwardSettings.ts`, `parseCapabilities.ts`, `pipelineStageRetry.ts`, storage bridge, settings 3-field form, `AiParseSection` capability gating, OCR/parse/IDB retries, `parseChunk` OpenAI-compat-only, WORKFLOW + `docs/BYOK-forward-only.md`; `19-01-SUMMARY.md`, `19-02-SUMMARY.md`; roadmap Phase 19 → **Complete** (sau plan `19-CONTEXT` / `19-01` / `19-02`).
 - Phase 19 added: **Stage-specific retry policy** (OCR / parse / validation / mapping / persistence — không gộp một kiểu retry); **capability matrix** provider × mode (tránh lỗi muộn như vision + Anthropic native); **BYOK tối giản** — bỏ GPT / Anthropic / Custom, chỉ **ba trường nhập** một đường OpenAI-compatible (`/gsd-add-phase`).
 - Phase 17 execute (`/gsd-execute-phase 17`): `estimateParseRun.ts`, `docs/BYOK-parse-estimate.md`, `AiParseEstimatePanel.tsx`, `AiParseSection` wiring; `17-01-SUMMARY.md`, `17-02-SUMMARY.md`; roadmap Phase 17 marked complete + coverage row.
 - Phase 18 plan (`/gsd-plan-phase 18`): `18-01-PLAN.md`, `18-02-PLAN.md`, `18-VALIDATION.md` — PARSE-SCORE doc + `parseScore` types + `deriveParseScores`; plan-checker passed; research off; Nyquist via `18-VALIDATION.md`.
+- Phase 18 execute (`/gsd-execute-phase 18`): `docs/PARSE-SCORE-contract.md`, `src/types/parseScore.ts`, `src/lib/ai/deriveParseScores.ts`, `mappingQuality.ts` re-exports; `18-01-SUMMARY.md`, `18-02-SUMMARY.md`; roadmap Phase 18 → **Complete**.
 - Phase 18 added: **parseScore contract** — schema chính thức (structure quality, provenance quality, OCR confidence, retry history); tách `ocrQuality` vs `questionQuality`; không gộp “trang OCR tốt” với “câu hỏi tốt” (`/gsd-add-phase`).
 - Phase 17 plan (`/gsd-plan-phase 17`): `17-01-PLAN.md`, `17-02-PLAN.md` — `estimateParseRun` + BYOK doc + estimate panel (`aria-live`); tokens upper-bound heuristics; Nyquist skipped (research off).
 - Phase 17 added: BYOK — ước lượng cost/time (call/token/page) **trước** khi parse; UI estimate + công thức từ metadata, không gọi API để đo (`/gsd-add-phase`).
