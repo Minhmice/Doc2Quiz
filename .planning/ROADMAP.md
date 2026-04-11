@@ -224,6 +224,55 @@
 
 ---
 
+## Phase 10: Persistent vision staging: object storage or signed URLs (replace in-memory serverless-unsafe store)
+
+**Goal:** Make vision image staging reliable on serverless multi-instance deploys by persisting staged bytes outside process memory (object storage or time-limited signed URLs), keeping current limits (size cap, short-lived access) and URLs that upstream vision providers can fetch over HTTPS.
+
+**Status:** Planned — ready to execute
+
+**Depends on:** None (cross-cutting infrastructure)
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- Replace in-memory `visionStagingStore` with a shared backend store (e.g. S3/R2 + presigned URLs, or Vercel Blob) so POST and upstream GET are not tied to one instance.
+- POST `/api/ai/vision-staging` returns a fetchable URL; adjust GET/proxy behavior as needed for the chosen backend.
+- Environment-based configuration; clear local-dev story (optional in-memory fallback when unset, or documented env).
+- Update `stageVisionDataUrl.ts` comments and deployment notes (README or existing ops doc) so production requirements are explicit.
+
+**Canonical refs:**
+- `src/lib/ai/visionStagingStore.ts`
+- `src/app/api/ai/vision-staging/route.ts`
+- `src/app/api/ai/vision-staging/[id]/route.ts`
+- `src/lib/ai/stageVisionDataUrl.ts`
+
+**Plans:** 1 — `10-01-PLAN.md` (verify + harden + README + SUMMARY; implementation uses Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set). R2/S3 presigned parity is out of scope unless added in a follow-up plan.
+
+---
+
+## Phase 11: Split AiParseSection — orchestration hook, parse state machine, presenters
+
+**Goal:** Decompose `AiParseSection` (documented as a large client component owning OCR, layout chunks, vision fallback, and progress) into **orchestration hook + parse state machine + presenter components** so the parse UI does not become a god-component.
+
+**Status:** Not planned yet
+
+**Depends on:** Phase 7 (current chunk/vision/OCR flow concentrated in `AiParseSection`); planner may sequence after Phase 6 hardening as needed.
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- **Orchestration hook** — wires providers, file/text inputs, mode selection, and side-effects; thin route/shell for the section.
+- **Parse state machine** — explicit states/transitions for OCR → chunk → AI → merge → vision fallback → progress/errors (testable, loggable).
+- **Presenter components** — progress, inspector/debug, mode toggles, error surfaces; no business logic lumped with layout.
+
+**Canonical refs:**
+- `src/components/ai/AiParseSection.tsx`
+- `.planning/codebase/WORKFLOW-OCR-AI-QUIZ.md` (if present)
+
+**Plans:** 2 — `11-01-PLAN.md` (lib extraction: preferences + attach images), `11-02-PLAN.md` (presenter components). Execute wave 1 then wave 2. Optional follow-up `11-03`: dedicated `useAiParseOrchestration` hook + explicit parse state machine module if still needed after 01/02 land.
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -237,6 +286,8 @@
 | 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Complete |
 | 8 | (flashcards — see `docs/BACKLOG-flashcards.md`, 08-CONTEXT) | Discuss |
 | 9 | Math / LaTeX notation in stems & options (`docs/NOTES-latex-math-rendering.md`) | Not planned yet |
+| 10 | Persistent vision staging (object storage / signed URLs) | Planned |
+| 11 | Split `AiParseSection` (hook + state machine + presenters) | Planned (11-01, 11-02; optional 11-03 hook/FSM) |
 
 v1 requirements covered: 23 / 23 ✓
 

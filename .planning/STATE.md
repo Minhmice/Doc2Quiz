@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T10:59:17.605Z"
+last_updated: "2026-04-11T11:10:27.675Z"
 progress:
-  total_phases: 9
-  completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  total_phases: 11
+  completed_phases: 8
+  total_plans: 23
+  completed_plans: 20
+  percent: 87
 ---
 
 # Doc2Quiz — State
@@ -42,6 +42,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
+- Phase 10 plan (`/gsd-plan-phase 10`): `10-01-PLAN.md` — verify/harden vision staging (POST `Cache-Control`, README TTL/abuse notes, `10-01-SUMMARY.md`); checker passed; Nyquist skipped (research off).
+- Phase 11 added: Split `AiParseSection` — orchestration hook + parse state machine + presenter components (avoid god-component: OCR, chunks, vision fallback, progress in one file). Roadmap entry cleaned + phase dir renamed to `11-split-aiparsesection-orchestration` (`/gsd-add-phase`).
+- Phase 10 added: Persistent vision staging — replace in-memory vision staging with object storage or signed URLs so serverless multi-instance deploys do not lose staged images between POST and upstream GET (`/gsd-add-phase`).
 - Phase 7 added: Layout-aware chunk-based parsing (token-optimized) — OCR blocks → semantic chunks → per-chunk text AI parse → merge; full-page vision as fallback; see `07-CONTEXT.md`.
 - Phase 7 discuss (`/gsd-discuss-phase 7`): gray areas closed in `07-CONTEXT.md` (D-16–D-26: OCR prereq, providers, sort key, hybrid threshold 85%, bulk fallback rules, Question optional fields, debug UI).
 - Phase 7 plan (`/gsd-plan-phase 7`): `07-01-PLAN.md`, `07-02-PLAN.md` added — ready for `/gsd-execute-phase 7` or manual execution.
