@@ -40,6 +40,26 @@ export function questionsFromAssistantContent(content: string): Question[] {
   return validateQuestionsFromJson(parsed);
 }
 
+/** Accept flat `{ question, options, correctIndex }` or legacy `{ questions: [...] }` for single-chunk prompts. */
+function normalizeSingleChunkModelJson(raw: unknown): unknown {
+  if (raw === null || typeof raw !== "object") {
+    return { questions: [] };
+  }
+  const o = raw as Record<string, unknown>;
+  if (Array.isArray(o.questions)) {
+    return raw;
+  }
+  if (typeof o.question === "string" && Array.isArray(o.options)) {
+    return { questions: [raw] };
+  }
+  return { questions: [] };
+}
+
+function singleMcqQuestionsFromAssistantContent(content: string): Question[] {
+  const parsed = parseJsonFromModelText(content);
+  return validateQuestionsFromJson(normalizeSingleChunkModelJson(parsed));
+}
+
 export type ParseChunkOnceParams = {
   provider: AiProvider;
   apiKey: string;
@@ -127,6 +147,7 @@ async function parseOpenAI(
   signal: AbortSignal,
   forwardProvider: "openai" | "custom",
   systemPrompt: string,
+  extractQuestions: (content: string) => Question[] = questionsFromAssistantContent,
 ): Promise<Question[]> {
   const res = await forwardAiPost({
     provider: forwardProvider,
@@ -183,7 +204,7 @@ async function parseOpenAI(
     throw new Error("Empty OpenAI message content");
   }
 
-  return questionsFromAssistantContent(content);
+  return extractQuestions(content);
 }
 
 async function parseAnthropic(
@@ -193,6 +214,7 @@ async function parseAnthropic(
   chunkText: string,
   signal: AbortSignal,
   systemPrompt: string,
+  extractQuestions: (content: string) => Question[] = questionsFromAssistantContent,
 ): Promise<Question[]> {
   const res = await forwardAiPost({
     provider: "anthropic",
@@ -251,7 +273,7 @@ async function parseAnthropic(
     throw new Error("Empty Anthropic message content");
   }
 
-  return questionsFromAssistantContent(joined);
+  return extractQuestions(joined);
 }
 
 export async function parseChunkOnce(
@@ -294,6 +316,9 @@ export async function parseChunkOnce(
 
 /**
  * Text-only: at most one MCQ from a small OCR chunk (OpenAI / Anthropic / custom).
+ *
+ * D-27: Per-chunk AI wall time is measured only in `runLayoutChunkParse` around each
+ * injected `parse` call; do not add inner wall-clock timing here (avoids double-counting).
  */
 export async function parseChunkSingleMcqOnce(
   params: ParseChunkOnceParams,
@@ -311,6 +336,7 @@ export async function parseChunkSingleMcqOnce(
       signal,
       "openai",
       MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+      singleMcqQuestionsFromAssistantContent,
     );
   } else if (provider === "custom") {
     qs = await parseOpenAI(
@@ -321,6 +347,7 @@ export async function parseChunkSingleMcqOnce(
       signal,
       "custom",
       MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+      singleMcqQuestionsFromAssistantContent,
     );
   } else {
     qs = await parseAnthropic(
@@ -330,6 +357,7 @@ export async function parseChunkSingleMcqOnce(
       chunkText,
       signal,
       MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+      singleMcqQuestionsFromAssistantContent,
     );
   }
   if (qs.length === 0) {
