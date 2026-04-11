@@ -193,6 +193,22 @@
 
 ---
 
+## Phase 9: 9
+
+**Goal:** [To be planned]
+
+**Requirements:** TBD
+
+**Depends on:** Phase 8
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run `/gsd-plan-phase 9` to break down)
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -205,6 +221,7 @@
 | 6 | (hardening — see 06-CONTEXT) | In progress |
 | 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Complete |
 | 8 | (flashcards — see `docs/BACKLOG-flashcards.md`, 08-CONTEXT) | Discuss |
+| 9 | TBD | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
 
