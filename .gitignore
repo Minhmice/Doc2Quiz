@@ -30,3 +30,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# generated MathJax browser bundle (copied by npm run copy-mathjax / postinstall)
+/public/mathjax/es5/

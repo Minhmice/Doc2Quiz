@@ -1,6 +1,7 @@
 "use client";
 
 import type { Question } from "@/types/question";
+import { MathText } from "@/components/math/MathText";
 import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
 import { QuestionEditor } from "@/components/review/QuestionEditor";
 import { StoredImage } from "@/components/media/StoredImage";
@@ -73,7 +74,10 @@ export function QuestionCard({
         </CardContent>
       ) : (
         <CardContent className="space-y-2 pt-0 text-sm text-card-foreground">
-          <p className="whitespace-pre-wrap">{question.question}</p>
+          <MathText
+            source={question.question}
+            className="block text-sm leading-snug text-card-foreground"
+          />
           {question.questionImageId ? (
             <StoredImage
               mediaId={question.questionImageId}

@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { MathText } from "@/components/math/MathText";
 
 const LABELS = ["A", "B", "C", "D"] as const;
 
@@ -46,9 +47,9 @@ function ResultRow({
       <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
         Q{index}
       </span>
-      <p className="min-w-0 flex-1 truncate text-base leading-normal text-foreground">
-        {stem}
-      </p>
+      <div className="min-w-0 flex-1 line-clamp-2 text-base leading-normal text-foreground">
+        <MathText source={stem} className="text-base leading-normal" />
+      </div>
       <Badge
         variant="secondary"
         className={
@@ -435,9 +436,10 @@ export function PlaySession({
         <Progress value={progressPct} />
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-base font-medium leading-snug text-card-foreground">
-          {current.question}
-        </p>
+        <MathText
+          source={current.question}
+          className="text-base font-medium leading-snug text-card-foreground"
+        />
         {current.questionImageId ? (
           <div className="mt-2">
             <MediaImage mediaId={current.questionImageId} />
@@ -489,7 +491,7 @@ export function PlaySession({
                   {LABELS[idx]}
                 </span>
                 <span className="min-w-0 flex-1 pt-0.5 leading-snug">
-                  {opt}
+                  <MathText source={opt} className="leading-snug" />
                   {current.optionImageIds?.[i] ? (
                     <MediaImage mediaId={current.optionImageIds[i]!} />
                   ) : null}

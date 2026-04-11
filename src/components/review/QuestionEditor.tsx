@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { deleteMedia, putMediaBlob } from "@/lib/db/studySetDb";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
+import { MathText } from "@/components/math/MathText";
 
 const MAX_IMAGE_BYTES = 1_500_000;
 
@@ -66,6 +67,12 @@ export function QuestionEditor({
     defaultValues: valuesFromQuestion(question),
     mode: "onBlur",
   });
+
+  const watchQuestion = useWatch({ control: form.control, name: "question" });
+  const watchOpt0 = useWatch({ control: form.control, name: "option0" });
+  const watchOpt1 = useWatch({ control: form.control, name: "option1" });
+  const watchOpt2 = useWatch({ control: form.control, name: "option2" });
+  const watchOpt3 = useWatch({ control: form.control, name: "option3" });
 
   useEffect(() => {
     form.reset(valuesFromQuestion(question));
@@ -210,6 +217,14 @@ export function QuestionEditor({
                 {...form.register("question")}
                 aria-invalid={Boolean(form.formState.errors.question)}
               />
+              <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                <p className="text-xs font-medium text-muted-foreground">Preview</p>
+                <MathText
+                  source={watchQuestion ?? ""}
+                  debounceMs={400}
+                  className="mt-1 text-sm text-card-foreground"
+                />
+              </div>
               <FieldError errors={[form.formState.errors.question]} />
             </FieldContent>
           </Field>
@@ -255,6 +270,7 @@ export function QuestionEditor({
           const idx = i as 0 | 1 | 2 | 3;
           const oid = optionImageIds[idx];
           const err = form.formState.errors[name];
+          const optPreview = [watchOpt0, watchOpt1, watchOpt2, watchOpt3][i];
           return (
             <Field key={label}>
               <FieldLabel htmlFor={`q-opt-${question.id}-${i}`}>
@@ -266,6 +282,16 @@ export function QuestionEditor({
                   {...form.register(name)}
                   aria-invalid={Boolean(err)}
                 />
+                <div className="mt-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Preview
+                  </p>
+                  <MathText
+                    source={optPreview ?? ""}
+                    debounceMs={400}
+                    className="mt-1 text-sm text-card-foreground"
+                  />
+                </div>
                 <FieldError errors={[err]} />
               </FieldContent>
               <div className="flex flex-wrap items-center gap-2">

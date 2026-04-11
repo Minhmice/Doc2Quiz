@@ -1,4 +1,5 @@
 import type { Question } from "@/types/question";
+import { MathText } from "@/components/math/MathText";
 import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,9 +32,10 @@ export function QuestionPreviewList({
                   Draft {i + 1}
                 </Badge>
               </div>
-              <p className="text-sm font-medium text-card-foreground">
-                {q.question}
-              </p>
+              <MathText
+                source={q.question}
+                className="text-sm font-medium text-card-foreground"
+              />
               {q.questionImageId ? (
                 <StoredImage mediaId={q.questionImageId} alt="" />
               ) : null}

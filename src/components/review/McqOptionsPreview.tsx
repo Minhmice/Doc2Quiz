@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { MathText } from "@/components/math/MathText";
 import { hasValidCorrectIndex } from "@/lib/review/validateMcq";
 import type { Question } from "@/types/question";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ export function McqOptionsPreview({
                 {LABELS[idx]}
               </span>
               <span className="min-w-0 flex-1 leading-snug">
-                {opt}
+                <MathText source={opt} className="inline min-w-0" />
                 {renderAfterOption?.(i) ? (
                   <span className="mt-1 block">{renderAfterOption(i)}</span>
                 ) : null}

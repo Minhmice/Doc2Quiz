@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { MathText } from "@/components/math/MathText";
 
 function MediaImage({ mediaId }: { mediaId: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -249,18 +250,20 @@ export function FlashcardSession({ studySetId }: FlashcardSessionProps) {
         <CardContent className="min-h-[12rem] space-y-4">
           {!flipped ? (
             <>
-              <p className="text-base leading-normal text-card-foreground">
-                {current.question}
-              </p>
+              <MathText
+                source={current.question}
+                className="text-base leading-normal text-card-foreground"
+              />
               {current.questionImageId ? (
                 <MediaImage mediaId={current.questionImageId} />
               ) : null}
             </>
           ) : (
             <>
-              <p className="text-base leading-normal text-card-foreground">
-                {backText}
-              </p>
+              <MathText
+                source={backText}
+                className="text-base leading-normal text-card-foreground"
+              />
               {backImageId ? <MediaImage mediaId={backImageId} /> : null}
             </>
           )}
