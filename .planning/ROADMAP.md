@@ -408,7 +408,7 @@ Plans:
 
 **Goal:** Hiển thị ước lượng **cost/time** (và độ tin cậy của ước lượng) **trước khi** người dùng bấm chạy parse. App **BYOK** — người dùng cần thấy rõ **số call API ước lượng**, **token/page hoặc token/chunk** (theo strategy), và **thời gian wall-clock tham chiếu** (range hoặc upper bound) để quyết định có chạy hay đổi strategy/provider.
 
-**Status:** Planned — `17-01-PLAN.md`, `17-02-PLAN.md` (execute wave 1 then wave 2)
+**Status:** Complete — `17-01-SUMMARY.md`, `17-02-SUMMARY.md`
 
 **Depends on:** Phase 7 (đường parse Fast/Hybrid/Accurate, chunk vs vision); Phase 12 (tín hiệu tài liệu + `parseRoutePolicy`). Phase 16 không chặn — chỉ ảnh hưởng vị trí UI nếu tách module.
 
@@ -425,7 +425,11 @@ Plans:
 - `src/lib/ai/parseRoutePolicy.ts`, `src/lib/pdf/renderPagesToImages.ts` (page cap constants)
 - `src/lib/ai/runLayoutChunkParse.ts`, `src/lib/ai/runVisionSequential.ts` (step shapes for counting)
 
-**Plans:** 2 — `17-01-PLAN.md` (pure `estimateParseRun` + `docs/BYOK-parse-estimate.md`), `17-02-PLAN.md` (`AiParseEstimatePanel` + `AiParseSection` wiring, `aria-live`). Execute wave 1 then wave 2.
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] `17-01-PLAN.md` — Pure `estimateParseRun` + `docs/BYOK-parse-estimate.md` (`17-01-SUMMARY.md`).
+- [x] `17-02-PLAN.md` — `AiParseEstimatePanel` + `AiParseSection` wiring, `aria-live` (`17-02-SUMMARY.md`).
 
 ---
 
@@ -433,18 +437,41 @@ Plans:
 
 **Goal:** Định nghĩa `parseScore` thành contract chính thức — không chỉ badge: schema rõ cho **structure quality**, **provenance quality**, **OCR confidence**, **retry history**. Tách **`ocrQuality`** (theo trang / pipeline OCR) và **`questionQuality`** (MCQ sau parse); một trang OCR tốt không suy ra câu hỏi tốt — hai score không gộp làm một.
 
-**Status:** Not planned yet
+**Status:** Planned — `18-01-PLAN.md`, `18-02-PLAN.md`
 
-**Depends on:** Phase 17
+**Depends on:** Phase 17 (BYOK estimate). Schema + pure derivations do **not** require Phase 17 code; any UI next to the estimate panel waits for Phase 17.
 
 **Requirements:** TBD
 
-**Deliverables (high level):** TBD — run `/gsd-plan-phase 18`.
+**Deliverables (high level):**
+- **`docs/PARSE-SCORE-contract.md`** — versioned contract, non-goals, field mapping, OCR vs question separation.
+- **`src/types/parseScore.ts`** — `parseScoreSchemaVersion`, `OcrPageQuality` / run-level OCR aggregates, `QuestionParseQuality` (structure + provenance), `ParseRetryHistory`.
+- **`src/lib/ai/deriveParseScores.ts`** — deterministic derivation + display DTO helper; optional thin bridge in `mappingQuality.ts` without breaking review badges.
 
-**Plans:** 0 — run `/gsd-plan-phase 18` to break down.
+**Plans:** 2 plans in 2 waves
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 18 to break down)
+- [ ] `18-01-PLAN.md` — Contract doc + `parseScore` types (`18-01-SUMMARY.md` after execute).
+- [ ] `18-02-PLAN.md` — `deriveParseScores` + optional `mappingQuality` re-export; `npm run lint` + `npm run build` (`18-02-SUMMARY.md` after execute).
+
+---
+
+## Phase 19: Stage-specific retries, capability matrix, minimal BYOK (3 fields)
+
+**Goal:** Thiết kế **retry policy theo stage** — lỗi OCR, parse (LLM), validation cấu trúc MCQ, mapping trang, và persistence (IDB) **không** dùng chung một kiểu backoff/retry; mỗi stage có chính sách rõ (idempotent, user-prompt, abandon, v.v.). Làm rõ hành vi khi **provider không hỗ trợ** một mode (vision multimodal, chunk forward, v.v.). Thay cảnh báo muộn trong doc bằng **capability matrix** (mode × provider) hiển thị/disable sớm trong UI. **Đơn giản hóa BYOK:** bỏ nhánh GPT / Anthropic / Custom; chỉ **ba ô nhập** (một đường OpenAI-compatible: ví dụ base URL + API key + model id — planner chốt nhãn và migration từ `parseLocalStorage` / settings hiện tại).
+
+**Status:** Not planned yet
+
+**Depends on:** Phase 13 (stage-tagged observability); Phase 14 (mapping failure surfaces); Phase 17 (estimate UI có thể tái dùng copy/layout); Phase 18 (parseScore / retry history nếu cần nối contract). Phase 12 không chặn nhưng policy route nên đọc `parseRoutePolicy`.
+
+**Requirements:** TBD
+
+**Deliverables (high level):** TBD — run `/gsd-plan-phase 19`.
+
+**Plans:** 0 — run `/gsd-plan-phase 19` to break down.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 19 to break down)
 
 ---
 
@@ -468,8 +495,9 @@ Plans:
 | 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Planned |
 | 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Complete |
 | 16 | Learning vs parse domain boundary | Complete |
-| 17 | BYOK parse preview (calls / tokens / time before run) | Planned (17-01, 17-02) |
-| 18 | parseScore contract (ocrQuality vs questionQuality) | Not planned yet |
+| 17 | BYOK parse preview (calls / tokens / time before run) | Complete |
+| 18 | parseScore contract (ocrQuality vs questionQuality) | Planned |
+| 19 | Stage retries + capability matrix + minimal BYOK (3 fields) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
 
