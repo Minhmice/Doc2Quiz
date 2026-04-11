@@ -11,6 +11,7 @@ import {
   putDraftQuestions,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
+import { countUncertainMappings } from "@/lib/learning";
 import { allMcqsComplete } from "@/lib/review/validateMcq";
 import { ReviewList } from "@/components/review/ReviewList";
 import { Button } from "@/components/ui/button";
@@ -152,6 +153,7 @@ export function ReviewSection({
 
   const removed = Math.max(0, initialTotalRef.current - questions.length);
   const approveDisabled = questions.length === 0;
+  const uncertainMappingCount = countUncertainMappings(questions);
 
   if (loading) {
     return (
@@ -179,6 +181,17 @@ export function ReviewSection({
       <p className="mt-4 text-sm font-medium text-foreground">
         {questions.length} questions ready — {removed} removed
       </p>
+
+      {uncertainMappingCount > 0 ? (
+        <Alert className="mt-3 border-amber-500/50 bg-amber-50/80 text-amber-950 dark:bg-amber-950/20 dark:text-amber-50">
+          <AlertTitle>Page mapping needs a look</AlertTitle>
+          <AlertDescription>
+            {uncertainMappingCount} question
+            {uncertainMappingCount === 1 ? "" : "s"} have uncertain or missing
+            page mapping. Review page mapping in each card below.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {approveError ? (
         <Alert variant="destructive" className="mt-3">
