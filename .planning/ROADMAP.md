@@ -168,6 +168,31 @@
 
 ---
 
+## Phase 8: Flashcards mode
+
+**Goal:** Add a dedicated **flashcard** study mode alongside MCQ play: flip front/back with keyboard, advance through cards, reusing **study sets** and **IndexedDB** (`StudySetMeta`, approved bank, media) — per `docs/BACKLOG-flashcards.md`.
+
+**Status:** Context gathering (discuss-phase)
+
+**Requirements covered:** (backlog — extend REQUIREMENTS when promoted) PRAC-adjacent study UX; no new cloud dependency.
+
+**Deliverables (v1 scope):**
+- **Data:** Derive card faces from existing **`Question`**: front = stem (+ optional `questionImageId`); back = correct option text (+ optional image on correct index) — **no** new persisted `Flashcard` type in v1.
+- **UI:** Entry from set play flow — **either** segmented **Quiz | Flashcards** on `/sets/[id]/play` **or** dedicated **`/sets/[id]/flashcards`** under the same set layout (exact choice in phase CONTEXT).
+- **Keyboard:** **Space** to flip; **ArrowLeft / ArrowRight** (or Up/Down) to previous/next card; focus management so keys work without a prior click (align with Phase 4 keyboard-first intent).
+- **Session:** Card index + flipped state; optional thin progress (reuse patterns from `PlaySession` / set shell).
+
+**Explicitly out of v1 (Phase 8):** standalone `Flashcard` schema + editor; AI emit flashcard JSON; spaced repetition / mistake deck (defer to later phases or backlog).
+
+**Canonical refs:**
+- `docs/BACKLOG-flashcards.md`
+- `src/components/play/PlaySession.tsx` — MCQ session, bank load, media, results patterns
+- `src/app/(app)/sets/[id]/play/page.tsx` — set play shell
+- `src/lib/db/studySetDb.ts` — `getApprovedBank`, media
+- `src/types/question.ts` — `Question`
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -179,6 +204,7 @@
 | 5 | SCORE-01–04 | Pending |
 | 6 | (hardening — see 06-CONTEXT) | In progress |
 | 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Planned |
+| 8 | (flashcards — see `docs/BACKLOG-flashcards.md`, 08-CONTEXT) | Discuss |
 
 v1 requirements covered: 23 / 23 ✓
 
