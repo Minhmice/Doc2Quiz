@@ -15,10 +15,10 @@
 ### AI Question Parsing
 
 - [ ] **AI-01**: User can enter and save their AI API key (stored in localStorage, never sent to own server)
-- [ ] **AI-02**: System chunks extracted text into segments suitable for AI processing
-- [ ] **AI-03**: AI converts chunks into structured MCQ format: question + 4 options + correct answer index
-- [ ] **AI-04**: System validates parsed question structure (has question, exactly 4 options, valid answer index)
-- [ ] **AI-05**: User sees progress feedback during AI extraction ("Parsing questions... 3/8 chunks done")
+- [x] **AI-02**: System chunks extracted text into segments suitable for AI processing
+- [x] **AI-03**: AI converts chunks into structured MCQ format: question + 4 options + correct answer index
+- [x] **AI-04**: System validates parsed question structure (has question, exactly 4 options, valid answer index)
+- [x] **AI-05**: User sees progress feedback during AI extraction ("Parsing questions... 3/8 chunks done")
 
 ### Question Review
 
@@ -82,10 +82,10 @@
 | PDF-03 | Phase 1 | Pending |
 | PDF-04 | Phase 1 | Pending |
 | AI-01 | Phase 2 | Pending |
-| AI-02 | Phase 2 | Pending |
-| AI-03 | Phase 2 | Pending |
-| AI-04 | Phase 2 | Pending |
-| AI-05 | Phase 2 | Pending |
+| AI-02 | Phase 2 | Complete |
+| AI-03 | Phase 2 | Complete |
+| AI-04 | Phase 2 | Complete |
+| AI-05 | Phase 2 | Complete |
 | REVIEW-01 | Phase 3 | Pending |
 | REVIEW-02 | Phase 3 | Pending |
 | REVIEW-03 | Phase 3 | Pending |

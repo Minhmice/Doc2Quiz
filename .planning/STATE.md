@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 7 — layout-aware chunk-based parsing (token-optimized); run `/gsd-plan-phase 7` after optional research.
+**Current focus:** Phase 7 — layout-aware chunk parsing executed (`07-01` / `07-02` complete); verify in-app with Fast + OCR.
 
 ## Current Status
 
@@ -30,13 +30,13 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 4 (Practice Engine): Complete
 - Phase 5 (Score & Repeat): Complete
 - Phase 6 (Pipeline Hardening & Observability): In progress (see 06-CONTEXT)
-- Phase 7 (Layout-aware chunk parsing): Planned (`07-01` / `07-02` PLAN); not executed
+- Phase 7 (Layout-aware chunk parsing): Complete — `07-01-SUMMARY.md`, `07-02-SUMMARY.md`
 
 ## Last Session
 
-**Stopped at:** Phase 07 UI-SPEC approved
-**Date:** 2026-04-08
-**Resume file:** .planning/phases/07-layout-aware-chunk-based-parsing-token-optimized/07-UI-SPEC.md
+**Stopped at:** Completed `07-01-PLAN.md` and `07-02-PLAN.md` execution
+**Date:** 2026-04-11
+**Resume file:** None
 
 ## Accumulated Context
 

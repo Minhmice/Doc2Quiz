@@ -203,7 +203,7 @@
 | 4 | PRAC-01–06 | Pending |
 | 5 | SCORE-01–04 | Pending |
 | 6 | (hardening — see 06-CONTEXT) | In progress |
-| 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Planned |
+| 7 | (layout-aware parse — see 07-CONTEXT, 07-01/02 PLAN) | Complete |
 | 8 | (flashcards — see `docs/BACKLOG-flashcards.md`, 08-CONTEXT) | Discuss |
 
 v1 requirements covered: 23 / 23 ✓
