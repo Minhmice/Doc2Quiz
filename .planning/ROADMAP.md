@@ -378,7 +378,7 @@
 
 **Goal:** Tách rõ "domain học tập" ra khỏi "domain parse tài liệu". Hiện codebase có review/play/practice/flashcards khá đầy đủ, nhưng parse pipeline vẫn là trung tâm chính. Về lâu dài nên có boundary rõ: ingestion/parsing và learning/session analytics. Như vậy feature học tập sẽ không bị dính quá chặt vào logic OCR/vision.
 
-**Status:** Planned (execute)
+**Status:** Complete — 2026-04-11
 
 **Depends on:** Phase 15 (boundary work may proceed incrementally — not a hard code gate; see plan `16-01`)
 
@@ -391,8 +391,8 @@
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] `16-01-PLAN.md` — Boundary definition: architecture doc + `@/lib/ai` inventory appendix (non-breaking).
-- [ ] `16-02-PLAN.md` — Incremental alignment: `@/lib/learning` facade; review components off deep `@/lib/ai/mappingQuality`; lint + build.
+- [x] `16-01-PLAN.md` — Boundary definition: architecture doc + `@/lib/ai` inventory appendix (`16-01-SUMMARY.md`).
+- [x] `16-02-PLAN.md` — Incremental alignment: `@/lib/learning` facade; review components off deep `@/lib/ai/mappingQuality`; lint + build (`16-02-SUMMARY.md`).
 
 ---
 
@@ -415,7 +415,7 @@ Plans:
 | 13 | Monitoring & error reporting (pipeline observability) | Complete |
 | 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Planned |
 | 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Complete |
-| 16 | Learning vs parse domain boundary | Planned |
+| 16 | Learning vs parse domain boundary | Complete |
 
 v1 requirements covered: 23 / 23 ✓
 

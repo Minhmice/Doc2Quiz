@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
+status: Ready to execute
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T11:56:27.697Z"
+last_updated: "2026-04-11T12:05:00.000Z"
 progress:
   total_phases: 16
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 33
   completed_plans: 33
   percent: 100
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 16 — Learning vs parse boundary
+**Current focus:** Phase 16 complete (`16-01`/`16-02`); open work remains Phase 14 (mapping quality), Phase 6, Phase 9, etc. — see ROADMAP.
 
 ## Current Status
 
@@ -42,6 +42,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
+- Phase 16 execute (`/gsd-execute-phase 16`): `docs/ARCHITECTURE-domain-boundaries.md`, `src/lib/learning/*`, review imports → `@/lib/learning`; `16-01-SUMMARY.md`, `16-02-SUMMARY.md`; `phase complete 16` (roadmap checkboxes + coverage row normalized manually).
 - Phase 16 plan (`/gsd-plan-phase 16`): `16-01-PLAN.md`, `16-02-PLAN.md` — architecture doc + `@/lib/learning` facade for review mapping; research off; plan-checker passed; Nyquist/VALIDATION skipped (no RESEARCH).
 - Phase 16 added: Tách rõ "domain học tập" khỏi "domain parse tài liệu" — boundary ingestion/parsing vs learning/session analytics; giảm coupling feature học với OCR/vision (`/gsd-add-phase`).
 - Phase 15 added: Server/background worker mode — PDF render + parse queue khỏi client khi scale (client-heavy: pdf.js, IDB, OCR/vision orchestration); tùy chọn opt-in, giữ local path (`/gsd-add-phase`).
