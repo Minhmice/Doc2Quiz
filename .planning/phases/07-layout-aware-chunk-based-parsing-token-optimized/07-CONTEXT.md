@@ -2,7 +2,7 @@
 
 **Gathered:** 2026-04-08  
 **Discussed:** 2026-04-08 (`/gsd-discuss-phase 7` — auto-resolve gray areas; no interactive branch); 2026-04-11 (timing granularity — interactive)  
-**Status:** Planned — **replan recommended** after timing decisions (`/gsd-plan-phase 7`); then execute `07-01-PLAN.md` then `07-02-PLAN.md`
+**Status:** Ready to execute — plans `07-01` / `07-02` + `07-UI-SPEC.md` + `07-VALIDATION.md` aligned (`/gsd-plan-phase 7` complete)
 
 <domain>
 ## Phase Boundary
