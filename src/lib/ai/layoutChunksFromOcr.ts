@@ -1,5 +1,10 @@
 import type { LayoutChunk, OcrBlock, OcrPageResult, OcrRunResult } from "@/types/ocr";
 
+/** Trim and collapse excessive blank lines before model calls (token hygiene). */
+export function normalizeChunkTextForModel(s: string): string {
+  return s.trim().replace(/\n{2,}/g, "\n");
+}
+
 /** Heuristics for “new question” boundaries in OCR block text (first line). */
 export const QUESTION_START_REGEXES: RegExp[] = [
   /^\s*Câu\s*\d+/i,
@@ -59,10 +64,11 @@ function makeChunk(
   const texts = indices
     .map((i) => page.blocks[i]?.text ?? "")
     .filter((t) => t.trim().length > 0);
+  const rawJoined = texts.join("\n\n");
   return {
     id: `p${pageIndex}-c${seq}`,
     pageIndex,
-    text: texts.join("\n\n").trim(),
+    text: normalizeChunkTextForModel(rawJoined),
     blockIndices: indices,
   };
 }
@@ -140,7 +146,10 @@ export function buildSpatialHintLine(
   return `Layout hint: chunk spans relative box x=${minX.toFixed(3)}–${maxX.toFixed(3)} y=${minY.toFixed(3)}–${maxY.toFixed(3)} (0–1 page coords).`;
 }
 
-/** User message for single-chunk MCQ extraction (OCR text + optional bbox hint). */
+/**
+ * User message for single-chunk MCQ extraction (OCR text + optional bbox hint).
+ * Spatial hint is omitted when no chunk block has a usable relative bbox (D-21).
+ */
 export function buildChunkUserContent(run: OcrRunResult, chunk: LayoutChunk): string {
   const page = run.pages.find((p) => p.pageIndex === chunk.pageIndex);
   const hint = page ? buildSpatialHintLine(page, chunk) : undefined;
@@ -182,5 +191,5 @@ export function expandChunkText(
   if (!extra) {
     return null;
   }
-  return `${chunk.text}\n\n${extra}`;
+  return normalizeChunkTextForModel(`${chunk.text}\n\n${extra}`);
 }
