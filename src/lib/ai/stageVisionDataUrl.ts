@@ -1,9 +1,12 @@
 /**
- * Many OpenAI-compatible gateways drop inline `data:image/...` URLs. Register the
- * image on this origin so upstream can fetch `https://your-app/.../vision-staging/id`.
+ * Gateways often reject inline `data:image/...`. POST to `/api/ai/vision-staging` so
+ * upstream gets an HTTPS URL (required for model image fetch).
  *
- * On serverless with multiple instances, GET may miss the POST — then callers
- * should fall back to the original data URL (handled in parseVisionPage).
+ * With `BLOB_READ_WRITE_TOKEN`: response `url` is a **public** Vercel Blob URL (same
+ * staging API stays same-origin). Without token: `url` is this origin’s GET route;
+ * server uses in-memory store with **~10 min TTL** and **max 80** entries (see
+ * `visionStagingStore.ts`). **Blob objects are not auto-deleted** by this app—unlike
+ * memory TTL—operators handle lifecycle (dashboard / policies / future job).
  */
 
 export async function stageVisionDataUrlForUpstream(

@@ -246,7 +246,7 @@
 - `src/app/api/ai/vision-staging/[id]/route.ts`
 - `src/lib/ai/stageVisionDataUrl.ts`
 
-**Plans:** 1 — `10-01-PLAN.md` (verify + harden + README + SUMMARY; implementation uses Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set). R2/S3 presigned parity is out of scope unless added in a follow-up plan.
+**Plans:** 1/1 plans complete
 
 ---
 

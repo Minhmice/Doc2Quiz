@@ -1,7 +1,19 @@
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 
+/** In-memory fallback: bounded by TTL_MS, MAX_ENTRIES, and VISION_STAGING_MAX_BYTES on POST. */
 export const VISION_STAGING_MAX_BYTES = 12 * 1024 * 1024;
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isVisionStagingId(id: string): boolean {
+  return id.length <= 64 && UUID_RE.test(id);
+}
+
+export function visionStagingBlobPathname(id: string): string {
+  return `vision-staging/${id}`;
+}
 const TTL_MS = 10 * 60 * 1000;
 const MAX_ENTRIES = 80;
 
@@ -22,7 +34,11 @@ function purgeExpired(): void {
   }
 }
 
-export function putVisionStaging(bytes: Buffer, contentType: string): string {
+export function putVisionStaging(
+  bytes: Buffer,
+  contentType: string,
+  predeterminedId?: string,
+): string {
   purgeExpired();
   while (store.size >= MAX_ENTRIES) {
     const first = store.keys().next().value;
@@ -31,7 +47,7 @@ export function putVisionStaging(bytes: Buffer, contentType: string): string {
     }
     store.delete(first);
   }
-  const id = randomUUID();
+  const id = predeterminedId ?? randomUUID();
   store.set(id, {
     bytes,
     contentType,

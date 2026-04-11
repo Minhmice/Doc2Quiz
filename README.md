@@ -120,6 +120,22 @@ http://localhost:3000
 
 ---
 
+## Environment variables
+
+* **`BLOB_READ_WRITE_TOKEN`** — Optional. When set (e.g. on Vercel after creating a Blob store), vision image staging uses [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) so serverless multi-instance deployments do not lose staged images between POST and upstream GET. If unset, staging stays in-process memory (typical for local development).
+
+### Vision staging (production)
+
+1. In Vercel: **Storage → Blob** — create or attach a store to the project.
+2. Set **`BLOB_READ_WRITE_TOKEN`** for Production (and Preview if needed), then redeploy.
+3. Confirm **Parse with vision** works: staging URLs should be HTTPS and stable across instances.
+
+**TTL:** In-memory fallback expires entries after about **10 minutes** (and caps entry count). **Public Blob uploads from this app are not deleted automatically**—plan lifecycle separately (manual cleanup, provider policies, or a future retention job).
+
+**Abuse:** `POST /api/ai/vision-staging` is **unauthenticated**; the only built-in control is the **payload size cap** (~12 MB decoded). **Rate limiting and auth are not implemented** here—treat as backlog if you expose the app broadly.
+
+---
+
 ## 📄 Usage
 
 1. Upload a `.pdf` file
