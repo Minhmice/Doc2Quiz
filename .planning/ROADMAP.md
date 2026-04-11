@@ -228,7 +228,7 @@
 
 **Goal:** Make vision image staging reliable on serverless multi-instance deploys by persisting staged bytes outside process memory (object storage or time-limited signed URLs), keeping current limits (size cap, short-lived access) and URLs that upstream vision providers can fetch over HTTPS.
 
-**Status:** Complete
+**Status:** Complete — see `10-01-SUMMARY.md`
 
 **Depends on:** None (cross-cutting infrastructure)
 
