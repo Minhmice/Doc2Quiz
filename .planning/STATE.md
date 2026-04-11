@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T12:05:00.000Z"
+last_updated: "2026-04-11T12:26:34.280Z"
 progress:
-  total_phases: 16
-  completed_phases: 16
-  total_plans: 33
+  total_phases: 18
+  completed_phases: 15
+  total_plans: 35
   completed_plans: 33
-  percent: 100
+  percent: 94
 ---
 
 # Doc2Quiz — State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 16 complete (`16-01`/`16-02`); open work remains Phase 14 (mapping quality), Phase 6, Phase 9, etc. — see ROADMAP.
+**Current focus:** Milestone execute queue shows 16/16 phases done; follow-on work is **optional hardening and UX** (e.g. Phase 6 observability, Phase 9 math polish, Phase 14 mapping-quality UX) — see `ROADMAP.md`, not blockers for the core loop.
 
 ## Current Status
 
@@ -42,6 +42,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
+- Phase 18 added: **parseScore contract** — schema chính thức (structure quality, provenance quality, OCR confidence, retry history); tách `ocrQuality` vs `questionQuality`; không gộp “trang OCR tốt” với “câu hỏi tốt” (`/gsd-add-phase`).
+- Phase 17 plan (`/gsd-plan-phase 17`): `17-01-PLAN.md`, `17-02-PLAN.md` — `estimateParseRun` + BYOK doc + estimate panel (`aria-live`); tokens upper-bound heuristics; Nyquist skipped (research off).
+- Phase 17 added: BYOK — ước lượng cost/time (call/token/page) **trước** khi parse; UI estimate + công thức từ metadata, không gọi API để đo (`/gsd-add-phase`).
 - Phase 16 execute (`/gsd-execute-phase 16`): `docs/ARCHITECTURE-domain-boundaries.md`, `src/lib/learning/*`, review imports → `@/lib/learning`; `16-01-SUMMARY.md`, `16-02-SUMMARY.md`; `phase complete 16` (roadmap checkboxes + coverage row normalized manually).
 - Phase 16 plan (`/gsd-plan-phase 16`): `16-01-PLAN.md`, `16-02-PLAN.md` — architecture doc + `@/lib/learning` facade for review mapping; research off; plan-checker passed; Nyquist/VALIDATION skipped (no RESEARCH).
 - Phase 16 added: Tách rõ "domain học tập" khỏi "domain parse tài liệu" — boundary ingestion/parsing vs learning/session analytics; giảm coupling feature học với OCR/vision (`/gsd-add-phase`).

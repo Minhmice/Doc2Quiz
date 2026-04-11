@@ -10,18 +10,18 @@
 
 **Goal:** User can upload a PDF, extract its text, and see it displayed.
 
-**Status:** Pending
+**Status:** Complete (implemented; see `STATE.md`)
 
 **Requirements covered:** PDF-01, PDF-02, PDF-03, PDF-04
 
 **Deliverables:**
 - UploadBox component — drag-and-drop + click, PDF-only validation, 10MB limit
-- `extractText(file)` — pdf.js text extraction returning `{ text, pageCount }`
+- `extractPdfText` / page helpers — pdf.js text extraction and page-aware strings
 - RawTextViewer — scrollable display of extracted text
 - Loading, error, and empty states (including scanned PDF error)
 
 **Canonical refs:**
-- `src/lib/pdf/extractText.ts`
+- `src/lib/pdf/extractPdfText.ts`
 - `src/components/upload/UploadBox.tsx`
 - `src/components/viewer/RawTextViewer.tsx`
 
@@ -30,6 +30,8 @@
 ## Phase 2: AI Question Parsing
 
 **Goal:** Given extracted text, use AI to produce a set of structured MCQ questions ready for review.
+
+**Status:** Complete (text/OCR/layout-chunk/vision paths; same-origin forward — see `INTEGRATIONS.md`)
 
 **Requirements covered:** AI-01, AI-02, AI-03, AI-04, AI-05
 
@@ -57,6 +59,8 @@
 
 **Goal:** User can inspect, edit, and approve AI-parsed questions before they enter the practice bank.
 
+**Status:** Complete
+
 **Requirements covered:** REVIEW-01, REVIEW-02, REVIEW-03, REVIEW-04
 
 **Deliverables:**
@@ -81,6 +85,8 @@
 ## Phase 4: Practice Engine
 
 **Goal:** User can drill through a question set using keyboard controls with immediate feedback.
+
+**Status:** Complete (play, practice, flashcards)
 
 **Requirements covered:** PRAC-01, PRAC-02, PRAC-03, PRAC-04, PRAC-05, PRAC-06
 
@@ -107,6 +113,8 @@
 ## Phase 5: Score & Repeat
 
 **Goal:** User sees their score at the end of a session and can immediately drill the questions they got wrong.
+
+**Status:** Complete
 
 **Requirements covered:** SCORE-01, SCORE-02, SCORE-03, SCORE-04
 
@@ -396,6 +404,50 @@ Plans:
 
 ---
 
+## Phase 17: BYOK parse preview — estimated calls, tokens, and time
+
+**Goal:** Hiển thị ước lượng **cost/time** (và độ tin cậy của ước lượng) **trước khi** người dùng bấm chạy parse. App **BYOK** — người dùng cần thấy rõ **số call API ước lượng**, **token/page hoặc token/chunk** (theo strategy), và **thời gian wall-clock tham chiếu** (range hoặc upper bound) để quyết định có chạy hay đổi strategy/provider.
+
+**Status:** Planned — `17-01-PLAN.md`, `17-02-PLAN.md` (execute wave 1 then wave 2)
+
+**Depends on:** Phase 7 (đường parse Fast/Hybrid/Accurate, chunk vs vision); Phase 12 (tín hiệu tài liệu + `parseRoutePolicy`). Phase 16 không chặn — chỉ ảnh hưởng vị trí UI nếu tách module.
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- **Ước lượng deterministic từ metadata** — `pageCount`, strategy (`fast` / `accurate` / `hybrid`), OCR on/off, text-layer signal (từ Phase 12), giới hạn vision pages hiện có — công thức versioned trong code + doc ngắn.
+- **UI parse** — panel hoặc banner trên nút Parse: hiển thị ~N vision steps, ~M chunk calls, cảnh báo “ước lượng, thực tế có thể khác” (model pricing không nằm trong app — chỉ hint token/call).
+- **Không gọi API** để ước lượng — tránh tốn key; có thể đọc model id từ settings chỉ để copy “bạn đang dùng model X”.
+- **A11y** — estimate không chỉ màu; có text + `aria-live` polite khi đổi strategy.
+
+**Canonical refs:**
+- `src/components/ai/AiParseSection.tsx`, `AiParseActions.tsx`, `AiParseParseStrategyPanel.tsx`
+- `src/lib/ai/parseRoutePolicy.ts`, `src/lib/pdf/renderPagesToImages.ts` (page cap constants)
+- `src/lib/ai/runLayoutChunkParse.ts`, `src/lib/ai/runVisionSequential.ts` (step shapes for counting)
+
+**Plans:** 2 — `17-01-PLAN.md` (pure `estimateParseRun` + `docs/BYOK-parse-estimate.md`), `17-02-PLAN.md` (`AiParseEstimatePanel` + `AiParseSection` wiring, `aria-live`). Execute wave 1 then wave 2.
+
+---
+
+## Phase 18: parseScore — official contract (ocrQuality vs questionQuality)
+
+**Goal:** Định nghĩa `parseScore` thành contract chính thức — không chỉ badge: schema rõ cho **structure quality**, **provenance quality**, **OCR confidence**, **retry history**. Tách **`ocrQuality`** (theo trang / pipeline OCR) và **`questionQuality`** (MCQ sau parse); một trang OCR tốt không suy ra câu hỏi tốt — hai score không gộp làm một.
+
+**Status:** Not planned yet
+
+**Depends on:** Phase 17
+
+**Requirements:** TBD
+
+**Deliverables (high level):** TBD — run `/gsd-plan-phase 18`.
+
+**Plans:** 0 — run `/gsd-plan-phase 18` to break down.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -416,6 +468,8 @@ Plans:
 | 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Planned |
 | 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Complete |
 | 16 | Learning vs parse domain boundary | Complete |
+| 17 | BYOK parse preview (calls / tokens / time before run) | Planned (17-01, 17-02) |
+| 18 | parseScore contract (ocrQuality vs questionQuality) | Not planned yet |
 
 v1 requirements covered: 23 / 23 ✓
 
