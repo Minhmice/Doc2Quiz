@@ -36,7 +36,7 @@
 - **`pipelineLog` for chunk timings:** use `info` + `isPipelineVerbose()` contract from `pipelineLogger.ts` (same gate as 06-CONTEXT D-05) `[VERIFIED: src/lib/logging/pipelineLogger.ts]`.
 - **Debug UI:** keep timings + chunk → model text in **React state** on `StudySetSourcePage` (or a small context), pass into `OcrInspector` via new optional props — satisfies D-25/D-26/D-29 without IDB `[VERIFIED: src/app/(app)/sets/[id]/source/page.tsx]`.
 - **Risks:** double-counting if both inner and outer wrap; aborted runs mid-chunk; vision fallback time not part of “chunk” table but **should** be visible in run total or a separate line (product clarity).
-- **07-01 vs 07-02:** **07-01** owns chunk engine + `ChunkParseResult` / per-chunk ms + optional `pipelineLog` lines; **07-02** owns orchestration run wall clock, lifting debug payload to parent + OcrInspector / summary row.
+- **07-01 vs 07-02:** **07-01** owns chunk engine + prompts + `parseChunkSingleMcqOnce` (no inner wall timers); **07-02** owns `ChunkParseResult` timing in `runLayoutChunkParse`, run-total wall clock, `pipelineLog`, and React debug/summary surfaces (see §Recommendations below).
 
 ## Current architecture (OCR → chunk → AI vs vision)
 
@@ -114,8 +114,8 @@ Expose to UI as e.g. `lastParseRunWallMs` + `lastParseRunAborted` on parent stat
 
 | Plan | Owns | Types / files |
 |------|------|----------------|
-| **07-01** | Chunk engine refinements (if any remain), **`ChunkParseResult` extensions**, timing inside **`runLayoutChunkParse`**, optional **`pipelineLog`** lines for chunk timings, unit-level tests for pure functions (`layoutChunksFromOcr`, `computeNeedsVisionFallback`) if added. | `src/lib/ai/runLayoutChunkParse.ts`, `src/lib/ai/layoutChunksFromOcr.ts`, `src/types/ocr.ts` if `LayoutChunk` changes. |
-| **07-02** | **`ParseRunResult` or callback extension** to surface timing + debug payload to **`StudySetSourcePage`**, **OcrInspector** props + UI table, run-total line in summary, wire-up `onChunkResult` if live streaming of rows is desired. | `AiParseSection.tsx`, `src/app/(app)/sets/[id]/source/page.tsx`, `OcrInspector.tsx`; optional `src/types/parseDebug.ts` if types are shared. |
+| **07-01** | Chunk engine + prompts + `parseChunkSingleMcqOnce`; **no** `ChunkParseResult` timing fields (D-27: no inner `performance.now` in parse function). | `layoutChunksFromOcr.ts`, `parseChunk.ts`, prompts. |
+| **07-02** | **`ChunkParseResult` / `runLayoutChunkParse` timing**, **`ParseRunResult`** extension, **`StudySetSourcePage`** + **OcrInspector** debug UI, run-total line, `pipelineLog` chunk-timing. | `runLayoutChunkParse.ts`, `AiParseSection.tsx`, `OcrInspector.tsx`, `source/page.tsx`. |
 
 **Rule of thumb:** Anything that must stay **pure / testable without React** → **07-01**. Anything **React state / props** → **07-02**.
 
@@ -164,10 +164,10 @@ Expose to UI as e.g. `lastParseRunWallMs` + `lastParseRunAborted` on parent stat
 | A1 | D-28 run total **includes** raster/OCR/attach/persist in Fast/Hybrid | User expects “AI-only seconds” — copy may need adjustment. |
 | A2 | Optional second layer timing inside `parseChunkSingleMcqOnce` is redundant if `runLayoutChunkParse` wraps `parse` | Low — only affects code duplication preference. |
 
-## Open questions
+## Open questions (RESOLVED)
 
-1. **Should `chunkAiWallMs` be sum of attempts or only first attempt?** — D-27 text suggests per AI call awareness; **recommend sum + attempt breakdown** for clarity.
-2. **`PipelineDomain` new value vs reusing `VISION`?** — trade typing churn vs log filter clarity; decide in **07-01** plan header.
+1. **RESOLVED:** `chunkAiWallMs` = **sum** of all `parse()` wall times for the chunk row; optional **`attemptWallMs[]`** for per-attempt breakdown (matches D-27 + `07-02-PLAN.md` Task 1).
+2. **RESOLVED:** **Reuse `PipelineDomain` `"VISION"`** with **`stage: "chunk-timing"`** for verbose `pipelineLog` — no new domain (matches `07-02-PLAN.md` must_haves + Task 1 acceptance).
 
 ## Environment availability
 
