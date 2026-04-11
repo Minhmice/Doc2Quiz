@@ -351,7 +351,7 @@
 
 **Goal:** Chuyển các job nặng khỏi client khi scale: hiện app client-heavy (pdf.js canvas, IndexedDB, settings local, OCR/vision orchestration trong browser). File lớn / máy yếu dễ làm UX hụt. Cần **server hoặc background worker mode** cho PDF render (page images) và **parse queue** (tách khỏi main thread UX), vẫn tôn trọng offline-first / opt-in khi plan chi tiết.
 
-**Status:** Not planned yet
+**Status:** Complete — `15-01-SUMMARY.md`, `15-02-SUMMARY.md`
 
 **Depends on:** Phase 10 (durable staging / object storage cho bytes handoff); Phase 13 (observability cho job/step correlation). Phase 14 không chặn worker — planner có thể xếp song song slice infra nếu hợp lý.
 
@@ -364,11 +364,35 @@
 - **Compatibility** — local-only path vẫn hoạt động khi không cấu hình server (feature flag / env).
 
 **Canonical refs:**
+- `docs/SCALE-MODE-parse-queue.md`, `src/lib/serverParse/env.ts`, `src/types/parseJob.ts`
+- `src/app/api/parse-jobs/route.ts`, `src/app/api/parse-jobs/[id]/route.ts`
 - `src/lib/pdf/renderPagesToImages.ts`, `src/components/ai/AiParseSection.tsx`
 - `src/app/api/ai/**`, vision staging routes
 - `src/lib/db/studySetDb.ts` (sync model với server draft nếu có)
 
-**Plans:** 0 — run `/gsd-plan-phase 15` to break down.
+**Plans:** 2/2 plans complete
+
+---
+
+## Phase 16: Learning domain vs document-parse domain (boundary)
+
+**Goal:** Tách rõ "domain học tập" ra khỏi "domain parse tài liệu". Hiện codebase có review/play/practice/flashcards khá đầy đủ, nhưng parse pipeline vẫn là trung tâm chính. Về lâu dài nên có boundary rõ: ingestion/parsing và learning/session analytics. Như vậy feature học tập sẽ không bị dính quá chặt vào logic OCR/vision.
+
+**Status:** Planned (execute)
+
+**Depends on:** Phase 15 (boundary work may proceed incrementally — not a hard code gate; see plan `16-01`)
+
+**Requirements:** TBD
+
+**Deliverables (high level):**
+- `docs/ARCHITECTURE-domain-boundaries.md` — parse vs learning domains, dependency direction, forbidden imports, ESLint strategy (documented future unless flat-config extended).
+- `src/lib/learning/**` — stable barrel + thin facade for review-facing helpers (e.g. mapping quality re-exports); `npm run lint` + `npm run build` green.
+
+**Plans:** 2 plans in 2 waves
+
+Plans:
+- [ ] `16-01-PLAN.md` — Boundary definition: architecture doc + `@/lib/ai` inventory appendix (non-breaking).
+- [ ] `16-02-PLAN.md` — Incremental alignment: `@/lib/learning` facade; review components off deep `@/lib/ai/mappingQuality`; lint + build.
 
 ---
 
@@ -390,7 +414,8 @@
 | 12 | Unified parse engine (text/OCR/vision + document-type policy) | Complete |
 | 13 | Monitoring & error reporting (pipeline observability) | Complete |
 | 14 | Page mapping & provenance quality (confidence, visible uncertainty, no silent swallow) | Planned |
-| 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Not planned yet |
+| 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Complete |
+| 16 | Learning vs parse domain boundary | Planned |
 
 v1 requirements covered: 23 / 23 ✓
 
