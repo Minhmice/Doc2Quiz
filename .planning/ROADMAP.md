@@ -460,18 +460,19 @@ Plans:
 
 **Goal:** Thiết kế **retry policy theo stage** — lỗi OCR, parse (LLM), validation cấu trúc MCQ, mapping trang, và persistence (IDB) **không** dùng chung một kiểu backoff/retry; mỗi stage có chính sách rõ (idempotent, user-prompt, abandon, v.v.). Làm rõ hành vi khi **provider không hỗ trợ** một mode (vision multimodal, chunk forward, v.v.). Thay cảnh báo muộn trong doc bằng **capability matrix** (mode × provider) hiển thị/disable sớm trong UI. **Đơn giản hóa BYOK:** bỏ nhánh GPT / Anthropic / Custom; chỉ **ba ô nhập** (một đường OpenAI-compatible: ví dụ base URL + API key + model id — planner chốt nhãn và migration từ `parseLocalStorage` / settings hiện tại).
 
-**Status:** Not planned yet
+**Status:** Planned — `19-CONTEXT.md`, `19-01-PLAN.md`, `19-02-PLAN.md`
 
 **Depends on:** Phase 13 (stage-tagged observability); Phase 14 (mapping failure surfaces); Phase 17 (estimate UI có thể tái dùng copy/layout); Phase 18 (parseScore / retry history nếu cần nối contract). Phase 12 không chặn nhưng policy route nên đọc `parseRoutePolicy`.
 
-**Requirements:** TBD
+**Requirements:** See `19-CONTEXT.md` (D-01–D-08).
 
-**Deliverables (high level):** TBD — run `/gsd-plan-phase 19`.
+**Deliverables (high level):** `forwardSettings` + migration; `parseCapabilities`; `pipelineStageRetry`; settings + parse + estimate wired; OCR/parse/IDB retries; docs.
 
-**Plans:** 0 — run `/gsd-plan-phase 19` to break down.
+**Plans:** 2 — execute wave 1 then wave 2 (`19-02` depends_on `19-01`).
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 19 to break down)
+- [ ] `19-01-PLAN.md` — Forward BYOK module, migration, declarative `parseCapabilities`, `docs/BYOK-forward-only.md`, types (`19-01-SUMMARY.md` on complete).
+- [ ] `19-02-PLAN.md` — `pipelineStageRetry`, OCR/parse/IDB wiring, settings UI 3-field, `AiParseSection` + estimate gating, WORKFLOW doc (`19-02-SUMMARY.md` on complete).
 
 ---
 
@@ -496,8 +497,8 @@ Plans:
 | 15 | Server-side heavy jobs (PDF render + parse queue, scale mode) | Complete |
 | 16 | Learning vs parse domain boundary | Complete |
 | 17 | BYOK parse preview (calls / tokens / time before run) | Complete |
-| 18 | parseScore contract (ocrQuality vs questionQuality) | Planned |
-| 19 | Stage retries + capability matrix + minimal BYOK (3 fields) | Not planned yet |
+| 18 | parseScore contract (ocrQuality vs questionQuality) | Planned (18-01, 18-02) |
+| 19 | Stage retries + capability matrix + minimal BYOK (3 fields) | Planned |
 
 v1 requirements covered: 23 / 23 ✓
 

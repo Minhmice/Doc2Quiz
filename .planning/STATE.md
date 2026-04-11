@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
 stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T12:26:34.280Z"
+last_updated: "2026-04-11T12:36:53.386Z"
 progress:
-  total_phases: 18
-  completed_phases: 15
-  total_plans: 35
-  completed_plans: 33
-  percent: 94
+  total_phases: 19
+  completed_phases: 16
+  total_plans: 39
+  completed_plans: 35
+  percent: 90
 ---
 
 # Doc2Quiz — State
@@ -42,6 +42,10 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ### Roadmap Evolution
 
+- Phase 19 plan (`/gsd-plan-phase 19`): `19-CONTEXT.md`, `19-01-PLAN.md` (wave 1 — forwardSettings, parseCapabilities, doc), `19-02-PLAN.md` (wave 2 — retries, UI 3-field, AiParseSection, WORKFLOW); roadmap Phase 19 → **Planned**.
+- Phase 19 added: **Stage-specific retry policy** (OCR / parse / validation / mapping / persistence — không gộp một kiểu retry); **capability matrix** provider × mode (tránh lỗi muộn như vision + Anthropic native); **BYOK tối giản** — bỏ GPT / Anthropic / Custom, chỉ **ba trường nhập** một đường OpenAI-compatible (`/gsd-add-phase`).
+- Phase 17 execute (`/gsd-execute-phase 17`): `estimateParseRun.ts`, `docs/BYOK-parse-estimate.md`, `AiParseEstimatePanel.tsx`, `AiParseSection` wiring; `17-01-SUMMARY.md`, `17-02-SUMMARY.md`; roadmap Phase 17 marked complete + coverage row.
+- Phase 18 plan (`/gsd-plan-phase 18`): `18-01-PLAN.md`, `18-02-PLAN.md`, `18-VALIDATION.md` — PARSE-SCORE doc + `parseScore` types + `deriveParseScores`; plan-checker passed; research off.
 - Phase 18 added: **parseScore contract** — schema chính thức (structure quality, provenance quality, OCR confidence, retry history); tách `ocrQuality` vs `questionQuality`; không gộp “trang OCR tốt” với “câu hỏi tốt” (`/gsd-add-phase`).
 - Phase 17 plan (`/gsd-plan-phase 17`): `17-01-PLAN.md`, `17-02-PLAN.md` — `estimateParseRun` + BYOK doc + estimate panel (`aria-live`); tokens upper-bound heuristics; Nyquist skipped (research off).
 - Phase 17 added: BYOK — ước lượng cost/time (call/token/page) **trước** khi parse; UI estimate + công thức từ metadata, không gọi API để đo (`/gsd-add-phase`).
