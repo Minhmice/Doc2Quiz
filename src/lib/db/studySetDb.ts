@@ -1,3 +1,4 @@
+import { withRetries } from "@/lib/ai/pipelineStageRetry";
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
   fileSummary,
@@ -6,10 +7,12 @@ import {
 } from "@/lib/logging/pipelineLogger";
 import { extractPdfText } from "@/lib/pdf/extractPdfText";
 import type { ApprovedBank, Question } from "@/types/question";
+import type { FlashcardVisionItem } from "@/types/visionParse";
 import {
   DB_NAME,
   DB_VERSION,
   type ParseProgressRecord,
+  type StudyContentKind,
   type StudySetDocumentRecord,
   type StudySetMeta,
 } from "@/types/studySet";
@@ -286,6 +289,14 @@ export async function putParseProgressRecord(
   await txDone(tx);
 }
 
+type DraftRow = {
+  studySetId: string;
+  savedAt?: string;
+  questions?: Question[];
+  /** Phase 21 — flashcard vision pipeline (separate from MCQ `questions`). */
+  flashcardVisionItems?: FlashcardVisionItem[];
+};
+
 export async function getDraftQuestions(
   studySetId: string,
 ): Promise<Question[]> {
@@ -295,9 +306,53 @@ export async function getDraftQuestions(
     const req = tx.objectStore("draft").get(studySetId);
     req.onerror = () => reject(req.error);
     req.onsuccess = () => {
-      const row = req.result as { questions?: Question[] } | undefined;
+      const row = req.result as DraftRow | undefined;
       resolve(Array.isArray(row?.questions) ? row.questions : []);
     };
+  });
+}
+
+export async function getDraftFlashcardVisionItems(
+  studySetId: string,
+): Promise<FlashcardVisionItem[]> {
+  const db = await ensureStudySetDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("draft", "readonly");
+    const req = tx.objectStore("draft").get(studySetId);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const row = req.result as DraftRow | undefined;
+      resolve(
+        Array.isArray(row?.flashcardVisionItems) ? row.flashcardVisionItems : [],
+      );
+    };
+  });
+}
+
+export async function putDraftFlashcardVisionItems(
+  studySetId: string,
+  items: FlashcardVisionItem[],
+): Promise<void> {
+  const db = await ensureStudySetDb();
+  await withRetries("idb_put", undefined, async () => {
+    const row = await new Promise<DraftRow | undefined>((resolve, reject) => {
+      const tx = db.transaction("draft", "readonly");
+      const r = tx.objectStore("draft").get(studySetId);
+      r.onerror = () => reject(r.error);
+      r.onsuccess = () => resolve(r.result as DraftRow | undefined);
+    });
+    const withIds = items.map((it) =>
+      it.id ? it : { ...it, id: createRandomUuid() },
+    );
+    const tx = db.transaction("draft", "readwrite");
+    tx.objectStore("draft").put({
+      ...row,
+      studySetId,
+      savedAt: new Date().toISOString(),
+      questions: [],
+      flashcardVisionItems: withIds,
+    });
+    await txDone(tx);
   });
 }
 
@@ -310,14 +365,17 @@ export async function putDraftQuestions(
     questionCount: questions.length,
   });
   try {
-    const db = await ensureStudySetDb();
-    const tx = db.transaction("draft", "readwrite");
-    tx.objectStore("draft").put({
-      studySetId,
-      savedAt: new Date().toISOString(),
-      questions,
+    await withRetries("idb_put", undefined, async () => {
+      const db = await ensureStudySetDb();
+      const tx = db.transaction("draft", "readwrite");
+      tx.objectStore("draft").put({
+        studySetId,
+        savedAt: new Date().toISOString(),
+        questions,
+        flashcardVisionItems: undefined,
+      });
+      await txDone(tx);
     });
-    await txDone(tx);
     pipelineLog("IDB", "draft-put", "info", "putDraftQuestions success", {
       studySetId,
     });
@@ -427,6 +485,7 @@ export async function createStudySet(input: {
   pageCount?: number;
   extractedText: string;
   pdfFile?: File | null;
+  contentKind?: StudyContentKind;
 }): Promise<string> {
   const id = newStudySetId();
   const now = new Date().toISOString();
@@ -448,6 +507,9 @@ export async function createStudySet(input: {
       sourceFileName: input.sourceFileName,
       pageCount: input.pageCount ?? undefined,
       status: "draft",
+      ...(input.contentKind !== undefined
+        ? { contentKind: input.contentKind }
+        : {}),
     };
     /** If `pdfFile` is set and `extractedText` is already non-empty, callers skip a second extract. */
     let extractedTextForDoc = input.extractedText;
@@ -513,7 +575,14 @@ export async function touchStudySetMeta(
   patch: Partial<
     Pick<
       StudySetMeta,
-      "title" | "subtitle" | "status" | "pageCount" | "sourceFileName" | "ocrProvider" | "ocrStatus"
+      | "title"
+      | "subtitle"
+      | "status"
+      | "pageCount"
+      | "sourceFileName"
+      | "ocrProvider"
+      | "ocrStatus"
+      | "contentKind"
     >
   >,
 ): Promise<void> {

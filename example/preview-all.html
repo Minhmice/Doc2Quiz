@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doc2Quiz — xem tất cả mock (example/)</title>
+    <link rel="stylesheet" href="./hub.css" />
+    <style>
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 1.5rem 1rem 3rem;
+      }
+      details {
+        border: 1px solid rgba(192, 201, 195, 0.55);
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        background: #fff;
+        overflow: hidden;
+      }
+      summary {
+        cursor: pointer;
+        padding: 1rem 1.25rem;
+        font-weight: 700;
+        color: #00352d;
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary::before {
+        content: "▶";
+        font-size: 0.65rem;
+        color: #376757;
+        transition: transform 0.2s;
+      }
+      details[open] summary::before {
+        transform: rotate(90deg);
+      }
+      .meta {
+        font-weight: 400;
+        font-size: 0.8rem;
+        color: #64748b;
+        width: 100%;
+      }
+      .links {
+        margin-left: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .links a {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #376757;
+        text-decoration: none;
+        border: 1px solid rgba(55, 103, 87, 0.35);
+        padding: 0.35rem 0.5rem;
+        border-radius: 2px;
+      }
+      .links a:hover {
+        background: rgba(55, 103, 87, 0.08);
+      }
+      .frame-wrap {
+        border-top: 1px solid rgba(192, 201, 195, 0.45);
+        background: #f7faf8;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: min(78vh, 880px);
+        border: 0;
+      }
+    </style>
+  </head>
+  <body class="dm-blueprint">
+    <header class="dm-hero wrap" style="padding-top: 2rem">
+      <p class="dm-label" style="margin: 0 0 0.5rem">
+        <a href="./index.html" style="color: #376757; text-decoration: none">← Hub</a>
+        ·
+        <a href="./viewer.html" style="color: #376757; text-decoration: none">Viewer (J/K)</a>
+        ·
+        <a href="./components-preview.html" style="color: #376757; text-decoration: none">Atoms (button, card…)</a>
+      </p>
+      <h1 style="margin: 0; font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 800; color: #00352d">
+        Preview toàn bộ mock
+      </h1>
+      <p style="margin: 0.75rem 0 0; max-width: 40rem; line-height: 1.55; color: #404945; font-size: 0.9rem">
+        Toàn bộ file HTML mẫu nằm trong thư mục <strong>example/</strong> (cùng cấp file này). Chạy
+        <code>npm run example:serve</code> rồi mở trang này. Mở từng mục bên dưới để tải iframe; không cần
+        route hay component trong <code>src/</code>.
+      </p>
+    </header>
+
+    <main class="wrap" style="padding-top: 0">
+      <details>
+        <summary>
+          Dashboard
+          <span class="meta">example/doc2quiz_action_focused_dashboard/code.html — thư viện, CTA</span>
+          <span class="links">
+            <a href="./doc2quiz_action_focused_dashboard/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=dashboard" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="Dashboard mock" loading="lazy" src="./doc2quiz_action_focused_dashboard/code.html"></iframe>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          Chọn định dạng
+          <span class="meta">example/doc2quiz_refined_selection/code.html</span>
+          <span class="links">
+            <a href="./doc2quiz_refined_selection/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=selection" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="Selection mock" loading="lazy" src="./doc2quiz_refined_selection/code.html"></iframe>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          AI workspace
+          <span class="meta">example/refined_ai_processing_workspace/code.html</span>
+          <span class="links">
+            <a href="./refined_ai_processing_workspace/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=ai-workspace" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="AI workspace mock" loading="lazy" src="./refined_ai_processing_workspace/code.html"></iframe>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          Review quiz
+          <span class="meta">example/doc2quiz_professional_review_workspace/code.html</span>
+          <span class="links">
+            <a href="./doc2quiz_professional_review_workspace/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=review" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="Review mock" loading="lazy" src="./doc2quiz_professional_review_workspace/code.html"></iframe>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          Review flashcards
+          <span class="meta">example/doc2quiz_flashcard_review_workspace/code.html</span>
+          <span class="links">
+            <a href="./doc2quiz_flashcard_review_workspace/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=flashcards" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="Flashcards mock" loading="lazy" src="./doc2quiz_flashcard_review_workspace/code.html"></iframe>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          Play quiz
+          <span class="meta">example/doc2quiz_immersive_quiz_play_mode/code.html</span>
+          <span class="links">
+            <a href="./doc2quiz_immersive_quiz_play_mode/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=play" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="Play mock" loading="lazy" src="./doc2quiz_immersive_quiz_play_mode/code.html"></iframe>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          Kết quả
+          <span class="meta">example/doc2quiz_advanced_results_recovery_workspace/code.html</span>
+          <span class="links">
+            <a href="./doc2quiz_advanced_results_recovery_workspace/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=results" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="Results mock" loading="lazy" src="./doc2quiz_advanced_results_recovery_workspace/code.html"></iframe>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          Settings / AI
+          <span class="meta">example/doc2quiz_ai_connection_settings/code.html</span>
+          <span class="links">
+            <a href="./doc2quiz_ai_connection_settings/code.html" target="_blank" rel="noopener">Tab mới</a>
+            <a href="./viewer.html?p=settings" target="_blank" rel="noopener">Trong viewer</a>
+          </span>
+        </summary>
+        <div class="frame-wrap">
+          <iframe title="Settings mock" loading="lazy" src="./doc2quiz_ai_connection_settings/code.html"></iframe>
+        </div>
+      </details>
+    </main>
+  </body>
+</html>

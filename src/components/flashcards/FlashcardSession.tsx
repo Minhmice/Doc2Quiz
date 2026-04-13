@@ -7,6 +7,7 @@ import {
   getApprovedBank,
   getMediaBlob,
 } from "@/lib/db/studySetDb";
+import { editFlashcards } from "@/lib/routes/studySetPaths";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { Question } from "@/types/question";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -210,7 +211,7 @@ export function FlashcardSession({ studySetId }: FlashcardSessionProps) {
           answer).
         </AlertDescription>
         <Link
-          href={`/sets/${studySetId}/review`}
+          href={editFlashcards(studySetId)}
           className={cn(
             buttonVariants({ variant: "link" }),
             "mt-2 inline-flex h-auto px-0 text-amber-200",

@@ -100,21 +100,11 @@ export async function runAiReachabilityCheck(
     return s;
   }
 
-  if (provider === "custom") {
-    if (!apiUrl.trim()) {
-      const s: AiReachabilitySnapshot = {
-        ok: false,
-        message: "Custom API URL required",
-        checkedAt,
-        provider,
-      };
-      writeReachabilityToStorage(s);
-      return s;
-    }
+  if (apiUrl.trim()) {
     if (!model.trim()) {
       const s: AiReachabilitySnapshot = {
         ok: false,
-        message: "Custom model id required",
+        message: "Model id required when API base URL is set",
         checkedAt,
         provider,
       };
@@ -126,10 +116,9 @@ export async function runAiReachabilityCheck(
   let result: Awaited<ReturnType<typeof testAiConnection>>;
   try {
     result = await testAiConnection({
-      provider,
-      apiUrl,
+      baseUrl: apiUrl,
       apiKey,
-      model,
+      modelId: model,
       signal,
     });
   } catch {

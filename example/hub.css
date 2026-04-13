@@ -1,0 +1,159 @@
+/* Doc2Quiz design-mock hub — mint / blueprint tokens from example/ */
+
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap");
+
+:root {
+  --bg: #f7faf8;
+  --tertiary: #00352d;
+  --secondary: #376757;
+  --coral: #ff967d;
+  --primary: #5f0f00;
+  --surface: #ffffff;
+  --outline: #c0c9c3;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Manrope, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--tertiary);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.dm-hero {
+  animation: fade-up 0.6s ease-out both;
+}
+
+.dm-card {
+  opacity: 0;
+  animation: fade-up 0.55s ease-out both;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.dm-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 20px 40px -12px rgba(0, 53, 45, 0.12),
+    0 0 0 1px rgba(192, 201, 195, 0.35);
+}
+
+.dm-card:focus-within {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+
+.dm-stagger-1 {
+  animation-delay: 0.05s;
+}
+.dm-stagger-2 {
+  animation-delay: 0.1s;
+}
+.dm-stagger-3 {
+  animation-delay: 0.15s;
+}
+.dm-stagger-4 {
+  animation-delay: 0.2s;
+}
+.dm-stagger-5 {
+  animation-delay: 0.25s;
+}
+.dm-stagger-6 {
+  animation-delay: 0.3s;
+}
+.dm-stagger-7 {
+  animation-delay: 0.35s;
+}
+.dm-stagger-8 {
+  animation-delay: 0.4s;
+}
+
+.dm-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--coral);
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.dm-blueprint {
+  background-image:
+    linear-gradient(to right, rgba(192, 201, 195, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(192, 201, 195, 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.dm-label {
+  font-family: "Space Grotesk", ui-monospace, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.dm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.85rem;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(135deg, var(--coral), var(--primary));
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.dm-btn:hover {
+  filter: brightness(1.05);
+}
+
+.dm-btn:active {
+  transform: scale(0.97);
+}
+
+.dm-btn-ghost {
+  background: transparent;
+  color: var(--secondary);
+  border: 1px solid rgba(55, 103, 87, 0.25);
+}
+
+.dm-btn-ghost:hover {
+  background: rgba(55, 103, 87, 0.06);
+  filter: none;
+}

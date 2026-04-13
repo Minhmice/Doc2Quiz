@@ -11,6 +11,9 @@ export async function attachPageImagesForQuestions(
   const cache = new Map<number, string>();
   let fails = 0;
   for (const q of questions) {
+    if (q.includePageImage === false) {
+      continue;
+    }
     if (q.questionImageId) {
       continue;
     }

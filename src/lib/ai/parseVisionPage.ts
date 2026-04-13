@@ -22,7 +22,11 @@ import {
   visionPagePairUserPrompt,
   visionPageUserPrompt,
 } from "@/lib/ai/prompts/mcqExtractionPrompts";
-import { stageVisionDataUrlForUpstream } from "@/lib/ai/stageVisionDataUrl";
+import {
+  stageVisionDataUrlForUpstream,
+  VISION_UPSTREAM_IMAGE_TIP,
+  visionImageUrlTryOrder,
+} from "@/lib/ai/stageVisionDataUrl";
 
 export type VisionForwardProvider = "openai" | "custom";
 
@@ -31,7 +35,7 @@ function imageTransportUrls(
   signal: AbortSignal,
 ): Promise<string[]> {
   return stageVisionDataUrlForUpstream(dataUrl, signal).then((staged) =>
-    staged.staged ? [dataUrl, staged.url] : [dataUrl],
+    visionImageUrlTryOrder(dataUrl, staged),
   );
 }
 
@@ -192,6 +196,8 @@ export async function parseVisionPage(options: {
 
   /** Prefer inline data first; many dev setups use localhost staging URLs upstream cannot fetch. */
   const imageUrls = await imageTransportUrls(imageDataUrl, signal);
+  const onlyInlineDataImage =
+    imageUrls.length === 1 && imageUrls[0]!.startsWith("data:");
 
   let lastError: Error | null = null;
 
@@ -262,7 +268,11 @@ export async function parseVisionPage(options: {
     }
   }
 
-  throw lastError ?? new Error("Vision parse failed for this page.");
+  const base = lastError ?? new Error("Vision parse failed for this page.");
+  if (onlyInlineDataImage && base instanceof Error) {
+    throw new Error(`${base.message}\n\n${VISION_UPSTREAM_IMAGE_TIP}`);
+  }
+  throw base;
 }
 
 /**

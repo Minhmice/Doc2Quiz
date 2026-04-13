@@ -7,8 +7,6 @@ import {
   LibrarySearchProvider,
   useLibrarySearch,
 } from "@/components/layout/LibrarySearchContext";
-import { ParseProgressStrip } from "@/components/layout/ParseProgressStrip";
-
 function FocusSearchListener() {
   const { focusLibrarySearch } = useLibrarySearch();
 
@@ -27,12 +25,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <LibrarySearchProvider>
       <FocusSearchListener />
-      <div className="flex min-h-screen flex-col bg-background">
-        <AppTopBar />
-        <ParseProgressStrip />
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-5 sm:px-8 sm:py-8">
-          {children}
-        </main>
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <AppTopBar />
+          <main className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-background d2q-technical-grid px-3 py-5 sm:px-8 sm:py-8">
+            {children}
+          </main>
+        </div>
       </div>
     </LibrarySearchProvider>
   );

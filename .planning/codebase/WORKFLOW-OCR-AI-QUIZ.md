@@ -20,7 +20,7 @@ PDF (File)
   → Review → Approve → Practice (ngoài phạm vi chi tiết file này)
 ```
 
-**Điểm quan trọng:** Luồng **chính trong UI** hiện tại là **vision (ảnh từng trang)**. Module **`runSequentialParse` / `chunkText` / `parseChunkOnce`** (parse theo **text đã extract**) vẫn có trong repo nhưng **không nối vào UI parse chính** theo ghi chú planning — có thể dùng sau hoặc cho tool khác.
+**Điểm quan trọng:** `AiParseSection` chọn lộ trình qua **`decideParseRoute` / `parseRoutePolicy`** và tuỳ chọn người dùng (**parse strategy** + OCR): khi text layer đủ mạnh có thể đi **text/chunk** (`runSequentialParse`, `parseChunk`); khi cần có **OCR** → **layout chunks** (`layoutChunksFromOcr`, `runLayoutChunkParse`) và **vision fallback** (`runVisionSequential`). Không chỉ còn một đường vision cứng.
 
 ---
 
@@ -34,7 +34,7 @@ PDF (File)
 | Tên study set | `generateStudySetTitle` | Gợi ý title từ excerpt + tên file; có fallback nếu không gọi AI. |
 | Lưu DB | `createStudySet` (`src/lib/db/studySetDb.ts`) | Tạo `StudySetMeta`, `document` (text + optional `pdfArrayBuffer`), `draft` rỗng. |
 
-**Lưu ý:** Text ở đây phục vụ **title** và **lưu trữ**; **parse MCQ** trên màn source chủ yếu đi qua **ảnh trang**, không đọc lại toàn bộ text chunk trong UI hiện tại.
+**Lưu ý:** Text đã extract được dùng cho **title**, **policy route**, và nhánh **text/hybrid**; nhánh scan nặng dùng **ảnh trang** + OCR/vision như mô tả dưới.
 
 ---
 
@@ -53,11 +53,11 @@ Mọi bước OCR và vision **dùng chung** mảng `PageImageResult[]` (`pageIn
 
 ## 4. Giai đoạn C — OCR (tuỳ chọn)
 
-**Bật khi:** `enableOcr` trong UI + có `studySetId` + provider là **OpenAI hoặc Custom** (cùng forward API với vision).
+**Bật khi:** `enableOcr` trong UI + có `studySetId` + BYOK forward (**API key** + tuỳ chọn **base URL** / **model id**) cho phép surface `ocr_forward` theo `parseCapabilities.ts` (Phase 19).
 
 | Bước | File / hàm | Việc xảy ra |
 |------|------------|-------------|
-| Tuần tự theo trang | `runOcrSequential` (`src/lib/ai/runOcrSequential.ts`) | Với mỗi trang: `runOcrPage` → chuẩn hoá block/bbox/polygon. |
+| Tuần tự theo trang | `runOcrSequential` (`src/lib/ai/runOcrSequential.ts`) | Với mỗi trang: `runOcrPage` (có **retry** transient quanh `pipelineStageRetry` / `ocr_page`) → chuẩn hoá block/bbox/polygon. |
 | Gọi model | `ocrAdapter.ts` → `forwardAiPost` (`sameOriginForward`) | Prompt hệ thống yêu cầu JSON: full page `text` + `blocks` (bbox/polygon **tọa độ tương đối 0..1**). |
 | Validate | `ocrValidate.ts`, `ocrRegionVerify.ts` | Lọc block xấu; `regionVerification` / crop-ready cho debug. |
 | Lưu | `putOcrResult` (`ocrDb.ts`) | IndexedDB store `ocr` theo `studySetId`. |
@@ -94,7 +94,7 @@ Nếu OCR lỗi một phần: toast cảnh báo, **vision vẫn chạy tiếp**.
 - **`parseMode`:** `attach_single` | `single` | `pair` — ảnh hưởng **provenance** (`mappingMethod`, `mappingConfidence`, lý do).
 - **OCR:** Nếu có snapshot OCR, có nhánh **overlap token** giữa text câu hỏi + options với text từng trang để gợi ý `sourcePageIndex` / `imagePageIndex` khi thiếu hoặc cần tin cậy hơn (ngưỡng trong file).
 
-Đây là bước **best-effort**; nếu throw bên trong được nuốt ở caller, draft vẫn lưu.
+**Best-effort nhưng không im lặng:** lỗi `getOcrResult` / `applyQuestionPageMapping` được ghi **`pipelineLog`** (domain **`MAPPING`** cho bước ánh xạ), có **toast** cảnh báo/lỗi; draft vẫn lưu khi mapping throw. Chất lượng ánh xạ (ngưỡng `mappingQuality.ts`, chip Mapped / Uncertain / Unresolved) hiển thị ở **Review** và parse preview; tóm tắt parse có thể nối thêm câu về số câu **uncertain mapping**.
 
 ---
 
@@ -102,7 +102,7 @@ Nếu OCR lỗi một phần: toast cảnh báo, **vision vẫn chạy tiếp**.
 
 Trong `AiParseSection`, sau khi vision xong (không fatal / không abort):
 
-- `persistQuestions` → `putDraftQuestions`, có thể kèm `putParseProgressRecord`, v.v. (`studySetDb.ts`).
+- `persistQuestions` → `putDraftQuestions` (retry **IDB** transient qua `pipelineStageRetry` / `idb_put`), có thể kèm `putParseProgressRecord`, v.v. (`studySetDb.ts`).
 - UI: `QuestionPreviewList`, overlay log, progress.
 
 Người dùng sau đó vào **review** để sửa / approve — dữ liệu chấm điểm nằm ở các phase khác của roadmap.
@@ -113,8 +113,8 @@ Người dùng sau đó vào **review** để sửa / approve — dữ liệu ch
 
 | Điều kiện | Hệ quả |
 |-----------|--------|
-| Provider **Anthropic** (native) | UI parse vision báo cần **OpenAI hoặc Custom** vì forward multimodal. |
-| Không API key / thiếu URL model (custom) | Không chạy vision. |
+| BYOK thiếu key / base URL không hợp lệ / thiếu model khi có custom URL | `parseCapabilities` chặn surface; UI hiển thị lý do trước khi chạy (Phase 19). |
+| Không API key / thiếu model khi đã nhập base URL | Không chạy vision / OCR forward. |
 | PDF không render được | Dừng trước OCR/vision, thông báo lỗi. |
 | Attach ảnh | Ảnh lưu là **cả trang** đã raster, **không** cắt theo bbox câu hỏi trong pipeline hiện tại. |
 
@@ -129,9 +129,12 @@ Người dùng sau đó vào **review** để sửa / approve — dữ liệu ch
 | OCR chạy | `src/lib/ai/runOcrSequential.ts`, `ocrAdapter.ts` |
 | OCR lưu | `src/lib/ai/ocrDb.ts` |
 | Vision chạy | `src/lib/ai/runVisionSequential.ts`, `parseVisionPage.ts` |
-| Map trang | `src/lib/ai/mapQuestionsToPages.ts` |
+| Map trang | `src/lib/ai/mapQuestionsToPages.ts`, `src/lib/ai/mappingQuality.ts` |
 | DB study set | `src/lib/db/studySetDb.ts` |
 | Forward API | `src/lib/ai/sameOriginForward.ts` |
+| BYOK 3-field + migration | `src/lib/ai/forwardSettings.ts`, `docs/BYOK-forward-only.md` |
+| Capability matrix (declarative) | `src/lib/ai/parseCapabilities.ts`, `src/lib/ai/parseCapabilityMessages.ts` |
+| Retry theo stage | `src/lib/ai/pipelineStageRetry.ts` |
 | Log pipeline | `src/lib/logging/pipelineLogger.ts` |
 | Inspector OCR | `src/components/ai/OcrInspector.tsx` |
 

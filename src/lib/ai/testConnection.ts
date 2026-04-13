@@ -1,13 +1,11 @@
-import type { AiProvider } from "@/types/question";
 import { FatalParseError } from "@/lib/ai/errors";
 import {
-  ANTHROPIC_MODEL,
-  DEFAULT_ANTHROPIC_MESSAGES_URL,
   DEFAULT_OPENAI_CHAT_URL,
   OPENAI_MODEL,
   resolveChatApiUrl,
   resolveModelId,
 } from "@/lib/ai/parseChunk";
+import type { AiProvider } from "@/types/question";
 import {
   forwardAiPost,
   parseProxyForwardErrorBody,
@@ -169,13 +167,15 @@ function readOpenAiChatMessageContent(text: string): string {
  * Lightweight request to verify URL + API key (same shape as real parse calls).
  */
 export async function testAiConnection(options: {
-  provider: AiProvider;
-  apiUrl: string;
+  baseUrl: string;
   apiKey: string;
-  model?: string;
+  modelId: string;
   signal?: AbortSignal;
 }): Promise<TestConnectionResult> {
-  const { provider, apiUrl, apiKey, model, signal } = options;
+  const { baseUrl, apiKey, modelId, signal } = options;
+  const provider: AiProvider = baseUrl.trim() ? "custom" : "openai";
+  const apiUrl = baseUrl;
+  const model = modelId;
   const runId = newTestRunId();
   const key = apiKey.trim();
   if (!key) {
@@ -219,9 +219,9 @@ export async function testAiConnection(options: {
     return { ok: false, message: "Invalid URL." };
   }
 
-  let modelId: string;
+  let resolvedModelId: string;
   try {
-    modelId = resolveModelId(provider, model);
+    resolvedModelId = resolveModelId(provider, model);
   } catch (e) {
     if (e instanceof FatalParseError) {
       logAiTest("connection", runId, "validation", {
@@ -240,86 +240,22 @@ export async function testAiConnection(options: {
   logAiTest("connection", runId, "start", {
     provider,
     resolvedEndpoint: endpoint,
-    modelId,
+    modelId: resolvedModelId,
     forwardRoute: "POST /api/ai/forward",
-    upstreamShape:
-      provider === "anthropic"
-        ? "anthropic messages (text ping, max_tokens 1)"
-        : "openai-compatible chat (text ping, max_tokens 1)",
+    upstreamShape: "openai-compatible chat (text ping, max_tokens 1)",
   });
 
   try {
-    if (provider === "openai" || provider === "custom") {
-      const res = await forwardAiPost({
-        provider: provider === "custom" ? "custom" : "openai",
-        targetUrl: endpoint,
-        apiKey: key,
-        signal,
-        body: {
-          model: modelId,
-          messages: [{ role: "user", content: "ping" }],
-          max_tokens: 1,
-          stream: false,
-        },
-      });
-      const errText = await res.text();
-      const ms =
-        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
-        t0;
-      logAiTest("connection", runId, "upstream_response", {
-        httpStatus: res.status,
-        durationMs: Math.round(ms),
-        responseChars: errText.length,
-        bodySnippet: truncateForLog(errText, 2500),
-      });
-      if (res.ok) {
-        logAiTest("connection", runId, "parsed_success", {
-          ...summarizeOpenAiSuccessBody(errText),
-        });
-      }
-      if (res.status === 401) {
-        logAiTest("connection", runId, "result", { ok: false, reason: "401" });
-        return { ok: false, message: "Invalid API key or unauthorized." };
-      }
-      if (res.status === 429) {
-        logAiTest("connection", runId, "result", { ok: false, reason: "429" });
-        return { ok: false, message: "Rate limited. Try again shortly." };
-      }
-      if (!res.ok) {
-        const proxyMsg =
-          res.status === 502 ? parseProxyForwardErrorBody(errText) : null;
-        if (proxyMsg) {
-          logAiTest("connection", runId, "result", {
-            ok: false,
-            reason: "upstream_via_proxy",
-            proxyMessage: proxyMsg,
-          });
-          return { ok: false, message: proxyMsg };
-        }
-        const msg = describeBadAiResponse(res.status, errText);
-        logAiTest("connection", runId, "result", {
-          ok: false,
-          reason: "http_error",
-          userMessage: msg,
-        });
-        return {
-          ok: false,
-          message: msg,
-        };
-      }
-      logAiTest("connection", runId, "result", { ok: true });
-      return { ok: true };
-    }
-
     const res = await forwardAiPost({
-      provider: "anthropic",
+      provider: provider === "custom" ? "custom" : "openai",
       targetUrl: endpoint,
       apiKey: key,
       signal,
       body: {
-        model: modelId,
-        max_tokens: 1,
+        model: resolvedModelId,
         messages: [{ role: "user", content: "ping" }],
+        max_tokens: 1,
+        stream: false,
       },
     });
     const errText = await res.text();
@@ -401,13 +337,15 @@ export async function testAiConnection(options: {
  * forward route as vision parsing. Use to confirm the model/gateway accepts images.
  */
 export async function testAiVisionConnection(options: {
-  provider: AiProvider;
-  apiUrl: string;
+  baseUrl: string;
   apiKey: string;
-  model?: string;
+  modelId: string;
   signal?: AbortSignal;
 }): Promise<TestVisionConnectionResult> {
-  const { provider, apiUrl, apiKey, model, signal } = options;
+  const { baseUrl, apiKey, modelId, signal } = options;
+  const provider: AiProvider = baseUrl.trim() ? "custom" : "openai";
+  const apiUrl = baseUrl;
+  const model = modelId;
   const runId = newTestRunId();
   const key = apiKey.trim();
   if (!key) {
@@ -416,28 +354,6 @@ export async function testAiVisionConnection(options: {
       reason: "missing_api_key",
     });
     return { ok: false, message: "Enter an API key." };
-  }
-
-  if (provider === "anthropic") {
-    logAiTest("vision", runId, "validation", {
-      ok: false,
-      reason: "anthropic_not_supported",
-      hint: "Use OpenAI or Custom tab for OpenAI-style multimodal chat.",
-    });
-    return {
-      ok: false,
-      message:
-        "Image test uses OpenAI-style chat completions. Switch to OpenAI or Custom.",
-    };
-  }
-
-  if (provider !== "openai" && provider !== "custom") {
-    logAiTest("vision", runId, "validation", {
-      ok: false,
-      reason: "unsupported_provider",
-      provider,
-    });
-    return { ok: false, message: "Unsupported provider for vision test." };
   }
 
   let endpoint: string;
@@ -473,9 +389,9 @@ export async function testAiVisionConnection(options: {
     return { ok: false, message: "Invalid URL." };
   }
 
-  let modelId: string;
+  let visionResolvedModelId: string;
   try {
-    modelId = resolveModelId(provider, model);
+    visionResolvedModelId = resolveModelId(provider, model);
   } catch (e) {
     if (e instanceof FatalParseError) {
       logAiTest("vision", runId, "validation", {
@@ -521,7 +437,7 @@ export async function testAiVisionConnection(options: {
     provider,
     forwardProvider,
     resolvedEndpoint: endpoint,
-    modelId,
+    modelId: visionResolvedModelId,
     forwardRoute: "POST /api/ai/forward",
     attemptPlan: attemptUrls.map((u) =>
       u.startsWith("data:") ? "data_url_png" : "hosted_same_origin",
@@ -555,7 +471,7 @@ export async function testAiVisionConnection(options: {
         apiKey: key,
         signal,
         body: {
-          model: modelId,
+          model: visionResolvedModelId,
           messages: [
             {
               role: "user",
@@ -710,24 +626,10 @@ export async function testAiVisionConnection(options: {
   }
 }
 
-export function defaultEndpointHint(provider: AiProvider): string {
-  switch (provider) {
-    case "openai":
-      return DEFAULT_OPENAI_CHAT_URL;
-    case "anthropic":
-      return DEFAULT_ANTHROPIC_MESSAGES_URL;
-    case "custom":
-      return "https://your-router.example/v1";
-  }
+export function defaultForwardEndpointHint(): string {
+  return DEFAULT_OPENAI_CHAT_URL;
 }
 
-export function defaultModelPlaceholder(provider: AiProvider): string {
-  switch (provider) {
-    case "openai":
-      return OPENAI_MODEL;
-    case "anthropic":
-      return ANTHROPIC_MODEL;
-    case "custom":
-      return "model-id-from-your-provider";
-  }
+export function defaultForwardModelPlaceholder(): string {
+  return OPENAI_MODEL;
 }

@@ -1,109 +1,110 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "sonner/dist/styles.css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Education-friendly palette + legacy Doc2Quiz aliases (--d2q-*) */
+/* Mint / blueprint palette — aligned with `example/` + `mint_architecture/DESIGN.md` */
 :root {
   color-scheme: light;
-  --background: #fafafa;
-  --foreground: #0f172a;
+  --background: #f7faf8;
+  --foreground: #181c1b;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #181c1b;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #6366f1;
+  --popover-foreground: #181c1b;
+  --primary: #5f0f00;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f5f5f5;
-  --muted-foreground: #64748b;
-  --accent: #e0e7ff;
-  --accent-foreground: #312e81;
-  --destructive: #dc2626;
+  --secondary: #ebefed;
+  --secondary-foreground: #181c1b;
+  --muted: #f1f4f2;
+  --muted-foreground: #404945;
+  --accent: #baeed9;
+  --accent-foreground: #00352d;
+  --destructive: #ba1a1a;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #f1f5f9;
-  --ring: #6366f1;
-  --chart-1: #6366f1;
-  --chart-2: #10b981;
-  --chart-3: #f59e0b;
-  --chart-4: #8b5cf6;
-  --chart-5: #ec4899;
+  --border: #c0c9c3;
+  --input: #f1f4f2;
+  --ring: #ff967d;
+  --chart-1: #5f0f00;
+  --chart-2: #376757;
+  --chart-3: #ff967d;
+  --chart-4: #00352d;
+  --chart-5: #94a3b8;
   --sidebar: #ffffff;
   --sidebar-foreground: #334155;
-  --sidebar-primary: #6366f1;
+  --sidebar-primary: #5f0f00;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #6366f1;
-  --radius: 0.5rem;
-  --tracking-normal: -0.01em;
+  --sidebar-accent: #ebefed;
+  --sidebar-accent-foreground: #181c1b;
+  --sidebar-border: #c0c9c3;
+  --sidebar-ring: #ff967d;
+  --radius: 0.25rem;
+  --tracking-normal: -0.02em;
   --d2q-bg: var(--background);
   --d2q-surface: var(--card);
   --d2q-surface-elevated: var(--secondary);
   --d2q-border: var(--border);
-  --d2q-border-strong: #cbd5e1;
+  --d2q-border-strong: #94a3b8;
   --d2q-text: var(--foreground);
   --d2q-muted: var(--muted-foreground);
-  --d2q-accent: var(--primary);
-  --d2q-accent-hover: #4f46e5;
-  --d2q-accent-muted: color-mix(in srgb, var(--primary) 16%, transparent);
-  --d2q-accent-warm: #fb923c;
-  --d2q-blue: #3b82f6;
-  --d2q-radius: 0.875rem;
-  --d2q-radius-lg: 1rem;
-  --d2q-radius-xl: 1.25rem;
+  --d2q-accent: #ff967d;
+  --d2q-accent-hover: #841f06;
+  --d2q-accent-muted: color-mix(in srgb, #ff967d 22%, transparent);
+  --d2q-accent-warm: #ff967d;
+  --d2q-blue: #376757;
+  --d2q-radius: 0.25rem;
+  --d2q-radius-lg: 0.375rem;
+  --d2q-radius-xl: 0.5rem;
 }
 
 .dark {
   color-scheme: dark;
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --popover: #0f172a;
-  --popover-foreground: #f8fafc;
-  --primary: #818cf8;
-  --primary-foreground: #0f172a;
-  --secondary: #334155;
-  --secondary-foreground: #f8fafc;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #312e81;
-  --accent-foreground: #c7d2fe;
-  --destructive: #991b1b;
-  --destructive-foreground: #ffffff;
-  --border: #334155;
-  --input: #1e293b;
-  --ring: #818cf8;
-  --chart-1: #818cf8;
+  --background: #0c1a17;
+  --foreground: #ecfdf5;
+  --card: #134e4a;
+  --card-foreground: #ecfdf5;
+  --popover: #0c1a17;
+  --popover-foreground: #ecfdf5;
+  --primary: #ff967d;
+  --primary-foreground: #0c1a17;
+  --secondary: #1e3d36;
+  --secondary-foreground: #d1fae5;
+  --muted: #1e3d36;
+  --muted-foreground: #94d3c0;
+  --accent: #115e59;
+  --accent-foreground: #ccfbf1;
+  --destructive: #f87171;
+  --destructive-foreground: #0c1a17;
+  --border: #2d5a52;
+  --input: #134e4a;
+  --ring: #ff967d;
+  --chart-1: #ff967d;
   --chart-2: #34d399;
   --chart-3: #fbbf24;
-  --chart-4: #a78bfa;
-  --chart-5: #f472b6;
-  --sidebar: #1e293b;
-  --sidebar-foreground: #cbd5e1;
-  --sidebar-primary: #818cf8;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: #334155;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: #334155;
-  --sidebar-ring: #818cf8;
+  --chart-4: #5eead4;
+  --chart-5: #94a3b8;
+  --sidebar: #134e4a;
+  --sidebar-foreground: #d1fae5;
+  --sidebar-primary: #ff967d;
+  --sidebar-primary-foreground: #0c1a17;
+  --sidebar-accent: #1e3d36;
+  --sidebar-accent-foreground: #ecfdf5;
+  --sidebar-border: #2d5a52;
+  --sidebar-ring: #ff967d;
   --d2q-bg: var(--background);
   --d2q-surface: var(--card);
   --d2q-surface-elevated: var(--secondary);
   --d2q-border: var(--border);
-  --d2q-border-strong: #475569;
+  --d2q-border-strong: #5eead4;
   --d2q-text: var(--foreground);
   --d2q-muted: var(--muted-foreground);
-  --d2q-accent: var(--primary);
-  --d2q-accent-hover: #a5b4fc;
-  --d2q-accent-muted: color-mix(in srgb, var(--primary) 22%, transparent);
-  --d2q-accent-warm: #fb923c;
-  --d2q-blue: #60a5fa;
+  --d2q-accent: #ff967d;
+  --d2q-accent-hover: #fdba74;
+  --d2q-accent-muted: color-mix(in srgb, #ff967d 28%, transparent);
+  --d2q-accent-warm: #fdba74;
+  --d2q-blue: #5eead4;
 }
 
 @theme inline {
@@ -116,7 +117,7 @@
   --color-d2q-accent: var(--d2q-accent);
   --color-d2q-accent-warm: var(--d2q-accent-warm);
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -215,6 +216,77 @@
   animation-delay: 0.3s;
 }
 
+@utility font-label {
+  font-family: var(--font-label), ui-monospace, system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/**
+ * Blueprint dot grid — opt-in only; dot rows can read as a dark band at the
+ * viewport edge. Prefer `d2q-technical-grid` on app `main` and full-width canvases.
+ */
+@utility d2q-ghost-grid {
+  background-size: 40px 40px;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--border) 28%, transparent) 0.5px,
+    transparent 0.6px
+  );
+}
+
+/** Technical line grid — workbench / processing panels */
+@utility d2q-technical-grid {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--muted-foreground) 12%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--muted-foreground) 12%, transparent) 1px,
+      transparent 1px
+    );
+}
+
+/** Blueprint line grid — format picker / canvases */
+@utility d2q-blueprint-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--border) 10%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--border) 10%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 80px 80px;
+}
+
+/** Route template: opacity-only enter (no transform — keeps `position:sticky` valid). */
+@keyframes d2q-route-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.d2q-route-transition {
+  animation: d2q-route-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .d2q-route-transition {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -226,4 +298,92 @@
   html {
     @apply font-sans;
   }
+}
+
+/**
+ * Sonner: base `dist/styles.css` sets positioning + z-index; keep toasts above
+ * `AppTopBar` (z-40) and use opaque theme surfaces so the grid/header never
+ * reads through default / loading toasts.
+ */
+[data-sonner-toaster] {
+  isolation: isolate;
+  z-index: 200;
+}
+
+.cn-toast[data-sonner-toast][data-styled="true"][data-type="loading"] {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border-color: var(--border) !important;
+  backdrop-filter: none;
+}
+
+[data-rich-colors="true"].cn-toast[data-sonner-toast][data-styled="true"][data-type="success"] {
+  background-color: color-mix(in srgb, var(--card) 22%, hsl(143deg 72% 92%)) !important;
+  color: var(--foreground) !important;
+  border-color: color-mix(in srgb, hsl(143deg 45% 42%) 55%, var(--border)) !important;
+  backdrop-filter: none;
+}
+
+.dark [data-rich-colors="true"].cn-toast[data-sonner-toast][data-styled="true"][data-type="success"] {
+  background-color: color-mix(in srgb, var(--card) 35%, hsl(150deg 86% 12%)) !important;
+  color: var(--foreground) !important;
+  border-color: color-mix(in srgb, hsl(150deg 60% 38%) 45%, var(--border)) !important;
+}
+
+/**
+ * Quiz play — Stitch / blueprint tokens (scoped to `[data-quiz-play-theme="stitch"]` only).
+ * See example/stitch_web_theme_s_ng_t_o (4)/DESIGN.md
+ */
+[data-quiz-play-theme="stitch"] {
+  --qp-bg: #f7faf8;
+  --qp-on-bg: #181c1b;
+  --qp-muted: #404945;
+  --qp-surface-container: #ebefed;
+  --qp-surface-container-low: #f1f4f2;
+  --qp-surface-container-lowest: #ffffff;
+  --qp-tertiary: #00352d;
+  --qp-secondary: #376757;
+  --qp-primary: #5f0f00;
+  --qp-primary-foreground: #ffffff;
+  --qp-primary-container: #841f06;
+  --qp-on-primary-container: #ff967d;
+  --qp-outline-variant: #c0c9c3;
+  --qp-secondary-container: #baeed9;
+  --qp-on-secondary-container: #3d6d5d;
+  --qp-card-shadow: 0 40px 100px rgba(0, 53, 45, 0.06);
+}
+
+[data-quiz-play-theme="stitch"] .quiz-play-stitch-surface-grid {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--qp-outline-variant) 10%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--qp-outline-variant) 10%, transparent) 1px,
+      transparent 1px
+    );
+}
+
+[data-quiz-play-theme="stitch"] .quiz-play-stitch-ghost-line-v {
+  position: absolute;
+  left: 25%;
+  top: 0;
+  bottom: 0;
+  width: 0.5px;
+  background: color-mix(in srgb, var(--qp-outline-variant) 10%, transparent);
+  pointer-events: none;
+}
+
+[data-quiz-play-theme="stitch"] .quiz-play-stitch-ghost-line-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 33%;
+  height: 0.5px;
+  background: color-mix(in srgb, var(--qp-outline-variant) 10%, transparent);
+  pointer-events: none;
 }

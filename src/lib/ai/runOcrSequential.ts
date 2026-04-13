@@ -1,6 +1,6 @@
 import { isAbortError } from "@/lib/ai/errors";
+import { withRetries } from "@/lib/ai/pipelineStageRetry";
 import { pipelineLog } from "@/lib/logging/pipelineLogger";
-import { reportPipelineError } from "@/lib/observability/reportPipelineError";
 import { runOcrPage } from "@/lib/ai/ocrAdapter";
 import { verifyOcrPageRegions } from "@/lib/ai/ocrRegionVerify";
 import { DEFAULT_OCR_COORD_REF } from "@/lib/ai/ocrValidate";
@@ -97,34 +97,33 @@ export async function runOcrSequential(opts: {
 
     const page = pages[i]!;
     try {
-      const result = await runOcrPage({
-        imageDataUrl: page.dataUrl,
-        pageIndex: page.pageIndex,
-        totalPages: pages.length,
-        signal,
-        endpoint,
-        apiKey,
-        model,
+      const result = await withRetries("ocr_page", signal, async () => {
+        const r = await runOcrPage({
+          imageDataUrl: page.dataUrl,
+          pageIndex: page.pageIndex,
+          totalPages: pages.length,
+          signal,
+          endpoint,
+          apiKey,
+          model,
+        });
+        if ("ocrResult" in r) {
+          return r;
+        }
+        throw new Error(r.error);
       });
 
-      if ("ocrResult" in result) {
-        const ocrResult = result.ocrResult;
-        outPages.push({
-          ...ocrResult,
-          regionVerification: verifyOcrPageRegions(ocrResult),
-        });
-        textSoFar += ocrResult.text.length;
-      } else {
-        pushFailedPage(page.pageIndex, result.error);
-      }
+      const ocrResult = result.ocrResult;
+      outPages.push({
+        ...ocrResult,
+        regionVerification: verifyOcrPageRegions(ocrResult),
+      });
+      textSoFar += ocrResult.text.length;
     } catch (e) {
       if (isAbortError(e)) {
         break;
       }
-      reportPipelineError("OCR", "page", e, {
-        pageIndex: page.pageIndex,
-        pageCount: pages.length,
-      });
+      // Per-page failure only (pushFailedPage logs warn). Do not reportPipelineError — avoids Next.js red "Console Error" for handled OCR JSON/model issues.
       pushFailedPage(
         page.pageIndex,
         e instanceof Error ? e.message : "OCR page threw unexpectedly.",

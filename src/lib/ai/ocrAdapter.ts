@@ -9,7 +9,10 @@ import {
   assessOcrPageQuality,
 } from "@/lib/ai/ocrValidate";
 import { describeBadAiResponse, responseLooksLikeHtml } from "@/lib/ai/upstreamErrors";
-import { stageVisionDataUrlForUpstream } from "@/lib/ai/stageVisionDataUrl";
+import {
+  stageVisionDataUrlForUpstream,
+  visionImageUrlTryOrder,
+} from "@/lib/ai/stageVisionDataUrl";
 import type { OcrBlock, OcrCoordSystem, OcrPageResult, OcrPoint } from "@/types/ocr";
 
 export interface RunOcrPageOptions {
@@ -54,7 +57,7 @@ function resolveForwardProvider(endpoint: string): "openai" | "custom" {
 
 async function imageTransportUrls(dataUrl: string, signal: AbortSignal): Promise<string[]> {
   const staged = await stageVisionDataUrlForUpstream(dataUrl, signal);
-  return staged.staged ? [dataUrl, staged.url] : [dataUrl];
+  return visionImageUrlTryOrder(dataUrl, staged);
 }
 
 function readChatCompletionContent(text: string): string {
@@ -247,7 +250,7 @@ export async function runOcrPage(opts: RunOcrPageOptions): Promise<RunOcrPageRes
       }
 
       if (res.status === 401) {
-        pipelineLog("OCR", "request", "error", "OCR API 401", {
+        pipelineLog("OCR", "request", "warn", "OCR API 401 (handled)", {
           pageIndex,
           totalPages,
           status: res.status,
@@ -255,7 +258,7 @@ export async function runOcrPage(opts: RunOcrPageOptions): Promise<RunOcrPageRes
         return { ok: false, error: "Invalid API key. Please check and try again." };
       }
       if (res.status === 429) {
-        pipelineLog("OCR", "request", "error", "OCR API 429", {
+        pipelineLog("OCR", "request", "warn", "OCR API 429 (handled)", {
           pageIndex,
           totalPages,
           status: res.status,
@@ -281,10 +284,16 @@ export async function runOcrPage(opts: RunOcrPageOptions): Promise<RunOcrPageRes
     }
   }
 
-  pipelineLog("OCR", "request", "error", "OCR page exhausted retries", {
-    pageIndex,
-    totalPages,
-    lastError,
-  });
+  pipelineLog(
+    "OCR",
+    "request",
+    "warn",
+    `OCR page exhausted retries (page ${pageIndex + 1}/${totalPages}): ${lastError ?? "unknown"}`,
+    {
+      pageIndex,
+      totalPages,
+      lastError: lastError ?? null,
+    },
+  );
   return { ok: false, error: lastError ?? "OCR request failed for this page." };
 }

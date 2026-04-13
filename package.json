@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "example:serve": "npx --yes serve@14 example -l 5050",
     "copy-mathjax": "node scripts/copy-mathjax-assets.mjs",
     "postinstall": "node scripts/copy-pdf-worker.mjs && node scripts/copy-mathjax-assets.mjs"
   },
@@ -18,8 +19,10 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
     "mathjax": "^3.2.2",
+    "motion": "^12.38.0",
     "next": "^15.2.4",
     "next-themes": "^0.4.6",
     "pdfjs-dist": "^4.10.38",

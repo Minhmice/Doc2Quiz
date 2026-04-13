@@ -25,7 +25,7 @@ export function ReviewList({
   onSetCorrectIndex,
 }: ReviewListProps) {
   return (
-    <ul className="mt-6 space-y-4">
+    <ul className="space-y-4">
       {questions.map((question, i) => (
         <li key={question.id}>
           <QuestionCard

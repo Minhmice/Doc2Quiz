@@ -1,11 +1,5 @@
-import { DashboardLibraryClient } from "@/components/dashboard/DashboardLibraryClient";
-import { DashboardStatsWidget } from "@/components/dashboard/DashboardStatsWidget";
+import { DashboardHomeClient } from "@/components/dashboard/DashboardHomeClient";
 
 export default function DashboardPage() {
-  return (
-    <div>
-      <DashboardStatsWidget />
-      <DashboardLibraryClient />
-    </div>
-  );
+  return <DashboardHomeClient />;
 }

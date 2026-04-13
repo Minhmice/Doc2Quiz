@@ -1,5 +1,8 @@
 export type StudySetStatus = "draft" | "ready";
 
+/** Primary artifact the learner is creating (product flow). Legacy sets omit this. */
+export type StudyContentKind = "quiz" | "flashcards";
+
 export type StudySetMeta = {
   id: string;
   title: string;
@@ -9,6 +12,8 @@ export type StudySetMeta = {
   sourceFileName?: string;
   pageCount?: number;
   status: StudySetStatus;
+  /** Set at creation from `/new/quiz` vs `/new/flashcards`; drives product vs developer parse chrome. */
+  contentKind?: StudyContentKind;
   /** OCR extraction provider used, or undefined when OCR has not run for this set */
   ocrProvider?: string;
   ocrStatus?: "running" | "done";

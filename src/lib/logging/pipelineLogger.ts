@@ -4,7 +4,15 @@
  * - `warn` / `error`: always emitted (for diagnosing failures in any environment).
  */
 
-export type PipelineDomain = "PDF" | "OCR" | "VISION" | "IDB" | "STUDY_SET";
+import type { VisionPipelineEvent } from "@/types/visionParse";
+
+export type PipelineDomain =
+  | "PDF"
+  | "OCR"
+  | "VISION"
+  | "IDB"
+  | "STUDY_SET"
+  | "MAPPING";
 
 export function isPipelineVerbose(): boolean {
   if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
@@ -97,4 +105,16 @@ export function pipelineLog(
   if (isPipelineVerbose()) {
     console.info(prefix, payload);
   }
+}
+
+/**
+ * Structured vision MVP events (Phase 21). Flattens into `pipelineLog` info — no console.error.
+ */
+export function visionPipelineEvent(event: VisionPipelineEvent): void {
+  const { stage, message, ...ctx } = event;
+  const payload: Record<string, unknown> = { stage, ...ctx };
+  if (message) {
+    payload.humanMessage = message;
+  }
+  pipelineLog("VISION", stage, "info", message ?? stage, payload);
 }

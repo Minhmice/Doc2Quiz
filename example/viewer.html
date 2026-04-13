@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doc2Quiz — design mock viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --chrome: #00352d;
+        --chrome-muted: #e0e3e1;
+        --coral: #ff967d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Manrope, system-ui, sans-serif;
+        background: #0f172a;
+        color: #f8fafc;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        min-height: 52px;
+        padding: 0.5rem 0.75rem;
+        background: var(--chrome);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .bar a,
+      .bar button {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: #f8fafc;
+        padding: 0.45rem 0.65rem;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.06);
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          transform 0.15s;
+      }
+      .bar a:hover,
+      .bar button:hover {
+        background: rgba(255, 150, 125, 0.2);
+      }
+      .bar a:active,
+      .bar button:active {
+        transform: scale(0.97);
+      }
+      .title {
+        flex: 1;
+        min-width: 140px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--coral);
+      }
+      .hint {
+        width: 100%;
+        font-size: 0.65rem;
+        opacity: 0.75;
+        font-family: "Space Grotesk", sans-serif;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: calc(100vh - 52px);
+        border: 0;
+        background: #f7faf8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <a href="./index.html">Hub</a>
+      <button type="button" id="btn-prev" aria-label="Previous mock">← Prev</button>
+      <button type="button" id="btn-next" aria-label="Next mock">Next →</button>
+      <span class="title" id="mock-title">…</span>
+      <a id="open-solo" href="#" target="_blank" rel="noopener">Open solo tab</a>
+      <span class="hint" style="flex-basis: 100%; padding-bottom: 0.25rem">
+        Keys <kbd>J</kbd>/<kbd>K</kbd> — next / prev
+      </span>
+    </div>
+    <iframe id="frame" title="Design mock"></iframe>
+    <script>
+      (function () {
+        var PAGES = [
+          {
+            id: "dashboard",
+            path: "doc2quiz_action_focused_dashboard/code.html",
+            label: "Action-focused dashboard",
+          },
+          {
+            id: "selection",
+            path: "doc2quiz_refined_selection/code.html",
+            label: "Pick format (quiz / flashcards)",
+          },
+          {
+            id: "ai-workspace",
+            path: "refined_ai_processing_workspace/code.html",
+            label: "AI processing workspace",
+          },
+          {
+            id: "review",
+            path: "doc2quiz_professional_review_workspace/code.html",
+            label: "Professional review (quiz)",
+          },
+          {
+            id: "flashcards",
+            path: "doc2quiz_flashcard_review_workspace/code.html",
+            label: "Flashcard review workspace",
+          },
+          {
+            id: "play",
+            path: "doc2quiz_immersive_quiz_play_mode/code.html",
+            label: "Immersive quiz play",
+          },
+          {
+            id: "results",
+            path: "doc2quiz_advanced_results_recovery_workspace/code.html",
+            label: "Results & recovery",
+          },
+          {
+            id: "settings",
+            path: "doc2quiz_ai_connection_settings/code.html",
+            label: "AI connection settings",
+          },
+        ];
+        var params = new URLSearchParams(window.location.search);
+        var initial = params.get("p") || "dashboard";
+        var found = PAGES.findIndex(function (p) {
+          return p.id === initial;
+        });
+        var ix = found >= 0 ? found : 0;
+
+        var frame = document.getElementById("frame");
+        var titleEl = document.getElementById("mock-title");
+        var openSolo = document.getElementById("open-solo");
+        var btnPrev = document.getElementById("btn-prev");
+        var btnNext = document.getElementById("btn-next");
+
+        function apply() {
+          var p = PAGES[ix];
+          frame.src = p.path;
+          titleEl.textContent = p.label;
+          document.title = "Mock · " + p.label;
+          openSolo.href = p.path;
+          var u = new URL(window.location.href);
+          u.searchParams.set("p", p.id);
+          window.history.replaceState({}, "", u.pathname + "?" + u.searchParams.toString());
+        }
+
+        function go(delta) {
+          ix = (ix + delta + PAGES.length) % PAGES.length;
+          apply();
+        }
+
+        btnPrev.addEventListener("click", function () {
+          go(-1);
+        });
+        btnNext.addEventListener("click", function () {
+          go(1);
+        });
+
+        window.addEventListener("keydown", function (e) {
+          if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+          if (e.key === "j" || e.key === "J") go(1);
+          if (e.key === "k" || e.key === "K") go(-1);
+        });
+
+        apply();
+      })();
+    </script>
+  </body>
+</html>

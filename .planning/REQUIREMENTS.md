@@ -7,14 +7,14 @@
 
 ### PDF Ingestion
 
-- [ ] **PDF-01**: User can upload a PDF file (.pdf only, max 10MB)
-- [ ] **PDF-02**: System extracts text from text-based PDFs via pdf.js
-- [ ] **PDF-03**: System displays extracted text in scrollable viewer
-- [ ] **PDF-04**: System shows clear error for scanned/empty PDFs ("This PDF may be scanned. Text extraction failed.")
+- [x] **PDF-01**: User can upload a PDF file (.pdf only, max 10MB)
+- [x] **PDF-02**: System extracts text from text-based PDFs via pdf.js
+- [x] **PDF-03**: System displays extracted text in scrollable viewer
+- [x] **PDF-04**: System shows clear error for scanned/empty PDFs ("This PDF may be scanned. Text extraction failed.")
 
 ### AI Question Parsing
 
-- [ ] **AI-01**: User can enter and save their AI API key (stored in localStorage, never sent to own server)
+- [x] **AI-01**: User can enter and save their AI API key (stored in localStorage; forwarded per request via same-origin route, not stored server-side)
 - [x] **AI-02**: System chunks extracted text into segments suitable for AI processing
 - [x] **AI-03**: AI converts chunks into structured MCQ format: question + 4 options + correct answer index
 - [x] **AI-04**: System validates parsed question structure (has question, exactly 4 options, valid answer index)
@@ -22,26 +22,26 @@
 
 ### Question Review
 
-- [ ] **REVIEW-01**: User can view all AI-parsed questions before saving
-- [ ] **REVIEW-02**: User can edit question text, any option text, and the correct answer
-- [ ] **REVIEW-03**: User can delete any question from the set
-- [ ] **REVIEW-04**: User can approve the set and save it to the question bank
+- [x] **REVIEW-01**: User can view all AI-parsed questions before saving
+- [x] **REVIEW-02**: User can edit question text, any option text, and the correct answer
+- [x] **REVIEW-03**: User can delete any question from the set
+- [x] **REVIEW-04**: User can approve the set and save it to the question bank
 
 ### Practice Engine
 
-- [ ] **PRAC-01**: User can start a practice session from a saved question set
-- [ ] **PRAC-02**: User answers with keyboard keys 1/2/3/4 (maps to A/B/C/D)
-- [ ] **PRAC-03**: System shows immediate correct/incorrect feedback after each answer
-- [ ] **PRAC-04**: System advances to next question automatically after answering
-- [ ] **PRAC-05**: User can navigate back to a previous question (arrow keys or on-screen nav)
-- [ ] **PRAC-06**: User sees a question map showing answered/unanswered status
+- [x] **PRAC-01**: User can start a practice session from a saved question set
+- [x] **PRAC-02**: User answers with keyboard keys 1/2/3/4 (maps to A/B/C/D)
+- [x] **PRAC-03**: System shows immediate correct/incorrect feedback after each answer
+- [x] **PRAC-04**: System advances to next question automatically after answering
+- [x] **PRAC-05**: User can navigate back to a previous question (arrow keys or on-screen nav)
+- [x] **PRAC-06**: User sees a question map showing answered/unanswered status
 
 ### Score & Repeat
 
-- [ ] **SCORE-01**: System displays score at end of session (X/Y correct, percentage)
-- [ ] **SCORE-02**: System tracks which questions were answered incorrectly
-- [ ] **SCORE-03**: User can start a drill session with only wrong-answer questions
-- [ ] **SCORE-04**: Question bank (questions + wrong-answer history) persists in localStorage/IndexedDB across browser sessions
+- [x] **SCORE-01**: System displays score at end of session (X/Y correct, percentage)
+- [x] **SCORE-02**: System tracks which questions were answered incorrectly
+- [x] **SCORE-03**: User can start a drill session with only wrong-answer questions
+- [x] **SCORE-04**: Question bank (questions + wrong-answer history) persists in localStorage/IndexedDB across browser sessions
 
 ## v2 Requirements
 
@@ -68,7 +68,7 @@
 |---------|--------|
 | Cloud sync / own backend | No server in v1; adds deployment complexity with no v1 benefit |
 | User accounts / auth | Single-user local tool; no accounts needed |
-| OCR for scanned PDFs | pdf.js cannot OCR; out of scope for all versions unless OCR library is added |
+| Local Tesseract-style OCR | Not bundled; scanned PDFs use optional multimodal OCR/vision via user API instead |
 | Teacher/institution features | v1 is student-only; institutional tooling is a different product |
 | Analytics dashboards | Score + wrong-answer loop is sufficient for v1 learning signal |
 | Real-time collaboration | Single-user tool |
@@ -77,29 +77,29 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PDF-01 | Phase 1 | Pending |
-| PDF-02 | Phase 1 | Pending |
-| PDF-03 | Phase 1 | Pending |
-| PDF-04 | Phase 1 | Pending |
-| AI-01 | Phase 2 | Pending |
+| PDF-01 | Phase 1 | Complete |
+| PDF-02 | Phase 1 | Complete |
+| PDF-03 | Phase 1 | Complete |
+| PDF-04 | Phase 1 | Complete |
+| AI-01 | Phase 2 | Complete |
 | AI-02 | Phase 2 | Complete |
 | AI-03 | Phase 2 | Complete |
 | AI-04 | Phase 2 | Complete |
 | AI-05 | Phase 2 | Complete |
-| REVIEW-01 | Phase 3 | Pending |
-| REVIEW-02 | Phase 3 | Pending |
-| REVIEW-03 | Phase 3 | Pending |
-| REVIEW-04 | Phase 3 | Pending |
-| PRAC-01 | Phase 4 | Pending |
-| PRAC-02 | Phase 4 | Pending |
-| PRAC-03 | Phase 4 | Pending |
-| PRAC-04 | Phase 4 | Pending |
-| PRAC-05 | Phase 4 | Pending |
-| PRAC-06 | Phase 4 | Pending |
-| SCORE-01 | Phase 5 | Pending |
-| SCORE-02 | Phase 5 | Pending |
-| SCORE-03 | Phase 5 | Pending |
-| SCORE-04 | Phase 5 | Pending |
+| REVIEW-01 | Phase 3 | Complete |
+| REVIEW-02 | Phase 3 | Complete |
+| REVIEW-03 | Phase 3 | Complete |
+| REVIEW-04 | Phase 3 | Complete |
+| PRAC-01 | Phase 4 | Complete |
+| PRAC-02 | Phase 4 | Complete |
+| PRAC-03 | Phase 4 | Complete |
+| PRAC-04 | Phase 4 | Complete |
+| PRAC-05 | Phase 4 | Complete |
+| PRAC-06 | Phase 4 | Complete |
+| SCORE-01 | Phase 5 | Complete |
+| SCORE-02 | Phase 5 | Complete |
+| SCORE-03 | Phase 5 | Complete |
+| SCORE-04 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 23 total
@@ -108,4 +108,4 @@
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-05 after initialization*
+*Last updated: 2026-04-11 — checkboxes and traceability aligned with shipped v1 (`src/`, `STATE.md`)*

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import {
   AI_CONFIG_CHANGED_EVENT,
   LS_LAST_AI_REACHABILITY,
@@ -8,6 +9,8 @@ import {
   runAiReachabilityCheck,
   type AiReachabilitySnapshot,
 } from "@/lib/ai/aiReachability";
+import type { AiProvider } from "@/types/question";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -30,7 +33,23 @@ function formatShortTime(iso: string): string {
   }
 }
 
+function formatProviderLabel(provider: AiProvider): string {
+  switch (provider) {
+    case "openai":
+      return "OpenAI";
+    case "anthropic":
+      return "Anthropic";
+    case "custom":
+      return "Custom";
+  }
+}
+
+/** Hover: transform leads (~0ms delay); chrome follows after ~110ms; ~500ms each. */
+const BADGE_HOVER_TRANSITION =
+  "transform 500ms cubic-bezier(0.25,0.46,0.45,0.94) 0ms, background-color 500ms cubic-bezier(0.25,0.46,0.45,0.94) 110ms, border-color 500ms cubic-bezier(0.25,0.46,0.45,0.94) 110ms, box-shadow 500ms cubic-bezier(0.25,0.46,0.45,0.94) 110ms";
+
 export function ApiStatusIndicator() {
+  const reduceMotion = useReducedMotion();
   const [reach, setReach] = useState<AiReachabilitySnapshot | null>(null);
   const [checking, setChecking] = useState(false);
   const lastFocusCheckRef = useRef(0);
@@ -104,7 +123,9 @@ export function ApiStatusIndicator() {
   }, [runCheck]);
 
   const ok = reach?.ok === true;
-  const label = checking ? "…" : ok ? "API OK" : "API Down";
+  const hasReach = reach != null;
+  const label =
+    checking && !hasReach ? "Checking" : ok ? "API OK" : "API Down";
 
   return (
     <TooltipProvider delay={200}>
@@ -113,50 +134,102 @@ export function ApiStatusIndicator() {
           render={
             <Button
               type="button"
-              variant="ghost"
+              data-testid="doc2quiz-api-status-trigger"
+              variant="outline"
               size="sm"
-              className="h-auto min-h-0 shrink-0 gap-0.5 px-1 py-0 font-normal hover:bg-transparent"
+              style={
+                reduceMotion ? undefined : { transition: BADGE_HOVER_TRANSITION }
+              }
+              className={cn(
+                "h-7 min-h-7 min-w-[5.75rem] shrink-0 justify-center gap-1 rounded-full px-2.5 text-[10px] font-normal shadow-sm",
+                "border-border/55 bg-muted/25 dark:bg-muted/15",
+                reduceMotion
+                  ? "transition-colors duration-200 ease-out hover:border-border/65 hover:bg-muted/40 dark:hover:bg-muted/30"
+                  : "motion-safe:hover:-translate-y-px motion-safe:hover:border-border/70 motion-safe:hover:bg-muted/40 motion-safe:hover:shadow-md motion-safe:hover:shadow-foreground/[0.07] dark:motion-safe:hover:bg-muted/30 dark:motion-safe:hover:shadow-black/25",
+                "active:translate-y-0 disabled:pointer-events-none disabled:opacity-100",
+                "aria-busy:cursor-wait",
+              )}
               disabled={checking}
+              aria-busy={checking}
               onClick={() => void runCheck()}
             />
           }
         >
           <span
             className={cn(
-              "inline-flex items-center gap-0.5 text-[10px] font-medium leading-none",
-              ok
-                ? "text-emerald-700 dark:text-emerald-400"
-                : "text-destructive",
+              "inline-flex min-w-0 items-center justify-center gap-1.5 text-[10px] font-medium leading-none",
+              !hasReach
+                ? "text-muted-foreground"
+                : ok
+                  ? "text-emerald-700 dark:text-emerald-400"
+                  : "text-destructive",
             )}
           >
             <span
-              className={cn(
-                "size-1.5 shrink-0 rounded-full",
-                ok ? "bg-emerald-500" : "bg-destructive",
-              )}
+              className="relative inline-flex size-3 shrink-0 items-center justify-center"
               aria-hidden
-            />
-            {label}
+            >
+              {checking ? (
+                <Loader2 className="absolute size-3 animate-spin opacity-80 motion-reduce:animate-none" />
+              ) : null}
+              <span
+                className={cn(
+                  "size-1.5 shrink-0 rounded-full transition-opacity duration-150",
+                  checking ? "opacity-0" : "opacity-100",
+                  !hasReach
+                    ? "bg-muted-foreground"
+                    : ok
+                      ? "bg-emerald-500"
+                      : "bg-destructive",
+                )}
+              />
+            </span>
+            <span className="min-w-[4rem] text-center tabular-nums">{label}</span>
+            {checking ? (
+              <span className="sr-only">Checking API connection</span>
+            ) : null}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs text-xs">
+        <TooltipContent
+          side="bottom"
+          className="max-w-sm min-w-[220px] flex flex-col items-stretch gap-1.5 text-left text-xs text-background"
+        >
           {reach ? (
             <>
               {ok ? (
-                <p>
-                  {reach.provider} reachable · checked{" "}
-                  {formatShortTime(reach.checkedAt)}
-                </p>
+                <>
+                  <p className="font-medium leading-snug text-background">
+                    {formatProviderLabel(reach.provider)} reachable
+                  </p>
+                  <p className="text-[11px] leading-snug text-background/90">
+                    Last checked {formatShortTime(reach.checkedAt)}
+                  </p>
+                </>
               ) : (
-                <p>
-                  Unavailable · {formatShortTime(reach.checkedAt)}
-                  {reach.message ? ` — ${reach.message}` : ""}
-                </p>
+                <>
+                  <p className="font-medium leading-snug text-background">
+                    Unreachable
+                  </p>
+                  <p className="break-words text-[11px] leading-snug text-background/90">
+                    {formatShortTime(reach.checkedAt)}
+                    {reach.message ? ` · ${reach.message}` : ""}
+                  </p>
+                </>
               )}
-              <p className="mt-1 text-muted-foreground">Click to check again</p>
+              <p className="border-t border-background/20 pt-1.5 text-[11px] leading-snug text-background/80">
+                Click to run a fresh connection test. You can also review keys in
+                Settings.
+              </p>
             </>
           ) : (
-            <p>No check yet — click to probe your AI settings.</p>
+            <>
+              <p className="font-medium leading-snug text-background">
+                No connection check yet
+              </p>
+              <p className="text-[11px] leading-snug text-background/90">
+                Open Settings or click here to test your AI configuration.
+              </p>
+            </>
           )}
         </TooltipContent>
       </Tooltip>

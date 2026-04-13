@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Doc2Quiz is a local-first web app that converts PDFs of study materials — past exams, notes, question banks — into interactive multiple-choice practice sessions. Students upload a document, an AI extracts structured questions, and they drill through them with a keyboard-first interface designed for speed. Everything runs in the browser with no backend.
+Doc2Quiz is a local-first web app that converts PDFs of study materials — past exams, notes, question banks — into interactive multiple-choice practice sessions. Students upload a document, an AI extracts structured questions, and they drill through them with a keyboard-first interface designed for speed. **Data** (study sets, drafts, OCR artifacts, sessions) stays in the browser (IndexedDB and localStorage). **AI traffic** uses small Next.js Route Handlers on the same origin (forwarding and image staging), not a separate hosted backend product.
 
 ## Core Value
 
@@ -12,23 +12,23 @@ The practice loop must feel faster and more effective than reading the PDF direc
 
 ### Validated
 
-(None yet — ship to validate)
+- Core v1 loop (PDF → parse → review → practice → score → mistakes) — see phases 1–5 in `STATE.md` / `ROADMAP.md`
 
 ### Active
 
-- [ ] PDF upload and text extraction
-- [ ] AI-powered question parsing — user supplies their own API key, calls made client-side
-- [ ] Question review/edit interface before saving to bank
-- [ ] Keyboard-first practice engine — 1/2/3/4 keys map to A/B/C/D
-- [ ] End-of-session score display
-- [ ] Wrong-answer drill loop — repeat only missed questions
-- [ ] Local question bank persisting across sessions (localStorage/IndexedDB)
+- [x] PDF upload and text extraction (`pdfjs-dist`, `extractPdfText`)
+- [x] AI-powered question parsing — user API key in localStorage; vendor calls via `POST /api/ai/forward` (see `sameOriginForward.ts`)
+- [x] Question review/edit interface before saving to bank
+- [x] Keyboard-first practice engine — 1/2/3/4 keys map to A/B/C/D
+- [x] End-of-session score display
+- [x] Wrong-answer drill loop — repeat only missed questions
+- [x] Local question bank persisting across sessions (IndexedDB `studySetDb`, plus legacy migration)
 
 ### Out of Scope
 
-- Cloud sync / backend — no own server in v1; AI calls go direct to provider
+- Cloud sync / dedicated product backend — no accounts, no multi-device sync in v1
 - Teacher/institutional features — student-only v1
-- Built-in offline OCR (e.g. Tesseract) — not in v1; scanned PDFs may use optional **AI vision** (user’s multimodal API, client-rendered page images) instead of local OCR
+- Built-in offline OCR (e.g. Tesseract) — not in v1; scanned or weak text layers use optional **multimodal OCR/vision** through the user’s API (same-origin forward), not local Tesseract
 - Multi-user / sharing — single-user local tool
 - Analytics dashboards — score + wrong-answer loop is enough for v1
 
@@ -36,26 +36,26 @@ The practice loop must feel faster and more effective than reading the PDF direc
 
 **Target user:** Students with 10–50 PDFs of past exams or exercises who want to drill actively, not read passively. Speed and repetition matter most.
 
-**AI model:** User supplies their own Claude or OpenAI API key, stored locally in the browser. Calls go client-side directly to the provider — no proxy, no backend. This preserves "offline-first" for everything except the AI extraction step itself.
+**AI model:** User supplies their own Claude, OpenAI, or custom-compatible endpoint; keys and URLs live in browser storage. **Browser → Next Route Handler → provider:** CORS-blocked requests use `POST /api/ai/forward` (`src/app/api/ai/forward/route.ts`). Large vision payloads may use `POST /api/ai/vision-staging` for same-origin image URLs.
 
-**What "offline-first" means here:** No own server. AI calls are outbound to a user-controlled provider. All data (questions, scores, wrong answers) stays in localStorage/IndexedDB.
+**What "offline-first" means here:** No cloud account or sync. Study material and quiz state stay on-device (IndexedDB). AI extraction is online only to the user-chosen vendor.
 
-**Starting point:** Phase 1 (PDF upload + text extraction) is already implemented via pdf.js.
+**Starting point:** v1 practice loop (phases 1–5) is implemented; later roadmap phases cover hardening, math preview, scale-mode stubs, and domain cleanup — see `.planning/STATE.md` and `.planning/ROADMAP.md`.
 
 ## Constraints
 
 - **Tech stack**: Next.js App Router + TypeScript + Tailwind v4 (already scaffolded)
-- **Storage**: localStorage/IndexedDB only — no database, no cloud sync
-- **AI**: Client-side API calls with user-supplied key — no backend proxy
+- **Storage**: IndexedDB primary (`studySetDb`); localStorage for AI settings and parse UI toggles — no cloud sync
+- **AI**: User-supplied credentials; same-origin Next Route Handlers forward to vendor HTTPS (not raw browser-to-vendor for blocked APIs)
 - **UX**: Keyboard-first — 1/2/3/4 must work for all answer selection throughout
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| User-supplied API key, client-side | Keeps "offline-first" spirit while enabling AI; no backend to maintain | — Pending |
-| localStorage/IndexedDB for question bank | No cloud dependency in v1; simplifies deployment | — Pending |
-| Review step before saving questions | Human-in-the-loop for AI errors; bad questions ruin practice | — Pending |
+| User-supplied API key + same-origin forward | Avoids CORS; keys never stored server-side; user controls vendor URL | Implemented (`sameOriginForward`, `/api/ai/forward`) |
+| IndexedDB for study sets and drafts | No cloud dependency in v1; supports large PDF buffers and OCR tables | Implemented (`studySetDb`) |
+| Review step before saving questions | Human-in-the-loop for AI errors; bad questions ruin practice | Implemented |
 
 ## Evolution
 
@@ -75,4 +75,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 after initialization*
+*Last updated: 2026-04-11 — aligned with implementation (`src/`) and `.planning/STATE.md`*

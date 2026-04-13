@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html class="light" lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doc2Quiz — UI components (example/)</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              background: "#f7faf8",
+              surface: "#f7faf8",
+              "surface-container": "#ebefed",
+              "surface-container-low": "#f1f4f2",
+              "surface-container-highest": "#e0e3e1",
+              "on-background": "#181c1b",
+              "on-surface": "#181c1b",
+              "on-surface-variant": "#404945",
+              primary: "#5f0f00",
+              "on-primary": "#ffffff",
+              "primary-container": "#841f06",
+              "on-primary-container": "#ff967d",
+              secondary: "#376757",
+              "on-secondary": "#ffffff",
+              "secondary-container": "#baeed9",
+              "on-secondary-container": "#3d6d5d",
+              tertiary: "#00352d",
+              "on-tertiary": "#ffffff",
+              outline: "#707974",
+              "outline-variant": "#c0c9c3",
+              error: "#ba1a1a",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+            },
+            borderRadius: {
+              DEFAULT: "0.125rem",
+              lg: "0.25rem",
+              xl: "0.5rem",
+            },
+            fontFamily: {
+              headline: ["Manrope", "sans-serif"],
+              body: ["Manrope", "sans-serif"],
+              label: ["Space Grotesk", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+        vertical-align: middle;
+        font-size: 1.125rem;
+      }
+      .section-anchor {
+        scroll-margin-top: 5rem;
+      }
+    </style>
+  </head>
+  <body class="bg-background font-body text-on-surface antialiased">
+    <header
+      class="sticky top-0 z-40 border-b border-outline-variant/40 bg-white/90 backdrop-blur-md"
+    >
+      <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div>
+          <p class="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-secondary">
+            Example · UI kit
+          </p>
+          <h1 class="font-headline text-lg font-extrabold tracking-tight text-tertiary">
+            Components nhỏ
+          </h1>
+        </div>
+        <nav class="flex flex-wrap gap-2 text-sm font-medium">
+          <a class="text-secondary underline-offset-2 hover:underline" href="./index.html">Hub</a>
+          <a class="text-secondary underline-offset-2 hover:underline" href="./preview-all.html">Page mocks</a>
+          <a class="text-secondary underline-offset-2 hover:underline" href="./viewer.html">Viewer</a>
+        </nav>
+      </div>
+      <div
+        class="mx-auto flex max-w-5xl flex-wrap gap-2 border-t border-outline-variant/30 px-4 py-2 sm:px-6"
+      >
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#typography">Type</a>
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#buttons">Buttons</a>
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#links">Links</a>
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#cards">Cards</a>
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#inputs">Inputs</a>
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#chips">Chips</a>
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#alerts">Alerts</a>
+        <a class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-secondary" href="#lists">Lists</a>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl space-y-16 px-4 py-10 sm:px-6">
+      <!-- Typography -->
+      <section id="typography" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">Typography</h2>
+        <p class="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+          Manrope (headline/body) · Space Grotesk (label)
+        </p>
+        <div class="space-y-3 bg-surface-container-low p-6">
+          <p class="font-headline text-3xl font-extrabold tracking-tight text-tertiary">Display — Doc2Quiz</p>
+          <p class="font-headline text-xl font-bold text-on-surface">Headline — Study set title</p>
+          <p class="text-base leading-relaxed text-on-surface-variant">
+            Body — Đoạn mô tả ngắn cho card hoặc helper text dưới field. Line-height thoáng cho cảm giác editorial.
+          </p>
+          <p class="font-label text-xs font-bold uppercase tracking-widest text-secondary">Label / caption</p>
+        </div>
+      </section>
+
+      <!-- Buttons -->
+      <section id="buttons" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">Buttons</h2>
+        <div class="flex flex-wrap items-center gap-3 bg-surface-container-low p-6">
+          <button
+            type="button"
+            class="bg-primary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-primary transition hover:bg-primary-container"
+          >
+            Primary
+          </button>
+          <button
+            type="button"
+            class="border border-secondary/40 bg-transparent px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-secondary transition hover:bg-secondary-container/40"
+          >
+            Secondary outline
+          </button>
+          <button
+            type="button"
+            class="bg-on-primary-container px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-primary transition hover:opacity-90"
+          >
+            Coral accent
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant opacity-60"
+            disabled
+          >
+            Disabled
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 bg-secondary px-4 py-2 font-label text-xs font-bold uppercase tracking-widest text-on-secondary transition hover:opacity-95"
+          >
+            <span class="material-symbols-outlined text-base">add</span>
+            With icon
+          </button>
+        </div>
+      </section>
+
+      <!-- Links -->
+      <section id="links" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">Links</h2>
+        <div class="flex flex-wrap gap-6 bg-surface-container-low p-6">
+          <a href="#" class="text-sm font-semibold text-secondary underline-offset-4 hover:underline">Text link</a>
+          <a href="#" class="font-label text-xs font-bold uppercase tracking-widest text-on-primary-container hover:underline"
+            >Label link</a
+          >
+          <button
+            type="button"
+            class="group inline-flex items-center gap-1 font-label text-xs font-bold uppercase tracking-widest text-secondary"
+          >
+            <span class="material-symbols-outlined text-lg transition group-hover:-translate-x-0.5">arrow_back</span>
+            <span class="border-b border-transparent group-hover:border-secondary">Back pattern</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Cards -->
+      <section id="cards" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">Cards</h2>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <article class="bg-surface-container p-5 shadow-sm transition hover:shadow-md">
+            <p class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Surface container</p>
+            <h3 class="mt-2 font-headline text-lg font-bold text-tertiary">Card title</h3>
+            <p class="mt-2 text-sm text-on-surface-variant">Mô tả ngắn — không viền cứng, dùng nền tách lớp.</p>
+            <button
+              type="button"
+              class="mt-4 bg-primary px-3 py-1.5 font-label text-[10px] font-bold uppercase tracking-widest text-on-primary"
+            >
+              Action
+            </button>
+          </article>
+          <article class="border border-outline-variant/50 bg-surface-container-lowest p-5">
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="font-headline text-lg font-bold text-tertiary">Card + badge</h3>
+              <span class="bg-secondary-container px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-on-secondary-container">Draft</span>
+            </div>
+            <p class="mt-2 text-sm text-on-surface-variant">Viền ghost nhẹ khi cần tách khỏi nền cùng tone.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Inputs -->
+      <section id="inputs" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">Inputs</h2>
+        <div class="max-w-xl space-y-5 bg-surface-container-low p-6">
+          <div>
+            <label class="font-label mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant"
+              >Text</label
+            >
+            <input
+              type="text"
+              placeholder="API key…"
+              class="w-full border-0 border-b-2 border-outline-variant bg-surface-container-lowest px-0 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:ring-0"
+            />
+          </div>
+          <div>
+            <label class="font-label mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant"
+              >Select</label
+            >
+            <select
+              class="w-full rounded-sm border border-outline-variant/60 bg-surface-container-lowest px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option>gpt-4.1-mini</option>
+              <option>gpt-4.1</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-label mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant"
+              >Textarea</label
+            >
+            <textarea
+              rows="3"
+              class="w-full rounded-sm border border-outline-variant/60 bg-surface-container-lowest p-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="Ghi chú…"
+            ></textarea>
+          </div>
+          <label class="flex cursor-pointer items-center gap-3">
+            <input type="checkbox" class="size-4 rounded border-outline-variant text-primary focus:ring-primary" />
+            <span class="text-sm text-on-surface">Checkbox nhớ provider</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Chips -->
+      <section id="chips" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">Chips &amp; pills</h2>
+        <div class="flex flex-wrap gap-2 bg-surface-container-low p-6">
+          <span class="bg-secondary-container px-3 py-1 font-label text-[10px] font-bold uppercase tracking-wider text-on-secondary-container"
+            >Ready</span
+          >
+          <span class="bg-surface-container-highest px-3 py-1 font-label text-[10px] font-bold uppercase tracking-wider text-on-surface-variant"
+            >Draft</span
+          >
+          <span class="bg-on-primary-container/20 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-wider text-primary"
+            >Active</span
+          >
+          <button
+            type="button"
+            class="rounded-sm border border-outline-variant bg-transparent px-3 py-1 font-label text-[10px] font-bold uppercase tracking-wider text-secondary hover:bg-surface-container"
+          >
+            Filter
+          </button>
+        </div>
+      </section>
+
+      <!-- Alerts -->
+      <section id="alerts" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">Alerts</h2>
+        <div class="space-y-3">
+          <div class="flex gap-3 border border-secondary/25 bg-secondary-container/35 p-4 text-sm text-on-surface">
+            <span class="material-symbols-outlined text-secondary">info</span>
+            <div>
+              <p class="font-semibold text-tertiary">Thông tin</p>
+              <p class="mt-1 text-on-surface-variant">Parse đang chạy — bạn có thể hủy từ thanh tiến độ.</p>
+            </div>
+          </div>
+          <div class="flex gap-3 border border-error/30 bg-error-container/50 p-4 text-sm">
+            <span class="material-symbols-outlined text-error">error</span>
+            <div>
+              <p class="font-semibold text-error">Lỗi</p>
+              <p class="mt-1 text-on-surface-variant">Không đọc được PDF — thử file khác.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lists -->
+      <section id="lists" class="section-anchor space-y-4">
+        <h2 class="font-headline text-2xl font-bold text-tertiary">List row</h2>
+        <ul class="divide-y divide-outline-variant/40 border border-outline-variant/40 bg-surface-container-lowest">
+          <li class="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-surface-container-low">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-on-surface-variant">description</span>
+              <div>
+                <p class="font-medium text-on-surface">Chapter 3 — Quiz</p>
+                <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">12 câu · Ready</p>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+          </li>
+          <li class="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-surface-container-low">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-on-surface-variant">style</span>
+              <div>
+                <p class="font-medium text-on-surface">Từ vựng YLE</p>
+                <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">Draft</p>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+          </li>
+        </ul>
+      </section>
+
+      <footer class="border-t border-outline-variant/40 pt-8 text-center text-xs text-on-surface-variant">
+        <p>
+          Token theo <code class="rounded bg-surface-container px-1">example/mint_architecture/DESIGN.md</code> · chỉnh
+          trực tiếp file này khi chốt component cho app.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

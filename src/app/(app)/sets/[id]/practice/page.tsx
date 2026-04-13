@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { quizPlay } from "@/lib/routes/studySetPaths";
 
 export default async function StudySetPracticeRedirectPage({
   params,
@@ -6,5 +7,5 @@ export default async function StudySetPracticeRedirectPage({
   params: Promise<{ id: string }>;
 }>) {
   const { id } = await params;
-  redirect(`/sets/${id}/play`);
+  redirect(quizPlay(id));
 }

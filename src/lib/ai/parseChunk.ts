@@ -2,13 +2,12 @@
  * AI calls go through `POST /api/ai/forward` (same-origin) so the real HTTPS
  * request runs on the server and avoids vendor CORS blocking browser fetch.
  *
- * Providers:
- * - OpenAI / Custom: chat completions shape (Bearer), optional `response_format`.
- * - Anthropic: messages API (`x-api-key`, `anthropic-version`).
- * - Custom: OpenAI-compatible URL + model from UI (URL required).
+ * Chunk + single-MCQ parse use **OpenAI-compatible** chat completions only
+ * (Phase 19). `provider` on `ParseChunkOnceParams` is legacy; routing uses URL/model.
  */
 
 import { FatalParseError } from "@/lib/ai/errors";
+import { withRetries } from "@/lib/ai/pipelineStageRetry";
 import {
   forwardAiPost,
   parseProxyForwardErrorBody,
@@ -111,7 +110,8 @@ export function resolveModelId(
   return provider === "openai" ? OPENAI_MODEL : ANTHROPIC_MODEL;
 }
 
-function parseJsonFromModelText(text: string): unknown {
+/** Exported for vision batch parsers (`parseVisionQuizResponse`, etc.). */
+export function parseJsonFromModelText(text: string): unknown {
   const trimmed = text.trim();
   const fenceStripped = trimmed
     .replace(/^```(?:json)?\s*/i, "")
@@ -211,112 +211,47 @@ async function parseOpenAI(
   return extractQuestions(content);
 }
 
-async function parseAnthropic(
-  apiKey: string,
-  endpoint: string,
-  model: string,
-  chunkText: string,
-  signal: AbortSignal,
-  systemPrompt: string,
-  extractQuestions: (content: string) => Question[] = questionsFromAssistantContent,
-  onRawAssistantText?: (text: string) => void,
-): Promise<Question[]> {
-  const res = await forwardAiPost({
-    provider: "anthropic",
-    targetUrl: endpoint,
-    apiKey,
-    signal,
-    body: {
-      model,
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: chunkText }],
-    },
-  });
-
-  const text = await res.text();
-
-  if (res.status === 401) {
-    throw new FatalParseError(
-      "Invalid API key. Please check and try again.",
-    );
-  }
-  if (res.status === 429) {
-    throw new FatalParseError(
-      "Too many requests. Please wait and try again.",
-    );
-  }
-  if (!res.ok) {
-    const proxyMsg =
-      res.status === 502 ? parseProxyForwardErrorBody(text) : null;
-    if (proxyMsg) {
-      throw new Error(proxyMsg);
-    }
-    throw new Error(describeBadAiResponse(res.status, text));
-  }
-
-  let data: {
-    content?: Array<{ type?: string; text?: string }>;
-  };
-  try {
-    data = JSON.parse(text) as typeof data;
-  } catch {
-    if (responseLooksLikeHtml(text)) {
-      throw new Error(
-        "API returned HTML instead of JSON — check the messages API URL.",
-      );
-    }
-    throw new Error("Invalid JSON from Anthropic");
-  }
-  const blocks = data.content;
-  const textParts =
-    blocks
-      ?.filter((b) => b.type === "text" && typeof b.text === "string")
-      .map((b) => b.text as string) ?? [];
-  const joined = textParts.join("\n").trim();
-  if (joined.length === 0) {
-    throw new Error("Empty Anthropic message content");
-  }
-
-  onRawAssistantText?.(joined);
-  return extractQuestions(joined);
+function resolveOpenAiCompatEndpointAndModel(
+  apiUrl: string | undefined,
+  model: string | undefined,
+): { endpoint: string; modelId: string; forwardProvider: "openai" | "custom" } {
+  const t = (apiUrl ?? "").trim();
+  const forwardProvider = t ? "custom" : "openai";
+  const endpoint =
+    forwardProvider === "openai"
+      ? DEFAULT_OPENAI_CHAT_URL
+      : normalizeOpenAiChatCompletionsUrl(t);
+  const modelId =
+    forwardProvider === "custom"
+      ? (() => {
+          const m = (model ?? "").trim();
+          if (!m) {
+            throw new FatalParseError(
+              "Enter a model id for your API base URL.",
+            );
+          }
+          return m;
+        })()
+      : (model ?? "").trim() || OPENAI_MODEL;
+  return { endpoint, modelId, forwardProvider };
 }
 
 export async function parseChunkOnce(
   params: ParseChunkOnceParams,
 ): Promise<Question[]> {
-  const { provider, apiKey, apiUrl, model, chunkText, signal } = params;
-  const endpoint = resolveChatApiUrl(provider, apiUrl);
-  const modelId = resolveModelId(provider, model);
-  if (provider === "openai") {
-    return parseOpenAI(
+  const { apiKey, apiUrl, model, chunkText, signal } = params;
+  const { endpoint, modelId, forwardProvider } =
+    resolveOpenAiCompatEndpointAndModel(apiUrl, model);
+  return withRetries("llm_chunk", signal, async () =>
+    parseOpenAI(
       apiKey,
       endpoint,
       modelId,
       chunkText,
       signal,
-      "openai",
+      forwardProvider,
       MCQ_EXTRACTION_SYSTEM_PROMPT,
-    );
-  }
-  if (provider === "custom") {
-    return parseOpenAI(
-      apiKey,
-      endpoint,
-      modelId,
-      chunkText,
-      signal,
-      "custom",
-      MCQ_EXTRACTION_SYSTEM_PROMPT,
-    );
-  }
-  return parseAnthropic(
-    apiKey,
-    endpoint,
-    modelId,
-    chunkText,
-    signal,
-    MCQ_EXTRACTION_SYSTEM_PROMPT,
+    ),
   );
 }
 
@@ -329,49 +264,25 @@ export async function parseChunkOnce(
 export async function parseChunkSingleMcqOnce(
   params: ParseChunkOnceParams,
 ): Promise<Question | null> {
-  const { provider, apiKey, apiUrl, model, chunkText, signal, onRawAssistantText } =
+  const { apiKey, apiUrl, model, chunkText, signal, onRawAssistantText } =
     params;
-  const endpoint = resolveChatApiUrl(provider, apiUrl);
-  const modelId = resolveModelId(provider, model);
-  let qs: Question[];
-  if (provider === "openai") {
-    qs = await parseOpenAI(
+  const { endpoint, modelId, forwardProvider } =
+    resolveOpenAiCompatEndpointAndModel(apiUrl, model);
+  return withRetries("llm_chunk", signal, async () => {
+    const qs = await parseOpenAI(
       apiKey,
       endpoint,
       modelId,
       chunkText,
       signal,
-      "openai",
+      forwardProvider,
       MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
       singleMcqQuestionsFromAssistantContent,
       onRawAssistantText,
     );
-  } else if (provider === "custom") {
-    qs = await parseOpenAI(
-      apiKey,
-      endpoint,
-      modelId,
-      chunkText,
-      signal,
-      "custom",
-      MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
-      singleMcqQuestionsFromAssistantContent,
-      onRawAssistantText,
-    );
-  } else {
-    qs = await parseAnthropic(
-      apiKey,
-      endpoint,
-      modelId,
-      chunkText,
-      signal,
-      MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
-      singleMcqQuestionsFromAssistantContent,
-      onRawAssistantText,
-    );
-  }
-  if (qs.length === 0) {
-    return null;
-  }
-  return qs[0] ?? null;
+    if (qs.length === 0) {
+      return null;
+    }
+    return qs[0] ?? null;
+  });
 }

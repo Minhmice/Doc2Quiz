@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Phase 09 context gathered
-last_updated: "2026-04-11T18:30:00.000Z"
+stopped_at: Phase 24 executed (vision fewer round-trips — min_requests + legacy fallback)
+last_updated: "2026-04-13T14:30:00.000Z"
 progress:
-  total_phases: 19
-  completed_phases: 17
-  total_plans: 39
-  completed_plans: 38
-  percent: 97
+  total_phases: 24
+  completed_phases: 22
+  total_plans: 49
+  completed_plans: 49
+  percent: 100
 ---
 
 # Doc2Quiz — State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 18 complete (`parseScore` doc + types + `deriveParseScores`); next open work per `ROADMAP.md` (e.g. Phase 14, 6, 9).
+**Current focus:** Phase 24 complete — vision batch `min_requests` (overlap 0 + `sourcePages`) with automatic legacy 10+2 fallback; see `24-01-SUMMARY.md` / `24-02-SUMMARY.md`.
 
 ## Current Status
 
@@ -31,17 +31,36 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 5 (Score & Repeat): Complete
 - Phase 6 (Pipeline Hardening & Observability): In progress (see 06-CONTEXT)
 - Phase 7 (Layout-aware chunk parsing): Complete — `07-01-SUMMARY.md`, `07-02-SUMMARY.md`
+- Phase 20 (AI-first create, quiz vs flashcards, product parse chrome): Complete — `20-01-SUMMARY.md`, `20-02-SUMMARY.md`
+- Phase 21 (Vision-first MVP batch pipeline): Complete — `21-01-SUMMARY.md`, `21-02-SUMMARY.md`
+- Phase 22 (Mint UI/UX from `example/`): Complete — wave 0 (tokens/shell) prior session; waves 1–2 (`22-01` dashboard + stats, `22-02` settings + source/review headers); `22-01-SUMMARY.md`, `22-02-SUMMARY.md`
+- Phase 23 (full layout from `example/`): Complete — `/develop`, `mockAllowlist`, `/api/develop/mock/[slug]`, `DevelopLabClient`, dev Command Palette; inventory §8 + play outer chrome; `23-01-SUMMARY.md`, `23-02-SUMMARY.md`.
+- Phase 24 (vision parse fewer round-trips): Complete — `24-01-SUMMARY.md`, `24-02-SUMMARY.md`.
 
 ## Last Session
 
-**Stopped at:** Phase 09 context gathered
-**Date:** 2026-04-11
-**Resume file:** .planning/phases/09-9/09-CONTEXT.md
+**Stopped at:** Phase 24 executed (`min_requests` vision batches + UI plan callback)
+**Date:** 2026-04-13
+**Resume file:** (none)
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- Phase 24 execute (`/gsd-execute-phase 24`, 2026-04-13): shipped `planVisionBatches` + `runVisionBatchSequential` defaults + legacy fallback + strict `sourcePages` + `AiParseSection` `onBatchPlanResolved`; `npm run lint` + `npm run build` green; roadmap Phase 24 → **Complete**; `24-01-SUMMARY.md`, `24-02-SUMMARY.md`.
+- Phase 24 added + planned (`/gsd-add-phase`, 2026-04-13): **Vision parse: fewer round-trips — single request or max-window batches when within provider limits**; dir `.planning/phases/24-vision-parse-fewer-round-trips-single-request-or-max-window-/`; artifacts `24-CONTEXT.md`, `24-01-PLAN.md`, `24-02-PLAN.md`; roadmap Phase 24 → **Planned**; depends Phase 21.
+- Phase 23 execute (`/gsd-execute-phase 23`, 2026-04-12): shipped wave 1+2 per plans; `npm run lint` + `npm run build` green; roadmap Phase 23 + coverage → **Complete**.
+- Phase 23 plan (`/gsd-plan-phase 23`, 2026-04-12): `23-UI-SPEC.md`, `23-01-PLAN.md` (wave 1 `/develop` + Sheet + mock API + Command Palette dev), `23-02-PLAN.md` (wave 2 inventory + play outer chrome); research skipped (config); Nyquist/VALIDATION skipped (no RESEARCH); roadmap Phase 23 → **Planned**; `state planned-phase` (2 plans); user addendum: shadcn chrome + wrap `example/` for bugfix workflow.
+- Phase 23 added (`/gsd-add-phase`): **Replace entire app layout with code ported from `example/`** (full layout parity vs incremental Mint tweaks); English description for tooling; user intent: *replace toàn bộ layout với code từ example*; dir `.planning/phases/23-replace-entire-app-layout-with-code-ported-from-example-full/`.
+- Phase 22 added (`/gsd-add-phase`): **Implement example Mint UI/UX** — palette + fonts + shell từ `example/` vào Next; tiếp tục parity theo từng page; dir `.planning/phases/22-implement-example-mint-ui-ux-into-main-app-dashboard-shell-t/`, `22-CONTEXT.md`.
+- Phase 22 plan (`/gsd-plan-phase 22`): `22-RESEARCH.md`, `22-UI-SPEC.md`, `22-01-PLAN.md` (wave 1 dashboard), `22-02-PLAN.md` (wave 2 settings + headers); roadmap Phase 22 → **Planned**; Nyquist/VALIDATION skipped (research disabled in config).
+- Phase 22 execute (autonomous slice, 2026-04-12): implemented `22-01` + `22-02` — `DashboardLibraryClient`, `DashboardStatsWidget`, `dashboard/page.tsx`, `settings/page.tsx`, `AiProviderForm`, `sets/[id]/source` + `review` headers; `22-01-SUMMARY.md`, `22-02-SUMMARY.md`; roadmap Phase 22 + coverage row → **Complete**; `npm run lint` + `npm run build` green.
+- Phase 20 research (`/gsd-research-phase 20`): `20-RESEARCH.md` — funnel routes, `surface` vs `variant`, source siblings, IDB `contentKind` without DB_VERSION bump unless stores change, `/dev/ocr` compose-only, flashcard redirect pitfall, Suspense+`useSearchParams` precedent.
+- Phase 20 plan (`/gsd-plan-phase 20`): `20-UI-SPEC.md`, `20-01-PLAN.md` (wave 1 funnel + `contentKind`), `20-02-PLAN.md` (wave 2 product parse chrome + `/dev/ocr` + flashcards review stub); plan-checker warnings addressed; roadmap + coverage row Phase 20 → **Planned**; `state planned-phase` (2 plans).
+- Phase 20 execute (`/gsd-execute-phase 20`): funnel `/sets/new` → `/sets/new/quiz` | `/sets/new/flashcards`, `StudySetMeta.contentKind`, `NewStudySetPdfImportFlow`, `AiParseSection` `surface` + source `?debug=1`, `/dev/ocr` lab (env-gated prod), `/sets/[id]/flashcards/review`, `ParseResultOverlay.continueLabel`, architecture doc subsection; `20-01-SUMMARY.md`, `20-02-SUMMARY.md`; roadmap Phase 20 → **Complete**.
+- Phase 21 added (`/gsd-add-phase`): **Vision-first MVP pipeline** — batch vision 10+overlap2, explicit `ParseOutputMode` (quiz vs flashcard, fix cross-mode bug), incremental preview, confidence, structured pipeline logs, batch fingerprint cache, benchmark per parse, dedupe; OCR off MVP default path; optional ensemble hook; PRD in `21-CONTEXT.md`; dir `.planning/phases/21-vision-first-mvp-pipeline-10-page-batch-vision-overlap-expli/`.
+- Phase 21 plan (`/gsd-plan-phase 21`): `21-RESEARCH.md`, `21-UI-SPEC.md`, `21-VALIDATION.md`, `21-01-PLAN.md` (wave 1 lib/types/cache/benchmark/log), `21-02-PLAN.md` (wave 2 runner + `AiParseSection` + persistence + docs); roadmap Phase 21 → **Planned**; `total_plans` 43 (two open plans).
+- Phase 20 added: **AI-first content creation** — chọn đầu ra Quiz vs Flashcards từ dashboard; upload + AI parse + review theo `contentType`; ẩn OCR/parse jargon khỏi main UX; **OCR dev-only route** tái dùng parse domain; giữ boundary parse vs learning; không phá engine (`/gsd-add-phase`).
 - Phase 19 execute (`/gsd-execute-phase 19`): `forwardSettings.ts`, `parseCapabilities.ts`, `pipelineStageRetry.ts`, storage bridge, settings 3-field form, `AiParseSection` capability gating, OCR/parse/IDB retries, `parseChunk` OpenAI-compat-only, WORKFLOW + `docs/BYOK-forward-only.md`; `19-01-SUMMARY.md`, `19-02-SUMMARY.md`; roadmap Phase 19 → **Complete** (sau plan `19-CONTEXT` / `19-01` / `19-02`).
 - Phase 19 added: **Stage-specific retry policy** (OCR / parse / validation / mapping / persistence — không gộp một kiểu retry); **capability matrix** provider × mode (tránh lỗi muộn như vision + Anthropic native); **BYOK tối giản** — bỏ GPT / Anthropic / Custom, chỉ **ba trường nhập** một đường OpenAI-compatible (`/gsd-add-phase`).
 - Phase 17 execute (`/gsd-execute-phase 17`): `estimateParseRun.ts`, `docs/BYOK-parse-estimate.md`, `AiParseEstimatePanel.tsx`, `AiParseSection` wiring; `17-01-SUMMARY.md`, `17-02-SUMMARY.md`; roadmap Phase 17 marked complete + coverage row.

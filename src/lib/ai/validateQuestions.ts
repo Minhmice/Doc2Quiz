@@ -1,4 +1,5 @@
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
+import { stripLeadingChoiceLabel } from "@/lib/ai/sanitizeMcqOptionText";
 import type { Question, QuestionPageMappingMethod } from "@/types/question";
 
 const MAPPING_METHODS = new Set<QuestionPageMappingMethod>([
@@ -53,20 +54,19 @@ export function validateQuestionsFromJson(
     }
     const rec = item as Record<string, unknown>;
     const question = rec.question;
-    const options = rec.options;
+    const optArr = rec.options;
     const correctIndex = rec.correctIndex;
 
     if (typeof question !== "string" || question.trim().length === 0) {
       continue;
     }
-    if (!Array.isArray(options) || options.length !== 4) {
+    if (!Array.isArray(optArr) || optArr.length !== 4) {
       continue;
     }
-    if (
-      !options.every(
-        (o): o is string => typeof o === "string" && o.trim().length > 0,
-      )
-    ) {
+    const strippedOptions = optArr.map((o) =>
+      stripLeadingChoiceLabel(typeof o === "string" ? o : ""),
+    ) as [string, string, string, string];
+    if (!strippedOptions.every((o) => o.length > 0)) {
       continue;
     }
     if (
@@ -170,15 +170,14 @@ export function validateQuestionsFromJson(
     const parseStructureValid =
       typeof psv === "boolean" ? psv : undefined;
 
+    const ipiRaw = rec.includePageImage;
+    const includePageImage =
+      typeof ipiRaw === "boolean" ? ipiRaw : undefined;
+
     out.push({
       id,
       question: question.trim(),
-      options: [
-        (options[0] as string).trim(),
-        (options[1] as string).trim(),
-        (options[2] as string).trim(),
-        (options[3] as string).trim(),
-      ] as [string, string, string, string],
+      options: strippedOptions,
       correctIndex: correctIndex as 0 | 1 | 2 | 3,
       ...(questionImageId ? { questionImageId } : {}),
       ...(optionImageIds ? { optionImageIds } : {}),
@@ -197,6 +196,7 @@ export function validateQuestionsFromJson(
       ...(parseStructureValid !== undefined
         ? { parseStructureValid }
         : {}),
+      ...(includePageImage === false ? { includePageImage: false } : {}),
     });
   }
 

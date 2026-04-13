@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { DM_Sans, Syne, Geist } from "next/font/google";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AppRootProviders } from "@/components/providers/app-root-providers";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
-
-const dmSans = DM_Sans({
+/** Mint / blueprint typography — aligned with `example/` mocks */
+const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
 });
 
-const syne = Syne({
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-display",
+  variable: "--font-label",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,14 +29,13 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="h-dvh overflow-hidden">
       <body
         className={cn(
-          dmSans.variable,
-          syne.variable,
-          geist.variable,
-          dmSans.className,
-          "min-h-screen bg-background text-foreground",
+          manrope.variable,
+          spaceGrotesk.variable,
+          manrope.className,
+          "h-dvh min-h-0 overflow-hidden bg-background text-foreground",
         )}
       >
         <AppRootProviders>{children}</AppRootProviders>

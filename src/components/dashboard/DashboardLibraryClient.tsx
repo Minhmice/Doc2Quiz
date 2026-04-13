@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RenameStudySetDialog } from "@/components/dashboard/RenameStudySetDialog";
-import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
+import { DashboardLibraryHeader } from "@/components/dashboard/DashboardLibraryHeader";
+import { DashboardStudySetCard } from "@/components/dashboard/DashboardStudySetCard";
+import type { DashboardStudySetCardVariant } from "@/components/dashboard/DashboardStudySetCard";
+import { formatRelativeShort } from "@/components/dashboard/dashboardFormat";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,42 +17,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  VerticalCutReveal,
+  type VerticalCutRevealRef,
+} from "@/components/ui/vertical-cut-reveal";
 import { cn } from "@/lib/utils";
-import {
-  ACTIVITY_STATS_CHANGED_EVENT,
-  STUDY_SETS_LIST_CHANGED_EVENT,
-} from "@/lib/appEvents";
+import { newRoot } from "@/lib/routes/studySetPaths";
 import {
   deleteStudySet,
-  ensureStudySetDb,
-  getApprovedBank,
-  getDraftQuestions,
-  listStudySetMetas,
 } from "@/lib/db/studySetDb";
-import { hasMistakesForStudySet } from "@/lib/studySet/activityTracking";
+import type { DashboardFilter, DashboardSetCounts, DashboardSort } from "@/hooks/useDashboardHome";
+import { dispatchStudySetsChanged } from "@/hooks/useDashboardHome";
 import type { StudySetMeta } from "@/types/studySet";
 
-const DECK_ACCENTS = [
-  "from-violet-600 via-violet-700 to-indigo-900",
-  "from-orange-500 via-amber-600 to-orange-900",
-  "from-sky-500 via-blue-600 to-indigo-900",
+const DECK_GRADIENTS = [
+  "from-indigo-500 to-emerald-600",
+  "from-[color:var(--d2q-accent)] to-primary",
+  "from-teal-500 to-[color:var(--d2q-blue)]",
 ] as const;
 
 function hashId(id: string): number {
@@ -61,84 +44,231 @@ function hashId(id: string): number {
   return Math.abs(h);
 }
 
-function accentFor(id: string, index: number) {
-  return DECK_ACCENTS[(hashId(id) + index) % DECK_ACCENTS.length]!;
+function gradientFor(id: string, index: number): string {
+  return DECK_GRADIENTS[(hashId(id) + index) % DECK_GRADIENTS.length]!;
 }
 
-function dispatchStudySetsChanged(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(STUDY_SETS_LIST_CHANGED_EVENT));
+const EMPTY_HEADLINE_IDLE = "No study sets yet.";
+const EMPTY_HEADLINE_CTA = "Create study set";
+
+const HIDE_FALLBACK_MS = 720;
+
+/** Dashed “import PDF” CTA — empty library + trailing “more quiz” grid tile */
+const dashboardPdfImportDashedLinkClassName = cn(
+  "block rounded-lg border-[3px] border-dashed border-border/90 bg-muted/25 p-10 text-center",
+  "box-border cursor-pointer outline-none transition-[color,background-color,border-color,box-shadow,transform] duration-300 ease-out",
+  "hover:-translate-y-0.5 hover:border-[3px] hover:border-dashed hover:border-primary/55 hover:bg-muted/45 hover:shadow-md hover:shadow-primary/10",
+  "motion-reduce:transition-colors motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-none",
+  "active:translate-y-0 active:border-[3px] active:scale-[0.995] active:transition-[transform] active:duration-150 motion-reduce:active:scale-100",
+  "focus-visible:border-[3px] focus-visible:border-dashed focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+);
+
+function EmptyLibraryZeroState() {
+  const [headline, setHeadline] = useState(EMPTY_HEADLINE_IDLE);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [transitionLock, setTransitionLock] = useState(false);
+  const revealRef = useRef<VerticalCutRevealRef | null>(null);
+  const pendingAfterHideRef = useRef<"cta" | "idle" | null>(null);
+  const initialEnterDoneRef = useRef(false);
+  const hideFallbackTimerRef = useRef<number | null>(null);
+
+  const clearHideFallback = useCallback(() => {
+    if (hideFallbackTimerRef.current != null) {
+      window.clearTimeout(hideFallbackTimerRef.current);
+      hideFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => {
+      setReducedMotion(mq.matches);
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      initialEnterDoneRef.current = true;
+      return;
+    }
+    queueMicrotask(() => revealRef.current?.startAnimation());
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    return () => clearHideFallback();
+  }, [clearHideFallback]);
+
+  const finishHideAndContinue = useCallback(() => {
+    clearHideFallback();
+    const pending = pendingAfterHideRef.current;
+    if (pending == null) {
+      return;
+    }
+    pendingAfterHideRef.current = null;
+    if (pending === "cta") {
+      setHeadline(EMPTY_HEADLINE_CTA);
+    } else if (pending === "idle") {
+      setHeadline(EMPTY_HEADLINE_IDLE);
+    }
+    queueMicrotask(() => {
+      revealRef.current?.startAnimation();
+      setTransitionLock(false);
+    });
+  }, [clearHideFallback]);
+
+  const scheduleHideFallback = useCallback(() => {
+    clearHideFallback();
+    hideFallbackTimerRef.current = window.setTimeout(() => {
+      hideFallbackTimerRef.current = null;
+      if (pendingAfterHideRef.current != null) {
+        finishHideAndContinue();
+      }
+    }, HIDE_FALLBACK_MS);
+  }, [clearHideFallback, finishHideAndContinue]);
+
+  const requestShowCta = useCallback(() => {
+    if (reducedMotion) {
+      setHeadline(EMPTY_HEADLINE_CTA);
+      return;
+    }
+    if (headline === EMPTY_HEADLINE_CTA) {
+      return;
+    }
+    if (!initialEnterDoneRef.current) {
+      setHeadline(EMPTY_HEADLINE_CTA);
+      queueMicrotask(() => revealRef.current?.startAnimation());
+      return;
+    }
+    if (transitionLock) {
+      return;
+    }
+    setTransitionLock(true);
+    pendingAfterHideRef.current = "cta";
+    revealRef.current?.reset();
+    scheduleHideFallback();
+  }, [headline, reducedMotion, scheduleHideFallback, transitionLock]);
+
+  const requestShowIdle = useCallback(() => {
+    if (reducedMotion) {
+      setHeadline(EMPTY_HEADLINE_IDLE);
+      return;
+    }
+    if (headline === EMPTY_HEADLINE_IDLE) {
+      return;
+    }
+    if (!initialEnterDoneRef.current) {
+      setHeadline(EMPTY_HEADLINE_IDLE);
+      queueMicrotask(() => revealRef.current?.startAnimation());
+      return;
+    }
+    if (transitionLock) {
+      return;
+    }
+    setTransitionLock(true);
+    pendingAfterHideRef.current = "idle";
+    revealRef.current?.reset();
+    scheduleHideFallback();
+  }, [headline, reducedMotion, scheduleHideFallback, transitionLock]);
+
+  return (
+    <Link
+      href={newRoot()}
+      aria-label="Create a study set. Import a PDF to build your first set."
+      className={dashboardPdfImportDashedLinkClassName}
+      onMouseEnter={requestShowCta}
+      onMouseLeave={requestShowIdle}
+      onFocus={requestShowCta}
+      onBlur={requestShowIdle}
+    >
+      <div className="mx-auto flex max-w-lg flex-col items-center">
+        <div className="flex min-h-10 w-full items-center justify-center sm:min-h-12">
+          {reducedMotion ? (
+            <p className="text-lg font-semibold text-foreground sm:text-xl">
+              {headline}
+            </p>
+          ) : (
+            <div className="text-lg font-semibold text-foreground sm:text-xl">
+              <VerticalCutReveal
+                ref={revealRef}
+                splitBy="characters"
+                staggerDuration={0.025}
+                staggerFrom="first"
+                transition={{
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 22,
+                }}
+                autoStart={false}
+                onComplete={() => {
+                  initialEnterDoneRef.current = true;
+                }}
+                onHideComplete={finishHideAndContinue}
+                containerClassName="flex-nowrap justify-center"
+                className="justify-center"
+              >
+                {headline}
+              </VerticalCutReveal>
+            </div>
+          )}
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Import a PDF to create your first set.
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function cardVariantFor(
+  draft: number,
+  approved: number,
+): DashboardStudySetCardVariant {
+  if (approved > 0 && draft > 0) {
+    return "in_progress";
   }
+  if (approved > 0) {
+    return "ready";
+  }
+  return "draft";
 }
 
-export function DashboardLibraryClient() {
-  const router = useRouter();
-  const { search } = useLibrarySearch();
-  const [sets, setSets] = useState<StudySetMeta[]>([]);
-  const [counts, setCounts] = useState<
-    Record<string, { draft: number; approved: number }>
-  >({});
-  const [mistakes, setMistakes] = useState<Record<string, boolean>>({});
-  const [loadError, setLoadError] = useState<string | null>(null);
+export type DashboardLibraryClientProps = Readonly<{
+  loadError: string | null;
+  setsLength: number;
+  search: string;
+  totalSets: number;
+  filter: DashboardFilter;
+  onFilterChange: (f: DashboardFilter) => void;
+  sort: DashboardSort;
+  onSortChange: (s: DashboardSort) => void;
+  filteredSortedSets: StudySetMeta[];
+  counts: DashboardSetCounts;
+  mistakes: Record<string, boolean>;
+  onRefresh: () => Promise<void>;
+}>;
+
+export function DashboardLibraryClient({
+  loadError,
+  setsLength,
+  search,
+  totalSets,
+  filter,
+  onFilterChange,
+  sort,
+  onSortChange,
+  filteredSortedSets,
+  counts,
+  mistakes,
+  onRefresh,
+}: DashboardLibraryClientProps) {
   const [renameMeta, setRenameMeta] = useState<StudySetMeta | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     meta: StudySetMeta;
     approvedCount: number;
   } | null>(null);
-
-  const refresh = useCallback(async () => {
-    setLoadError(null);
-    try {
-      await ensureStudySetDb();
-      const list = await listStudySetMetas();
-      setSets(list);
-      const next: Record<string, { draft: number; approved: number }> = {};
-      const mist: Record<string, boolean> = {};
-      await Promise.all(
-        list.map(async (s) => {
-          const [draft, bank] = await Promise.all([
-            getDraftQuestions(s.id),
-            getApprovedBank(s.id),
-          ]);
-          next[s.id] = {
-            draft: draft.length,
-            approved: bank?.questions.length ?? 0,
-          };
-          mist[s.id] = await hasMistakesForStudySet(s.id);
-        }),
-      );
-      setCounts(next);
-      setMistakes(mist);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Could not load study sets.",
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    const onActivity = () => void refresh();
-    window.addEventListener(ACTIVITY_STATS_CHANGED_EVENT, onActivity);
-    return () =>
-      window.removeEventListener(ACTIVITY_STATS_CHANGED_EVENT, onActivity);
-  }, [refresh]);
-
-  const filteredSets = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) {
-      return sets;
-    }
-    return sets.filter((s) => {
-      const t = s.title.toLowerCase();
-      const f = (s.sourceFileName ?? "").toLowerCase();
-      const sub = (s.subtitle ?? "").toLowerCase();
-      return t.includes(q) || f.includes(q) || sub.includes(q);
-    });
-  }, [sets, search]);
 
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget) {
@@ -146,21 +276,19 @@ export function DashboardLibraryClient() {
     }
     await deleteStudySet(deleteTarget.meta.id);
     setDeleteTarget(null);
-    await refresh();
+    await onRefresh();
     dispatchStudySetsChanged();
-  }, [deleteTarget, refresh]);
+  }, [deleteTarget, onRefresh]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="min-w-0">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Library
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your study sets — take a quiz, review mistakes, or open the editor from
-          each card.
-        </p>
-      </header>
+    <section id="library" className="space-y-6 scroll-mt-24">
+      <DashboardLibraryHeader
+        totalSets={totalSets}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        sort={sort}
+        onSortChange={onSortChange}
+      />
 
       {loadError ? (
         <p className="text-sm font-medium text-destructive" role="alert">
@@ -168,162 +296,61 @@ export function DashboardLibraryClient() {
         </p>
       ) : null}
 
-      {sets.length === 0 && !loadError ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center">
-          <p className="text-foreground">No study sets yet.</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Import a PDF to create your first set.
-          </p>
-          <Link
-            href="/sets/new"
-            className={cn(
-              buttonVariants({ variant: "default", size: "lg" }),
-              "mt-6 inline-flex font-semibold",
-            )}
-          >
-            Import PDF
-          </Link>
-        </div>
-      ) : null}
+      {setsLength === 0 && !loadError ? <EmptyLibraryZeroState /> : null}
 
-      {sets.length > 0 && !loadError ? (
+      {setsLength > 0 && !loadError ? (
         <>
-          {filteredSets.length === 0 ? (
-            <p className="rounded-2xl border border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
-              No sets match &ldquo;{search.trim()}&rdquo;.
+          {filteredSortedSets.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border/80 bg-muted/25 p-8 text-center text-sm text-muted-foreground">
+              {search.trim() ? (
+                <>
+                  No sets match &ldquo;{search.trim()}&rdquo; for this filter.
+                </>
+              ) : (
+                <>No sets match this filter.</>
+              )}
             </p>
           ) : (
-            <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredSets.map((s, index) => {
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredSortedSets.map((s, index) => {
                 const c = counts[s.id] ?? { draft: 0, approved: 0 };
-                const grad = accentFor(s.id, index);
-                const showMistakes = mistakes[s.id] === true && c.approved > 0;
-
+                const variant = cardVariantFor(c.draft, c.approved);
                 return (
-                  <li key={s.id}>
-                    <Card className="group relative flex h-full flex-col overflow-hidden pt-0 shadow-md transition-shadow hover:shadow-lg">
-                      <div
-                        className={cn(
-                          "h-24 shrink-0 bg-gradient-to-br",
-                          grad,
-                        )}
-                      />
-                      <CardHeader className="space-y-2">
-                        <CardTitle className="line-clamp-2 text-lg leading-snug">
-                          {s.title}
-                        </CardTitle>
-                        {s.subtitle ? (
-                          <p className="line-clamp-2 text-sm font-medium text-muted-foreground">
-                            {s.subtitle}
-                          </p>
-                        ) : null}
-                        <CardDescription className="flex flex-wrap gap-1.5">
-                          <Badge variant="secondary" className="font-normal">
-                            {c.approved} approved
-                          </Badge>
-                          {c.draft > 0 ? (
-                            <Badge variant="outline" className="font-normal">
-                              {c.draft} draft
-                            </Badge>
-                          ) : null}
-                        </CardDescription>
-                        <p className="text-xs text-muted-foreground">
-                          Source: {s.sourceFileName ?? "—"}
-                        </p>
-                      </CardHeader>
-                      <CardContent className="flex-1 pb-2 pt-0">
-                        <p className="text-xs text-muted-foreground">
-                          Updated {new Date(s.updatedAt).toLocaleString()}
-                        </p>
-                      </CardContent>
-                      <CardFooter className="flex flex-wrap gap-2 border-t border-border bg-muted/20 pt-4">
-                        <Link
-                          href={`/sets/${s.id}/play`}
-                          className={cn(buttonVariants({ size: "sm" }))}
-                        >
-                          Take quiz
-                        </Link>
-                        {showMistakes ? (
-                          <Link
-                            href={`/sets/${s.id}/play?review=mistakes`}
-                            className={cn(
-                              buttonVariants({ size: "sm", variant: "secondary" }),
-                            )}
-                          >
-                            Review mistakes
-                          </Link>
-                        ) : null}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            className={cn(
-                              buttonVariants({ size: "sm", variant: "outline" }),
-                            )}
-                          >
-                            More
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="min-w-44">
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/sets/${s.id}/source`)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setRenameMeta(s)}
-                            >
-                              Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() =>
-                                setDeleteTarget({ meta: s, approvedCount: c.approved })
-                              }
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                            <DropdownMenuItem disabled>
-                              Share (coming soon)
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </CardFooter>
-                    </Card>
-                  </li>
+                  <DashboardStudySetCard
+                    key={s.id}
+                    meta={s}
+                    draftCount={c.draft}
+                    approvedCount={c.approved}
+                    hasMistakes={mistakes[s.id] === true}
+                    variant={variant}
+                    gradientClass={gradientFor(s.id, index)}
+                    updatedLabel={formatRelativeShort(s.updatedAt)}
+                    onRename={() => setRenameMeta(s)}
+                    onDelete={() =>
+                      setDeleteTarget({ meta: s, approvedCount: c.approved })
+                    }
+                  />
                 );
               })}
 
-              <li className="flex min-h-0">
-                <Link href="/sets/new" className="flex h-full min-h-0 w-full">
-                  <Card className="flex h-full min-h-[18rem] w-full flex-col overflow-hidden border-2 border-dashed border-border bg-card/40 pt-0 shadow-md transition-colors hover:border-primary/50 hover:bg-card/60">
-                    <div
-                      className="h-24 shrink-0 border-b border-dashed border-border bg-muted/40"
-                      aria-hidden
-                    />
-                    <CardHeader className="flex flex-1 flex-col items-center justify-center space-y-2 pb-2 text-center">
-                      <span className="text-4xl font-light leading-none text-muted-foreground">
-                        +
-                      </span>
-                      <CardTitle className="text-base font-semibold text-foreground">
-                        Add new set
-                      </CardTitle>
-                      <CardDescription className="max-w-[14rem] text-pretty">
-                        Import a PDF to start a new study set
-                      </CardDescription>
-                    </CardHeader>
-                    <CardFooter className="mt-auto flex justify-center border-t border-dashed border-border bg-muted/10 py-4">
-                      <span
-                        className={cn(
-                          buttonVariants({ variant: "outline", size: "sm" }),
-                          "pointer-events-none",
-                        )}
-                      >
-                        Get started
-                      </span>
-                    </CardFooter>
-                  </Card>
-                </Link>
-              </li>
-            </ul>
+              <Link
+                href={newRoot()}
+                aria-label="Add another study set. Import a PDF to build more quizzes."
+                className={cn(
+                  dashboardPdfImportDashedLinkClassName,
+                  "flex min-h-68 w-full flex-col items-center justify-center self-stretch",
+                )}
+              >
+                <div className="mx-auto flex max-w-md flex-col items-center px-2">
+                  <p className="text-lg font-semibold text-foreground sm:text-xl">
+                    More quiz
+                  </p>
+                  <p className="mt-2 text-pretty text-sm text-muted-foreground">
+                    Import a PDF to add another study set.
+                  </p>
+                </div>
+              </Link>
+            </div>
           )}
         </>
       ) : null}
@@ -337,7 +364,7 @@ export function DashboardLibraryClient() {
         }}
         meta={renameMeta}
         onSaved={() => {
-          void refresh().then(() => dispatchStudySetsChanged());
+          void onRefresh().then(() => dispatchStudySetsChanged());
         }}
       />
 
@@ -372,6 +399,6 @@ export function DashboardLibraryClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </section>
   );
 }

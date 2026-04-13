@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Doc2Quiz | AI Processing Workbench</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Space_Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#3d0700",
+                        "surface-variant": "#e0e3e1",
+                        "primary-fixed": "#ffdad2",
+                        "inverse-on-surface": "#eef1ef",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#f7faf8",
+                        "secondary-container": "#baeed9",
+                        "tertiary": "#00352d",
+                        "primary-fixed-dim": "#ffb4a3",
+                        "on-tertiary-container": "#7fbeaf",
+                        "surface-tint": "#a7391e",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#c0c9c3",
+                        "tertiary-fixed": "#afefdf",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#872108",
+                        "surface-container-low": "#f1f4f2",
+                        "surface-container-high": "#e6e9e7",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#baeed9",
+                        "on-secondary-fixed": "#002117",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e0e3e1",
+                        "primary": "#5f0f00",
+                        "outline": "#707974",
+                        "inverse-surface": "#2d3130",
+                        "error-container": "#ffdad6",
+                        "primary-container": "#841f06",
+                        "on-secondary-container": "#3d6d5d",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#00201a",
+                        "surface-dim": "#d7dbd9",
+                        "surface-container": "#ebefed",
+                        "on-background": "#181c1b",
+                        "tertiary-container": "#004e42",
+                        "on-primary-container": "#ff967d",
+                        "on-surface": "#181c1b",
+                        "surface": "#f7faf8",
+                        "on-surface-variant": "#404945",
+                        "on-secondary": "#ffffff",
+                        "background": "#f7faf8",
+                        "on-secondary-fixed-variant": "#1d4f40",
+                        "secondary": "#376757",
+                        "on-tertiary-fixed-variant": "#045044",
+                        "tertiary-fixed-dim": "#93d3c3",
+                        "inverse-primary": "#ffb4a3",
+                        "secondary-fixed-dim": "#9ed1bd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Space Grotesk"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .technical-grid {
+            background-image: linear-gradient(to right, rgba(112, 121, 116, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(112, 121, 116, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .focus-dim { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-on-primary-container selection:text-on-primary-fixed overflow-x-hidden">
+<!-- Dimmed Navigation Shell -->
+<nav class="fixed top-0 w-full z-50 bg-white/60 backdrop-blur-sm border-b border-zinc-200 flex justify-between items-center px-8 h-16 w-full focus-dim">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold text-[#00352d] tracking-tight font-headline">Doc2Quiz</span>
+</div>
+<div class="flex items-center gap-4">
+<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARZ3PiAGsFqWsZS9q9FoN3BcWAWlsQij3F995rBPoHZ8uJNA1tl1zDlf9BcB_HYK4BRQNgDQpWPgLi3u2xzAs-g-1Qll3wk6R4jWjHDBraWS3wu5-le7zthvZ4ueJYEles-JtGIpWZqkmm63HILgrEZkzzYnKfpX7ctWvnCSgCt0G-_yXhp_y3TzPZZiz5LNVFuAiCtdgqNztGuvuHNZ99ilwczVGAyX94_Li-UlR5QEASKLx6KxPe43NPcNu1owh5VOUIj34ZT-HN"/>
+</div>
+</nav>
+<!-- Dimmed Sidebar -->
+<aside class="h-screen w-64 fixed left-0 top-0 pt-20 flex flex-col gap-4 p-4 bg-[#ebefed] z-40 hidden lg:flex focus-dim">
+<div class="flex-1 flex flex-col gap-1 mt-4">
+<div class="px-4 py-3 text-secondary font-label text-sm uppercase tracking-wider flex items-center gap-3">
+<span class="material-symbols-outlined">analytics</span> Processing...
+        </div>
+</div>
+</aside>
+<!-- Main Workbench Content -->
+<main class="lg:ml-64 pt-24 pb-12 px-8 min-h-screen technical-grid">
+<div class="max-w-7xl mx-auto space-y-8">
+<!-- Unified Dominant Status Header -->
+<div class="bg-tertiary text-white p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl border-l-8 border-on-primary-container">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center w-8 h-8 bg-on-primary-container rounded-sm animate-pulse">
+<span class="material-symbols-outlined text-tertiary text-xl" style="font-variation-settings: 'FILL' 1;">sync</span>
+</div>
+<div>
+<h2 class="text-lg font-bold font-headline leading-tight">Parsing in progress: 5/11 pages processed</h2>
+<p class="text-[10px] font-label uppercase tracking-[0.2em] text-tertiary-fixed/60">Stage 2 of 3: Question Extraction</p>
+</div>
+</div>
+<div class="flex items-center gap-6 text-sm font-label uppercase tracking-widest font-bold">
+<div class="flex flex-col items-end">
+<span class="text-on-primary-container text-xl">~60s</span>
+<span class="text-[9px] opacity-60">Estimated Remaining</span>
+</div>
+<div class="h-10 w-px bg-white/20"></div>
+<button class="px-4 py-2 border border-white/30 hover:bg-white/10 transition-colors text-xs">Cancel</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-8">
+<!-- Left: Source Control Panel -->
+<section class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+<div class="bg-white p-6 border border-surface-variant shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 p-2 opacity-5">
+<span class="material-symbols-outlined text-6xl">description</span>
+</div>
+<h3 class="font-label text-xs font-black uppercase tracking-widest text-secondary mb-4 border-b pb-2 border-surface-container">Source Control</h3>
+<div class="space-y-4">
+<div class="flex items-start gap-4 p-3 bg-surface-container-low rounded-sm">
+<div class="w-10 h-12 bg-error-container/20 flex items-center justify-center border border-error-container shrink-0">
+<span class="material-symbols-outlined text-error text-2xl">picture_as_pdf</span>
+</div>
+<div class="min-w-0 flex-1">
+<p class="font-bold text-tertiary truncate text-sm">de-cuoi-ky-1-toan-10-2025.pdf</p>
+<div class="grid grid-cols-2 gap-y-1 mt-2 text-[10px] font-label uppercase text-outline">
+<span>Size: <span class="text-tertiary font-bold">2.4 MB</span></span>
+<span>Pages: <span class="text-tertiary font-bold">11</span></span>
+<span>Mode: <span class="text-tertiary font-bold">Quiz Set</span></span>
+<span>OCR: <span class="text-tertiary font-bold">Vision AI</span></span>
+</div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-tertiary text-white font-bold font-label text-[10px] uppercase tracking-widest hover:brightness-110 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">visibility</span> Preview
+                            </button>
+<button class="flex-1 py-2 border border-outline-variant text-tertiary font-bold font-label text-[10px] uppercase tracking-widest hover:bg-surface-container-low flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">swap_horiz</span> Replace
+                            </button>
+</div>
+</div>
+<div class="mt-8">
+<h3 class="font-label text-xs font-black uppercase tracking-widest text-secondary mb-4 border-b pb-2 border-surface-container">Parsing Configuration</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-outline uppercase font-label">OCR Mode</span>
+<span class="font-bold text-tertiary">High-Fidelity Vision</span>
+</div>
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-outline uppercase font-label">Target Language</span>
+<span class="font-bold text-tertiary">Vietnamese (VN)</span>
+</div>
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-outline uppercase font-label">Question Type</span>
+<span class="font-bold text-tertiary">Multiple Choice</span>
+</div>
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-outline uppercase font-label">Math Rendering</span>
+<span class="font-bold text-tertiary text-on-primary-container">LaTeX Enabled</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Preview: Latest Extracted -->
+<div class="bg-surface-container-low border border-surface-variant p-5">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-label text-xs font-black uppercase tracking-widest text-secondary">Latest Extraction</h3>
+<span class="text-[10px] bg-secondary-container text-secondary px-2 py-0.5 font-bold">Question 18</span>
+</div>
+<div class="bg-white p-3 text-[11px] border border-zinc-200 shadow-inner italic text-on-surface-variant font-serif">
+                        "Cho hàm số y = ax² + bx + c (a ≠ 0) có đồ thị như hình vẽ. Mệnh đề nào sau đây đúng?..."
+                    </div>
+<div class="mt-3 flex gap-1">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div class="w-2 h-2 rounded-full bg-secondary/20"></div>
+</div>
+</div>
+</section>
+<!-- Center/Right: Main Processing Panel -->
+<section class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Refined Stepper -->
+<div class="bg-white border border-surface-variant px-6 py-4 flex items-center justify-center gap-12">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-secondary text-white rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(55,103,87,0.3)]">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<span class="text-xs font-bold font-label uppercase tracking-widest text-secondary">Source</span>
+</div>
+<div class="w-12 h-px bg-zinc-200"></div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 border-2 border-on-primary-container text-on-primary-container rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-on-primary-container/10">
+                            2
+                        </div>
+<span class="text-xs font-bold font-label uppercase tracking-widest text-tertiary">Processing</span>
+</div>
+<div class="w-12 h-px bg-zinc-200"></div>
+<div class="flex items-center gap-3 opacity-30">
+<div class="w-8 h-8 border-2 border-outline text-outline rounded-full flex items-center justify-center font-bold text-xs">
+                            3
+                        </div>
+<span class="text-xs font-bold font-label uppercase tracking-widest text-outline">Review</span>
+</div>
+</div>
+<div class="bg-white p-10 border border-surface-variant shadow-lg relative">
+<div class="flex flex-col items-center text-center gap-6 mb-10">
+<div class="space-y-2">
+<h1 class="text-3xl font-black text-tertiary font-headline tracking-tight">Extracting Quiz Questions</h1>
+<p class="text-secondary font-label text-sm uppercase tracking-[0.2em]">Artificial Intelligence at Work</p>
+</div>
+</div>
+<!-- Rich Progress Visualization -->
+<div class="max-w-2xl mx-auto space-y-10">
+<div class="space-y-4">
+<div class="h-4 w-full bg-surface-container-high rounded-full overflow-hidden flex p-1">
+<div class="h-full bg-secondary rounded-full w-[100%] border-r-2 border-white" title="OCR Complete"></div>
+<div class="h-full bg-on-primary-container rounded-full w-[45%] shadow-[0_0_15px_rgba(255,150,125,0.6)] animate-pulse" title="Extraction in progress"></div>
+<div class="h-full bg-zinc-200 rounded-full w-[55%]" title="Assembly queued"></div>
+</div>
+<div class="flex justify-between px-1">
+<span class="text-[9px] font-black font-label text-secondary uppercase tracking-widest">1. OCR Ready</span>
+<span class="text-[9px] font-black font-label text-on-primary-container uppercase tracking-widest">2. Extracting Items (45%)</span>
+<span class="text-[9px] font-black font-label text-outline uppercase tracking-widest">3. Final Assembly</span>
+</div>
+</div>
+<!-- Prioritized Metrics -->
+<div class="grid grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest border-t-4 border-secondary p-5 shadow-sm text-center">
+<p class="text-[10px] font-label uppercase tracking-widest text-outline mb-2">Extracted Items</p>
+<p class="text-4xl font-black text-tertiary">18</p>
+<p class="text-[9px] text-secondary mt-1 font-bold">+4 new</p>
+</div>
+<div class="bg-surface-container-lowest border-t-4 border-on-primary-container p-5 shadow-sm text-center transform scale-105 ring-4 ring-on-primary-container/5 z-10">
+<p class="text-[10px] font-label uppercase tracking-widest text-outline mb-2">Current Page</p>
+<p class="text-4xl font-black text-tertiary">06</p>
+<p class="text-[9px] text-on-primary-container mt-1 font-bold">of 11</p>
+</div>
+<div class="bg-surface-container-lowest border-t-4 border-secondary p-5 shadow-sm text-center">
+<p class="text-[10px] font-label uppercase tracking-widest text-outline mb-2">Time Elapsed</p>
+<p class="text-4xl font-black text-tertiary">1:04</p>
+<p class="text-[9px] text-secondary mt-1 font-bold">sec</p>
+</div>
+</div>
+<!-- Actionable Queue -->
+<div class="space-y-4 pt-4">
+<p class="text-[10px] font-label uppercase tracking-widest text-outline text-center">Processing Queue View</p>
+<div class="flex flex-wrap justify-center gap-3">
+<!-- Processed -->
+<button class="group relative w-10 h-14 bg-secondary-container/20 border border-secondary/30 flex items-center justify-center hover:bg-secondary-container/40 transition-colors">
+<span class="text-[10px] font-label font-bold text-secondary">01</span>
+<span class="material-symbols-outlined absolute -top-1 -right-1 bg-secondary text-white text-[12px] p-0.5 rounded-full" style="font-variation-settings: 'wght' 700;">check</span>
+</button>
+<button class="group relative w-10 h-14 bg-secondary-container/20 border border-secondary/30 flex items-center justify-center hover:bg-secondary-container/40 transition-colors">
+<span class="text-[10px] font-label font-bold text-secondary">02</span>
+<span class="material-symbols-outlined absolute -top-1 -right-1 bg-secondary text-white text-[12px] p-0.5 rounded-full" style="font-variation-settings: 'wght' 700;">check</span>
+</button>
+<button class="group relative w-10 h-14 bg-secondary-container/20 border border-secondary/30 flex items-center justify-center hover:bg-secondary-container/40 transition-colors">
+<span class="text-[10px] font-label font-bold text-secondary">03</span>
+<span class="material-symbols-outlined absolute -top-1 -right-1 bg-secondary text-white text-[12px] p-0.5 rounded-full" style="font-variation-settings: 'wght' 700;">check</span>
+</button>
+<button class="group relative w-10 h-14 bg-secondary-container/20 border border-secondary/30 flex items-center justify-center hover:bg-secondary-container/40 transition-colors">
+<span class="text-[10px] font-label font-bold text-secondary">04</span>
+<span class="material-symbols-outlined absolute -top-1 -right-1 bg-secondary text-white text-[12px] p-0.5 rounded-full" style="font-variation-settings: 'wght' 700;">check</span>
+</button>
+<button class="group relative w-10 h-14 bg-secondary-container/20 border border-secondary/30 flex items-center justify-center hover:bg-secondary-container/40 transition-colors">
+<span class="text-[10px] font-label font-bold text-secondary">05</span>
+<span class="material-symbols-outlined absolute -top-1 -right-1 bg-secondary text-white text-[12px] p-0.5 rounded-full" style="font-variation-settings: 'wght' 700;">check</span>
+</button>
+<!-- Current -->
+<button class="w-10 h-14 bg-white ring-4 ring-on-primary-container/20 border-2 border-on-primary-container flex items-center justify-center shadow-lg transform -translate-y-1">
+<span class="text-[10px] font-label font-bold text-on-primary-container">06</span>
+</button>
+<!-- Queued -->
+<button class="w-10 h-14 bg-surface-container-high border border-outline-variant/30 flex items-center justify-center opacity-40 cursor-not-allowed">
+<span class="text-[10px] font-label font-bold text-outline">07</span>
+</button>
+<button class="w-10 h-14 bg-surface-container-high border border-outline-variant/30 flex items-center justify-center opacity-40 cursor-not-allowed">
+<span class="text-[10px] font-label font-bold text-outline">08</span>
+</button>
+<button class="w-10 h-14 bg-surface-container-high border border-outline-variant/30 flex items-center justify-center opacity-40 cursor-not-allowed">
+<span class="text-[10px] font-label font-bold text-outline">09</span>
+</button>
+<button class="w-10 h-14 bg-surface-container-high border border-outline-variant/30 flex items-center justify-center opacity-40 cursor-not-allowed">
+<span class="text-[10px] font-label font-bold text-outline">10</span>
+</button>
+<button class="w-10 h-14 bg-surface-container-high border border-outline-variant/30 flex items-center justify-center opacity-40 cursor-not-allowed">
+<span class="text-[10px] font-label font-bold text-outline">11</span>
+</button>
+</div>
+</div>
+<!-- Friendly Activity Feed -->
+<div class="border-t border-surface-variant pt-6">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-label text-[10px] font-black uppercase tracking-widest text-secondary flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span> Activity Feed
+                                </h3>
+<button class="text-[10px] font-bold text-outline uppercase tracking-wider hover:text-tertiary flex items-center gap-1 transition-colors">
+                                    Show technical logs <span class="material-symbols-outlined text-sm">unfold_more</span>
+</button>
+</div>
+<div class="space-y-2">
+<div class="flex items-center gap-3 text-xs bg-surface-container-low p-2 rounded-sm border-l-2 border-secondary/50">
+<span class="text-[10px] font-label text-outline whitespace-nowrap">09:21:44</span>
+<span class="text-tertiary">Page 5 analyzed successfully. <span class="font-bold">4 multiple choice questions</span> detected.</span>
+</div>
+<div class="flex items-center gap-3 text-xs bg-surface-container-low p-2 rounded-sm border-l-2 border-secondary/50">
+<span class="text-[10px] font-label text-outline whitespace-nowrap">09:21:48</span>
+<span class="text-tertiary">Metadata synchronization complete for questions 14-18.</span>
+</div>
+<div class="flex items-center gap-3 text-xs bg-on-primary-container/5 p-2 rounded-sm border-l-2 border-on-primary-container">
+<span class="text-[10px] font-label text-outline whitespace-nowrap">09:22:01</span>
+<span class="text-on-primary-container font-bold">Scanning Page 6 header for context...</span>
+</div>
+</div>
+</div>
+<!-- Handoff Clarity -->
+<div class="flex flex-col items-center gap-4 pt-4">
+<div class="flex items-center gap-2 px-4 py-2 bg-tertiary/5 text-tertiary border border-tertiary/20 rounded-full">
+<span class="material-symbols-outlined text-sm animate-spin">autorenew</span>
+<p class="text-[11px] font-bold font-label uppercase tracking-wide">Next step: Review extracted questions (Automatic Handoff)</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Bottom Nav for Mobile Only (Dimmed) -->
+<div class="md:hidden fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-md border-t border-zinc-200 h-16 flex items-center justify-around z-50 focus-dim">
+<button class="flex flex-col items-center gap-1 text-[#ff967d]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="text-[10px] font-label font-bold">DASHBOARD</span>
+</button>
+</div>
+</body></html>

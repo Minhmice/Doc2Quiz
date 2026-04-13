@@ -14,16 +14,26 @@ import {
 } from "@/lib/review/mcqDiagnostics";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { Question } from "@/types/question";
+import type { FlashcardVisionItem } from "@/types/visionParse";
 
 export type ParseResultOverlayProps = {
   questions: Question[];
+  /** Phase 21 — when set, shows flashcard-oriented summary instead of MCQ diagnostics. */
+  flashcardItems?: FlashcardVisionItem[];
   onContinue: () => void;
+  /** Primary CTA label (default: Continue to Review) */
+  continueLabel?: string;
 };
 
 export function ParseResultOverlay({
   questions,
+  flashcardItems,
   onContinue,
+  continueLabel = "Continue to Review",
 }: ParseResultOverlayProps) {
+  const flashCount = flashcardItems?.length ?? 0;
+  const flashMode = flashCount > 0;
+
   const questionCount = questions.length;
   const unclearCount = useMemo(
     () => questions.reduce((n, q) => n + (isMcqComplete(q) ? 0 : 1), 0),
@@ -38,6 +48,14 @@ export function ParseResultOverlay({
     [questions],
   );
 
+  const flashAvgConfidence = useMemo(() => {
+    if (!flashcardItems?.length) {
+      return null;
+    }
+    const sum = flashcardItems.reduce((s, c) => s + c.confidence, 0);
+    return Math.round((sum / flashcardItems.length) * 100);
+  }, [flashcardItems]);
+
   const confidenceLabel =
     confidence >= 85
       ? "High"
@@ -46,6 +64,61 @@ export function ParseResultOverlay({
         : questionCount === 0
           ? "—"
           : "Low";
+
+  const flashConfidenceLabel =
+    flashAvgConfidence === null
+      ? "—"
+      : flashAvgConfidence >= 85
+        ? "High"
+        : flashAvgConfidence >= 60
+          ? "Medium"
+          : "Low";
+
+  if (flashMode) {
+    return (
+      <Card className="border-emerald-500/40 bg-gradient-to-b from-emerald-500/8 via-card to-card shadow-lg">
+        <CardHeader className="pb-2 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+            <CheckCircleIcon
+              className="size-8 text-emerald-600 dark:text-emerald-400"
+              aria-hidden
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 text-left sm:text-center">
+          <div>
+            <p className="text-2xl font-bold tabular-nums text-foreground">
+              {flashCount} flashcard{flashCount === 1 ? "" : "s"} detected
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Front and back text were extracted from your document images. You
+              can edit wording on the next screen.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-left">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Parse confidence (model-reported average)
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
+              {flashAvgConfidence === null ? "—" : `${flashAvgConfidence}%`}
+              {flashAvgConfidence !== null ? (
+                <span className="ml-2 text-base font-semibold text-foreground">
+                  ({flashConfidenceLabel})
+                </span>
+              ) : null}
+            </p>
+          </div>
+
+          <div className="flex justify-center pt-1">
+            <Button size="lg" className="font-semibold" onClick={onContinue}>
+              {continueLabel}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-emerald-500/40 bg-gradient-to-b from-emerald-500/8 via-card to-card shadow-lg">
@@ -138,7 +211,7 @@ export function ParseResultOverlay({
 
         <div className="flex justify-center pt-1">
           <Button size="lg" className="font-semibold" onClick={onContinue}>
-            Continue to Review
+            {continueLabel}
           </Button>
         </div>
       </CardContent>

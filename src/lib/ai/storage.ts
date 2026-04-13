@@ -1,29 +1,33 @@
 import {
-  LS_ANTHROPIC_KEY,
-  LS_ANTHROPIC_MODEL,
-  LS_ANTHROPIC_URL,
-  LS_CUSTOM_KEY,
-  LS_CUSTOM_MODEL,
-  LS_CUSTOM_URL,
-  LS_OPENAI_KEY,
-  LS_OPENAI_MODEL,
-  LS_OPENAI_URL,
   LS_PROVIDER,
   type AiProvider,
 } from "@/types/question";
-
-const DEFAULT_PROVIDER: AiProvider = "openai";
+import {
+  clearForwardSettings,
+  migrateForwardSettingsFromLegacy,
+  readForwardSettings,
+  writeForwardSettings,
+} from "@/lib/ai/forwardSettings";
 
 function isAiProvider(value: string | null): value is AiProvider {
   return value === "openai" || value === "anthropic" || value === "custom";
 }
 
+/**
+ * Runs legacy → forward migration then returns the OpenAI-compat forward kind.
+ * `anthropic` is no longer returned once forward settings have an API key (Phase 19).
+ */
 export function getProvider(): AiProvider {
   if (typeof window === "undefined") {
-    return DEFAULT_PROVIDER;
+    return "openai";
   }
-  const raw = localStorage.getItem(LS_PROVIDER);
-  return isAiProvider(raw) ? raw : DEFAULT_PROVIDER;
+  migrateForwardSettingsFromLegacy();
+  const { baseUrl, apiKey } = readForwardSettings();
+  if (!apiKey.trim()) {
+    const raw = localStorage.getItem(LS_PROVIDER);
+    return isAiProvider(raw) ? raw : "openai";
+  }
+  return baseUrl.trim() ? "custom" : "openai";
 }
 
 export function setProvider(p: AiProvider): void {
@@ -33,98 +37,53 @@ export function setProvider(p: AiProvider): void {
   localStorage.setItem(LS_PROVIDER, p);
 }
 
-function storageKeyForProvider(p: AiProvider): string {
-  switch (p) {
-    case "openai":
-      return LS_OPENAI_KEY;
-    case "anthropic":
-      return LS_ANTHROPIC_KEY;
-    case "custom":
-      return LS_CUSTOM_KEY;
-  }
-}
-
-function storageUrlKeyForProvider(p: AiProvider): string {
-  switch (p) {
-    case "openai":
-      return LS_OPENAI_URL;
-    case "anthropic":
-      return LS_ANTHROPIC_URL;
-    case "custom":
-      return LS_CUSTOM_URL;
-  }
-}
-
-function storageModelKeyForProvider(p: AiProvider): string {
-  switch (p) {
-    case "openai":
-      return LS_OPENAI_MODEL;
-    case "anthropic":
-      return LS_ANTHROPIC_MODEL;
-    case "custom":
-      return LS_CUSTOM_MODEL;
-  }
+/** Migrate + read the unified forward triple (Phase 19). */
+export function getForwardClientForUi() {
+  migrateForwardSettingsFromLegacy();
+  return readForwardSettings();
 }
 
 export function getKeyForProvider(p: AiProvider): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  return localStorage.getItem(storageKeyForProvider(p)) ?? "";
+  void p;
+  return readForwardSettings().apiKey;
 }
 
 export function setKeyForProvider(p: AiProvider, value: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.setItem(storageKeyForProvider(p), value);
+  void p;
+  writeForwardSettings({ apiKey: value });
 }
 
 export function clearKeyForProvider(p: AiProvider): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.removeItem(storageKeyForProvider(p));
+  void p;
+  clearForwardSettings();
 }
 
 export function getUrlForProvider(p: AiProvider): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  return localStorage.getItem(storageUrlKeyForProvider(p)) ?? "";
+  void p;
+  return readForwardSettings().baseUrl;
 }
 
 export function setUrlForProvider(p: AiProvider, value: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.setItem(storageUrlKeyForProvider(p), value);
+  void p;
+  writeForwardSettings({ baseUrl: value });
 }
 
 export function clearUrlForProvider(p: AiProvider): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.removeItem(storageUrlKeyForProvider(p));
+  void p;
+  clearForwardSettings();
 }
 
 export function getModelForProvider(p: AiProvider): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  return localStorage.getItem(storageModelKeyForProvider(p)) ?? "";
+  void p;
+  return readForwardSettings().modelId;
 }
 
 export function setModelForProvider(p: AiProvider, value: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.setItem(storageModelKeyForProvider(p), value);
+  void p;
+  writeForwardSettings({ modelId: value });
 }
 
 export function clearModelForProvider(p: AiProvider): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.removeItem(storageModelKeyForProvider(p));
+  void p;
+  clearForwardSettings();
 }

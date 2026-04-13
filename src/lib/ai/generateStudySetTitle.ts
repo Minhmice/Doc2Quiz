@@ -101,55 +101,6 @@ async function openAiStyleTitle(
   return parseTitleJson(content);
 }
 
-async function anthropicTitle(
-  apiKey: string,
-  endpoint: string,
-  model: string,
-  userContent: string,
-  signal: AbortSignal | undefined,
-): Promise<StudySetTitleResult | null> {
-  const res = await forwardAiPost({
-    provider: "anthropic",
-    targetUrl: endpoint,
-    apiKey,
-    signal,
-    body: {
-      model,
-      max_tokens: 300,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userContent }],
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    const proxyMsg = res.status === 502 ? parseProxyForwardErrorBody(text) : null;
-    if (proxyMsg) {
-      throw new Error(proxyMsg);
-    }
-    throw new Error(describeBadAiResponse(res.status, text));
-  }
-  let data: { content?: Array<{ type?: string; text?: string }> };
-  try {
-    data = JSON.parse(text) as typeof data;
-  } catch {
-    if (responseLooksLikeHtml(text)) {
-      throw new Error("API returned HTML instead of JSON");
-    }
-    throw new Error("Invalid JSON from Anthropic");
-  }
-  const blocks = data.content;
-  const joined =
-    blocks
-      ?.filter((b) => b.type === "text" && typeof b.text === "string")
-      .map((b) => b.text as string)
-      .join("\n")
-      .trim() ?? "";
-  if (!joined) {
-    return null;
-  }
-  return parseTitleJson(joined);
-}
-
 /**
  * Uses configured AI provider to suggest title + optional subtitle from PDF text.
  * Falls back to filename-based title when no key, short text, or errors.
@@ -179,25 +130,14 @@ export async function generateStudySetTitle(
     const endpoint = resolveChatApiUrl(provider, getUrlForProvider(provider));
     const model = resolveModelId(provider, getModelForProvider(provider));
 
-    let parsed: StudySetTitleResult | null = null;
-    if (provider === "openai" || provider === "custom") {
-      parsed = await openAiStyleTitle(
-        provider,
-        apiKey,
-        endpoint,
-        model,
-        userContent,
-        signal,
-      );
-    } else {
-      parsed = await anthropicTitle(
-        apiKey,
-        endpoint,
-        model,
-        userContent,
-        signal,
-      );
-    }
+    const parsed = await openAiStyleTitle(
+      provider === "custom" ? "custom" : "openai",
+      apiKey,
+      endpoint,
+      model,
+      userContent,
+      signal,
+    );
 
     if (parsed?.title) {
       return parsed;

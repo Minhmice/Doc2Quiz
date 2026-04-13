@@ -476,6 +476,46 @@ Plans:
 
 ---
 
+## Phase 20: AI-first content creation — quiz vs flashcards selector, simplified create flow, OCR dev-only surface
+
+**Goal:** Refactor **product-facing** create flow theo hướng **AI-first**, ít ma sát: Dashboard → **chọn loại đầu ra** (Quiz / Flashcards) → upload file → **AI parse** (implementation có thể tái dùng engine hiện tại) → review → save/use. **Không** để OCR / parse policy / layout jargon trong main UX; **OCR không xóa** — chuyển sang **route dev** (ví dụ `/dev/ocr`) tái dùng module parse domain. Giữ **boundary** Phase 16 (parse vs learning); mở rộng abstraction **`contentType`: quiz | flashcards** cho route/state/upload/review/save.
+
+**Status:** Complete — `20-01-SUMMARY.md`, `20-02-SUMMARY.md` (2026-04-11)
+
+**Depends on:** Phase 16 (domain boundary); Phase 12/19 (parse engine + capabilities — gọi qua entrypoint đơn giản, không phá policy nội bộ); Phase 8 (flashcards backlog — nối flow tạo mới).
+
+**Requirements:** See `20-CONTEXT.md` (PRD đầy đủ + acceptance criteria).
+
+**Deliverables (high level):** Bước chọn type (`/sets/new`); `/sets/new/quiz` + `/sets/new/flashcards`; `StudySetMeta.contentKind`; ẩn OCR/parse chrome trên source cho product sets; `/dev/ocr` lab; flashcards review v1 + doc.
+
+**Plans:** 2 plans, 2 waves
+
+Plans:
+- [x] `20-01-PLAN.md` — funnel routes + `contentKind` persistence + global links (`20-01-SUMMARY.md`).
+- [x] `20-02-PLAN.md` — `AiParseSection` surface + source wiring + `/dev/ocr` + flashcards review stub + architecture note (`20-02-SUMMARY.md`).
+
+---
+
+## Phase 21: Vision-first MVP pipeline — batch vision, quiz vs flashcard correctness, cache & benchmark
+
+**Goal:** Refactor parse **MVP** thành **vision-first**: batch **10 trang**, **overlap 2**; tách rõ **`ParseOutputMode`** (quiz vs flashcard) xuyên suốt prompt → parse → validate → persist → UI (**release-blocking**: flashcard không còn sinh quiz); preview **tăng dần theo batch**; **confidence** heuristic từng item; **log có cấu trúc**; **fingerprint cache** theo batch+mode; **benchmark** sau mỗi lần parse; dedupe có ý thức overlap; prompt **nén**; hook **ensemble** (flag, không bật mặc định). **OCR / layout-chunk / hybrid OCR** ra khỏi **default runtime** MVP (code OCR giữ lại, dev-only).
+
+**Status:** Complete — executed 2026-04-11 (`21-01-SUMMARY.md`, `21-02-SUMMARY.md`)
+
+**Depends on:** Phase 20 (`contentKind`, funnel); Phase 16 (boundaries); Phase 19 (retry/capabilities — tái dùng cho batch).
+
+**Requirements:** PRD trong `21-CONTEXT.md`; UAT trong `21-VALIDATION.md`.
+
+**Deliverables (high level):** `buildVisionBatches`; `runVisionBatchSequential`; `visionPrompts`; quiz/flashcard parsers + validators + confidence; cache; benchmark + structured logs; `AiParseSection` + persistence + flashcard review; `docs/WORKFLOW-vision-parse-detailed.md` + `docs/MIGRATION-vision-mvp-draft.md`.
+
+**Plans:** 2 plans (wave 1 lib, wave 2 integration)
+
+Plans:
+- [x] `21-01-PLAN.md` — Types, batching, prompts, parsers/validators, confidence, cache, benchmark, structured log hook (`21-01-SUMMARY.md` after execute).
+- [x] `21-02-PLAN.md` — `runVisionBatchSequential`, IDB mode-aware drafts, `AiParseSection` + source, flashcard review, workflow + migration docs (`21-02-SUMMARY.md` after execute).
+
+---
+
 ## Coverage Check
 
 | Phase | Requirements | Status |
@@ -499,8 +539,63 @@ Plans:
 | 17 | BYOK parse preview (calls / tokens / time before run) | Complete |
 | 18 | parseScore contract (ocrQuality vs questionQuality) | Complete |
 | 19 | Stage retries + capability matrix + minimal BYOK (3 fields) | Complete |
+| 20 | AI-first create flow, content type, OCR dev surface (`20-CONTEXT.md`) | Complete |
+| 21 | Vision-first MVP: batch vision, quiz/flashcard split, cache, benchmark (`21-CONTEXT.md`) | Complete |
+| 22 | Mint UI/UX from `example/` — tokens, shell, page parity (`22-CONTEXT.md`) | Complete |
+| 23 | Full app layout from `example/` — port HTML/CSS/shell into Next (`23-CONTEXT.md`) | Complete |
+| 24 | Vision parse: fewer API round-trips (`24-CONTEXT.md`) | Complete |
 
 v1 requirements covered: 23 / 23 ✓
+
+Phase 24 is an incremental enhancement beyond the original v1 requirement rows 1–23.
+
+### Phase 22: Implement example Mint UI/UX into main app (dashboard shell, tokens, components)
+
+**Goal:** Đưa palette **Mint / blueprint**, typography (**Manrope** + **Space Grotesk**), và chrome shell (top bar, canvas, step bar) từ `example/` vào app Next; tiếp tục page-level parity (dashboard, settings, review, play…) qua plan.
+
+**Status:** Complete — `22-RESEARCH.md`, `22-UI-SPEC.md`, `22-01-PLAN.md`, `22-02-PLAN.md` → `22-01-SUMMARY.md`, `22-02-SUMMARY.md`
+
+**Requirements:** See `22-CONTEXT.md`
+
+**Depends on:** Phase 21 (không đổi pipeline); design refs trong `example/`.
+
+**Plans:** 2 plans, 2 waves
+
+Plans:
+- [x] `22-01-PLAN.md` — Dashboard library + stats + spacing (`22-UI-SPEC` §1).
+- [x] `22-02-PLAN.md` — Settings shell + `AiProviderForm` underline fields + source/review headers (`22-UI-SPEC` §2–3).
+
+### Phase 23: Replace entire app layout with code ported from example/ (full layout parity)
+
+**Goal:** Port **full layouts** from `example/` mocks into the Next app (shell, dashboard, set flows, play/review) while preserving routes, data, and keyboard UX. Includes **`/develop`** lab: shadcn chrome + iframe wrapper for `example/*/code.html` (gated API), then incremental production ports. See `23-CONTEXT.md`, `23-UI-SPEC.md`.
+
+**Requirements:** TBD (`/gsd-plan-phase 23`)
+
+**Depends on:** Phase 22
+
+**Status:** Complete — `23-01-PLAN.md`, `23-02-PLAN.md` → `23-01-SUMMARY.md`, `23-02-SUMMARY.md`
+
+**Plans:** 2 plans, 2 waves
+
+Plans:
+- [x] `23-01-PLAN.md` — `/develop` + allowlist API + shadcn `Sheet` + Command Palette (dev).
+- [x] `23-02-PLAN.md` — Inventory row + play page outer chrome vs immersive mock (`depends_on: ["23-01"]`).
+
+### Phase 24: Vision parse: fewer round-trips — single request or max-window batches when within provider limits
+
+**Goal:** When `VISION_MAX_PAGES_DEFAULT` (and real provider limits) allow, send **all rasterized page images in one chat completion** (or the **minimum number of requests**: e.g. one batch of size N, overlap 0). Preserve today’s **fallback** to smaller windows if payload/model rejects. Improve **progress UX** so rasterize completes before implying “many API hops.” Reuse Phase 21 batch JSON + cache; extend prompts so every item carries **`sourcePages` / page provenance** without relying on overlap dedupe.
+
+**Requirements:** TBD in `REQUIREMENTS.md` (optional follow-up)
+
+**Depends on:** Phase 21 (batch vision + prompts + cache)
+
+**Status:** Complete — `24-01-SUMMARY.md`, `24-02-SUMMARY.md`
+
+**Plans:** 2 plans, 2 waves
+
+Plans:
+- [x] `24-01-PLAN.md` — Policy + `planVisionBatches` / `runVisionBatchSequential` (`min_requests` + legacy fallback); strict `sourcePages`; `VISION_BATCH_PROMPT_V` in cache hash.
+- [x] `24-02-PLAN.md` — `AiParseSection` + `onBatchPlanResolved`; overlay copy; `npm run lint` + `npm run build`.
 
 ---
 

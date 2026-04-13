@@ -1,0 +1,1 @@
+{"nodes": [{"id": "api_vision_staging_get", "label": "GET /api/ai/vision-staging/[id]: serve staged image", "file_type": "code", "source_file": "src/app/api/ai/vision-staging/[id]/route.ts", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

@@ -78,6 +78,13 @@ Learning-facing UI and routes listed under **Learning / session** above **must n
 
 **This plan does not change ESLint.** A follow-up can add overrides for `src/components/{play,review,flashcards}/**` (and optionally learning routes) to forbid deep `@/lib/ai/*` imports except via `@/lib/learning`, **after** a baseline inventory shows zero violations (or violations are listed as tech-debt with owners).
 
+## Product create flow vs dev OCR lab (`/dev/ocr`)
+
+- **Learner path:** Dashboard → `/sets/new` (choose **Quiz** or **Flashcards**) → typed upload → `/sets/[id]/source` with `StudySetMeta.contentKind` set. Parse UI uses **`surface="product"`** on `AiParseSection`: OCR toggles and strategy live under **Advanced**; `OcrInspector` / `QuestionMappingDebug` stay off the page unless `?debug=1`.
+- **Developer path:** **`/dev/ocr`** (and `/dev/ocr/[id]`) composes the same parse-domain components (`OcrInspector`, IDB-backed study sets) — **no second OCR engine**. In **production** builds the tree 404s unless `NEXT_PUBLIC_ENABLE_DEV_OCR_LAB=true` (see `src/app/(app)/dev/ocr/layout.tsx`).
+- **Boundary unchanged:** Learning routes still consume `Question[]` / approved bank; they do not call vision/OCR runners. Flashcard draft review (`/sets/[id]/flashcards/review`) edits the same draft store as parse output.
+- **Non-goal:** Polishing the OCR lab like a consumer feature; it exists to debug OCR rows and geometry without cluttering the main create funnel.
+
 ---
 
 ## Appendix: Current `@/lib/ai` imports (Phase 16 baseline)

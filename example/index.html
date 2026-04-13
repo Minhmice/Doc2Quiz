@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doc2Quiz — design mocks (example/)</title>
+    <link rel="stylesheet" href="./hub.css" />
+  </head>
+  <body class="dm-blueprint">
+    <header
+      class="dm-hero"
+      style="
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 1.25rem;
+      "
+    >
+      <p class="dm-label" style="margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem">
+        <span class="dm-live-dot" aria-hidden="true"></span>
+        Static HTML trong repo · từng mock là <code style="font-size: 0.75rem">*/code.html</code>
+      </p>
+      <h1 style="margin: 0; font-size: clamp(1.75rem, 4vw, 2.35rem); font-weight: 800; letter-spacing: -0.03em">
+        Design mock hub
+      </h1>
+      <p style="margin: 0.75rem 0 0; max-width: 42rem; line-height: 1.6; color: #404945; font-size: 0.95rem">
+        Mở trực tiếp file này sau khi chạy
+        <code class="dm-label" style="font-size: 0.7rem; letter-spacing: 0.05em">npm run example:serve</code>
+        rồi vào URL hiển thị (thường là <strong>http://localhost:5050</strong>). Dùng
+        <a href="./viewer.html" style="color: #376757; font-weight: 600">viewer</a> để duyệt tuần tự (phím
+        J/K), hoặc
+        <a href="./preview-all.html" style="color: #376757; font-weight: 600">preview tất cả</a> (iframe trong
+        <code>example/preview-all.html</code> — không nằm trong <code>src/</code>). Các
+        <strong>atom UI</strong> (nút, card, input…): <a href="./components-preview.html" style="color: #376757; font-weight: 600">components-preview.html</a>.
+      </p>
+      <div style="margin-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem">
+        <a class="dm-btn" href="./viewer.html?p=dashboard">Mở viewer</a>
+        <a class="dm-btn" href="./preview-all.html">Preview tất cả mock</a>
+        <a class="dm-btn dm-btn-ghost" href="./components-preview.html">UI components</a>
+      </div>
+    </header>
+
+    <main style="max-width: 1120px; margin: 0 auto; padding: 1rem 1.5rem 3rem">
+      <p class="dm-label" style="margin-bottom: 1rem">Các page mock</p>
+      <div
+        style="
+          display: grid;
+          gap: 1rem;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        "
+      >
+        <a class="dm-card dm-stagger-1" href="./viewer.html?p=dashboard" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">Dashboard</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">action_focused_dashboard</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Thư viện, CTA, stats.</p>
+          </article>
+        </a>
+
+        <a class="dm-card dm-stagger-2" href="./viewer.html?p=selection" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">Chọn định dạng</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">refined_selection</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Quiz vs flashcards.</p>
+          </article>
+        </a>
+
+        <a class="dm-card dm-stagger-3" href="./viewer.html?p=ai-workspace" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">AI workspace</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">refined_ai_processing</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Parse / pipeline UI.</p>
+          </article>
+        </a>
+
+        <a class="dm-card dm-stagger-4" href="./viewer.html?p=review" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">Review quiz</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">professional_review</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Chỉnh draft câu hỏi.</p>
+          </article>
+        </a>
+
+        <a class="dm-card dm-stagger-5" href="./viewer.html?p=flashcards" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">Review flashcards</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">flashcard_review</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Front / back editor.</p>
+          </article>
+        </a>
+
+        <a class="dm-card dm-stagger-6" href="./viewer.html?p=play" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">Play quiz</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">immersive_quiz_play</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Làm bài tập trung.</p>
+          </article>
+        </a>
+
+        <a class="dm-card dm-stagger-7" href="./viewer.html?p=results" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">Kết quả</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">advanced_results_recovery</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Tóm tắt &amp; ôn lại.</p>
+          </article>
+        </a>
+
+        <a class="dm-card dm-stagger-8" href="./viewer.html?p=settings" style="text-decoration: none; color: inherit">
+          <article
+            style="
+              background: var(--surface);
+              border-radius: 4px;
+              padding: 1.25rem;
+              min-height: 140px;
+              border: 1px solid rgba(192, 201, 195, 0.45);
+            "
+          >
+            <h2 style="margin: 0; font-size: 1.05rem">Settings / AI</h2>
+            <p class="dm-label" style="margin: 0.35rem 0 0.5rem; color: #5f0f00">ai_connection_settings</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #404945; line-height: 1.5">Kết nối model.</p>
+          </article>
+        </a>
+      </div>
+
+      <p style="margin-top: 2rem; font-size: 0.8rem; color: #64748b">
+        Mở trực tiếp <code>code.html</code>:
+        <a href="./doc2quiz_action_focused_dashboard/code.html" style="color: #376757">dashboard</a> ·
+        <a href="./doc2quiz_refined_selection/code.html" style="color: #376757">selection</a> ·
+        <a href="./refined_ai_processing_workspace/code.html" style="color: #376757">ai-workspace</a> ·
+        <a href="./doc2quiz_professional_review_workspace/code.html" style="color: #376757">review</a> ·
+        <a href="./doc2quiz_flashcard_review_workspace/code.html" style="color: #376757">flashcards</a> ·
+        <a href="./doc2quiz_immersive_quiz_play_mode/code.html" style="color: #376757">play</a> ·
+        <a href="./doc2quiz_advanced_results_recovery_workspace/code.html" style="color: #376757">results</a> ·
+        <a href="./doc2quiz_ai_connection_settings/code.html" style="color: #376757">settings</a>
+      </p>
+    </main>
+  </body>
+</html>

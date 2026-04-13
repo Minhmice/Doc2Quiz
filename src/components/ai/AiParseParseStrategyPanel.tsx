@@ -3,16 +3,20 @@
 import type { ParseStrategy } from "@/lib/ai/parseLocalStorage";
 import { Label } from "@/components/ui/label";
 
+export type AiParseDocumentHint = "strong_text_layer" | "none";
+
 type Props = {
   parseStrategy: ParseStrategy;
   parseStrategyGroupId: string;
   onSelectStrategy: (s: ParseStrategy) => void;
+  documentHint?: AiParseDocumentHint;
 };
 
 export function AiParseParseStrategyPanel({
   parseStrategy,
   parseStrategyGroupId,
   onSelectStrategy,
+  documentHint = "none",
 }: Props) {
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
@@ -76,6 +80,12 @@ export function AiParseParseStrategyPanel({
           </span>
         </label>
       </div>
+      {documentHint === "strong_text_layer" ? (
+        <p className="text-xs text-muted-foreground">
+          This PDF&apos;s text layer looks dense — Fast (layout chunks) is usually
+          cheaper on tokens than full-page vision when OCR is on.
+        </p>
+      ) : null}
     </div>
   );
 }

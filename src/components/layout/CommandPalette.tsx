@@ -19,16 +19,74 @@ import {
   BookOpenIcon,
   SearchIcon,
   LayersIcon,
+  FlaskConical,
 } from "lucide-react";
 import { FOCUS_LIBRARY_SEARCH_EVENT } from "@/lib/appEvents";
+import { ensureStudySetDb, getStudySetMeta } from "@/lib/db/studySetDb";
+import {
+  editFlashcards,
+  editQuiz,
+  flashcardsPlay,
+  newRoot,
+  quizPlay,
+} from "@/lib/routes/studySetPaths";
+import type { StudyContentKind } from "@/types/studySet";
+
+function studySetIdFromPathname(pathname: string): string | undefined {
+  const patterns = [
+    /^\/sets\/([^/]+)/,
+    /^\/quiz\/([^/]+)/,
+    /^\/flashcards\/([^/]+)/,
+    /^\/edit\/quiz\/([^/]+)/,
+    /^\/edit\/flashcards\/([^/]+)/,
+  ];
+  for (const re of patterns) {
+    const m = pathname.match(re);
+    if (m?.[1]) {
+      return m[1];
+    }
+  }
+  return undefined;
+}
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const [contentKind, setContentKind] = useState<StudyContentKind | null>(null);
 
-  const setIdMatch = pathname.match(/^\/sets\/([^/]+)/);
-  const studySetId = setIdMatch?.[1];
+  const studySetId = studySetIdFromPathname(pathname);
+
+  useEffect(() => {
+    if (!studySetId) {
+      setContentKind(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        await ensureStudySetDb();
+        const meta = await getStudySetMeta(studySetId);
+        if (!cancelled) {
+          setContentKind(meta?.contentKind ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setContentKind(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [studySetId]);
+
+  const reviewHref =
+    studySetId === undefined
+      ? ""
+      : contentKind === "flashcards"
+        ? editFlashcards(studySetId)
+        : editQuiz(studySetId);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -67,7 +125,7 @@ export function CommandPalette() {
             <SearchIcon />
             Search study sets
           </CommandItem>
-          <CommandItem onSelect={() => go("/sets/new")}>
+          <CommandItem onSelect={() => go(newRoot())}>
             <PlusIcon />
             New study set
           </CommandItem>
@@ -80,21 +138,28 @@ export function CommandPalette() {
           <>
             <CommandSeparator />
             <CommandGroup heading="Current set">
-              <CommandItem onSelect={() => go(`/sets/${studySetId}/source`)}>
+              <CommandItem onSelect={() => go(reviewHref)}>
                 <BookOpenIcon />
-                Source &amp; parse
+                Edit draft
               </CommandItem>
-              <CommandItem onSelect={() => go(`/sets/${studySetId}/review`)}>
-                <BookOpenIcon />
-                Review questions
-              </CommandItem>
-              <CommandItem onSelect={() => go(`/sets/${studySetId}/play`)}>
+              <CommandItem onSelect={() => go(quizPlay(studySetId))}>
                 <BookOpenIcon />
                 Take quiz
               </CommandItem>
-              <CommandItem onSelect={() => go(`/sets/${studySetId}/flashcards`)}>
+              <CommandItem onSelect={() => go(flashcardsPlay(studySetId))}>
                 <LayersIcon />
                 Flashcards
+              </CommandItem>
+            </CommandGroup>
+          </>
+        ) : null}
+        {process.env.NODE_ENV === "development" ? (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Develop">
+              <CommandItem onSelect={() => go("/develop")}>
+                <FlaskConical />
+                Develop lab
               </CommandItem>
             </CommandGroup>
           </>
