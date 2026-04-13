@@ -376,7 +376,7 @@ export function ReviewSection({
             <p>
               No questions yet. Complete import and AI parse on{" "}
               <Link
-                href="/new/quiz"
+                href="/edit/new/quiz"
                 className="font-medium text-primary underline-offset-2 hover:underline"
               >
                 New quiz

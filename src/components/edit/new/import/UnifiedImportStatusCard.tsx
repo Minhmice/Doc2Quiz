@@ -12,8 +12,8 @@ import {
 import {
   ImportProgressChromeStepsBody,
   importPhaseMeta,
-} from "@/components/sets/new/import/NewStudySetPdfImportProgressChrome";
-import type { NewStudySetPdfImportPhase } from "@/components/sets/new/import/newStudySetPdfImportPhase";
+} from "@/components/edit/new/import/NewStudySetPdfImportProgressChrome";
+import type { NewStudySetPdfImportPhase } from "@/components/edit/new/import/newStudySetPdfImportPhase";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { StudyContentKind } from "@/types/studySet";

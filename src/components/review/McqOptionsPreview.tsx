@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { MathText } from "@/components/math/MathText";
 import { hasValidCorrectIndex } from "@/lib/review/validateMcq";
 import type { Question } from "@/types/question";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 
 const LABELS = ["A", "B", "C", "D"] as const;
 

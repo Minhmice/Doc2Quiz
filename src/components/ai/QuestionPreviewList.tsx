@@ -5,7 +5,7 @@ import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ImportMcqCardShell } from "@/components/sets/new/import/ImportMcqCardShell";
+import { ImportMcqCardShell } from "@/components/edit/new/import/ImportMcqCardShell";
 import { cn } from "@/lib/utils";
 
 export type QuestionPreviewCardProps = Readonly<{

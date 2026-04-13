@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StudySetNewImportStepProvider } from "@/components/sets/new/import/StudySetNewImportStepContext";
+import { StudySetNewImportStepProvider } from "@/components/edit/new/import/StudySetNewImportStepContext";
 import { FlashcardsImportTechnicalGrid } from "./FlashcardsImportTechnicalGrid";
 import { FlashcardsImportWorkbenchHeader } from "./FlashcardsImportWorkbenchHeader";
 

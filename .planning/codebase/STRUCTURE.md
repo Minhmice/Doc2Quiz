@@ -1,146 +1,304 @@
-# Codebase Structure
+# STRUCTURE — Doc2Quiz (`src/`)
 
-**Analysis Date:** 2026-04-13
+**Analysis date:** 2026-04-13  
+**Focus:** Architecture (`arch`)
 
-## Directory layout (project root)
+## 1) Current Layout
 
+```txt
+src/
+├─ app/
+│  ├─ layout.tsx
+│  ├─ page.tsx
+│  ├─ globals.css
+│  ├─ (app)/
+│  │  ├─ layout.tsx
+│  │  ├─ template.tsx
+│  │  ├─ dashboard/page.tsx
+│  │  ├─ settings/page.tsx
+│  │  ├─ develop/page.tsx
+│  │  ├─ dev/ocr/
+│  │  │  ├─ layout.tsx
+│  │  │  ├─ page.tsx
+│  │  │  └─ [id]/page.tsx
+│  │  ├─ new/
+│  │  │  ├─ page.tsx
+│  │  │  ├─ quiz/page.tsx
+│  │  │  └─ flashcards/page.tsx
+│  │  ├─ sets/
+│  │  │  ├─ new/
+│  │  │  │  ├─ page.tsx
+│  │  │  │  ├─ NewStudySetPdfImportFlow.tsx
+│  │  │  │  ├─ quiz/page.tsx
+│  │  │  │  └─ flashcards/page.tsx
+│  │  │  └─ [id]/
+│  │  │     ├─ layout.tsx
+│  │  │     ├─ source/page.tsx
+│  │  │     ├─ parse/page.tsx
+│  │  │     └─ practice/page.tsx
+│  │  ├─ quiz/
+│  │  │  └─ [id]/
+│  │  │     ├─ layout.tsx
+│  │  │     ├─ page.tsx
+│  │  │     └─ done/page.tsx
+│  │  ├─ flashcards/
+│  │  │  └─ [id]/
+│  │  │     ├─ layout.tsx
+│  │  │     ├─ page.tsx
+│  │  │     └─ done/page.tsx
+│  │  └─ edit/
+│  │     ├─ quiz/[id]/(layout.tsx,page.tsx)
+│  │     └─ flashcards/[id]/(layout.tsx,page.tsx)
+│  └─ api/
+│     ├─ ai/
+│     │  ├─ forward/route.ts
+│     │  ├─ vision-test-image/route.ts
+│     │  └─ vision-staging/
+│     │     ├─ route.ts
+│     │     └─ [id]/route.ts
+│     ├─ parse-jobs/(route.ts,[id]/route.ts)
+│     └─ develop/mock/[slug]/route.ts
+│
+├─ components/
+│  ├─ ai/
+│  ├─ animate-ui/
+│  ├─ dashboard/
+│  ├─ develop/
+│  ├─ flashcards/
+│  ├─ layout/
+│  ├─ math/
+│  ├─ media/
+│  ├─ play/
+│  ├─ profile/
+│  ├─ providers/
+│  ├─ review/
+│  ├─ sets/
+│  │  └─ new/
+│  │     ├─ format-selection/
+│  │     ├─ import/
+│  │     ├─ quiz/
+│  │     └─ flashcards/
+│  ├─ settings/
+│  ├─ ui/
+│  ├─ upload/
+│  └─ viewer/
+│
+├─ lib/
+│  ├─ ai/
+│  │  └─ prompts/
+│  ├─ dashboard/
+│  ├─ db/
+│  ├─ develop/
+│  ├─ ids/
+│  ├─ learning/
+│  ├─ logging/
+│  ├─ math/
+│  ├─ observability/
+│  ├─ pdf/
+│  ├─ profile/
+│  ├─ review/
+│  ├─ routes/
+│  ├─ serverParse/
+│  ├─ studySet/
+│  ├─ validations/
+│  ├─ appEvents.ts
+│  └─ utils.ts
+│
+├─ hooks/
+│  ├─ useDashboardHome.ts
+│  └─ use-is-in-view.tsx
+│
+└─ types/
+   ├─ flashcardSession.ts
+   ├─ ocr.ts
+   ├─ parseJob.ts
+   ├─ parseScore.ts
+   ├─ question.ts
+   ├─ studySet.ts
+   └─ visionParse.ts
 ```
-Doc2Quiz/
-├── public/                 # Static assets: pdf.worker.min.mjs, mathjax/es5 (postinstall copies)
-├── scripts/                # copy-pdf-worker.mjs, copy-mathjax-assets.mjs
-├── src/
-│   ├── app/                # Next.js App Router: layouts, pages, API routes, globals.css
-│   ├── components/         # React UI by feature + shared ui/
-│   ├── lib/                # Domain logic: ai, db, pdf, review, validations, …
-│   └── types/              # Shared TypeScript types
-├── docs/                   # Architecture notes, BYOK, scale mode, parse contracts
-├── eslint.config.mjs
-├── next.config.ts
-├── package.json
-├── postcss.config.mjs
-├── sentry.client.config.ts
-├── sentry.server.config.ts
-└── tsconfig.json
-```
 
-## Parse pipeline — file pointers (quick nav)
+### Quick check vs requested component buckets
 
-| Concern | Path |
-|--------|------|
-| User Parse / Cancel, strategy routing | `src/components/ai/AiParseSection.tsx` |
-| Parse / Cancel buttons | `src/components/ai/AiParseActions.tsx` |
-| Route policy (text char hint vs layout vs vision intent) | `src/lib/ai/parseRoutePolicy.ts` |
-| PDF → JPEG data URLs (caps, abort, per-page callback) | `src/lib/pdf/renderPagesToImages.ts` |
-| Sequential vision: attach / single / overlapping pairs | `src/lib/ai/runVisionSequential.ts` |
-| One vs two `image_url` per chat request | `src/lib/ai/parseVisionPage.ts` |
-| Data URL → staging URL client | `src/lib/ai/stageVisionDataUrl.ts` |
-| Staging store limits (memory fallback) | `src/lib/ai/visionStagingStore.ts` |
-| Staging POST / GET routes | `src/app/api/ai/vision-staging/route.ts`, `src/app/api/ai/vision-staging/[id]/route.ts` |
-| Same-origin AI proxy | `src/lib/ai/sameOriginForward.ts`, `src/app/api/ai/forward/route.ts` |
-| Native text at ingest | `src/lib/pdf/extractPdfText.ts`, `src/app/(app)/sets/new/NewStudySetPdfImportFlow.tsx` |
-| OCR prefetch | `src/lib/ai/runOcrSequential.ts`, `src/lib/ai/ocrAdapter.ts` |
-| Layout chunks + chunk text parse | `src/lib/ai/runLayoutChunkParse.ts`, `src/lib/ai/parseChunk.ts`, `src/lib/ai/layoutChunksFromOcr.ts` |
-| Batch vision (attach off, quiz path) | `src/lib/ai/runVisionBatchSequential.ts`, `src/lib/ai/visionBatching.ts` |
-| Question dedupe after vision | `src/lib/ai/dedupeQuestions.ts` |
+- Present: `dashboard`, `layout`, `review`, `sets`, `ui`, `upload`, `viewer`.
+- Equivalent-but-different naming: `practice` appears as `play/`; `quiz` is mostly route-driven under `app/(app)/quiz/*` + `components/review/*`.
+- Not a top-level component bucket today: `source/` (source flow is routed in `app/(app)/sets/[id]/source/page.tsx` and backed by `components/ai/*`).
 
-## `src/app/` — Routes and entry points
+### Quick check vs requested `lib/` buckets
 
-| Path | Purpose |
-|------|---------|
-| `src/app/layout.tsx` | Root layout: fonts, `globals.css`, `AppRootProviders`. |
-| `src/app/page.tsx` | `/` → redirects to `/dashboard`. |
-| `src/app/globals.css` | Tailwind / design tokens entry. |
-| `src/app/(app)/layout.tsx` | App shell providers (`AppProviders`). |
-| `src/app/(app)/dashboard/page.tsx` | Library / dashboard. |
-| `src/app/(app)/settings/page.tsx` | Settings (AI provider / forward configuration UI). |
-| `src/app/(app)/sets/new/page.tsx` | Create new study set. |
-| `src/app/(app)/sets/[id]/layout.tsx` | Per-set layout: width + `StepProgressBar`. |
-| `src/app/(app)/sets/[id]/source/page.tsx` | **Parse hub:** PDF info, `AiParseSection`, OCR/mapping tools. |
-| `src/app/(app)/sets/[id]/review/page.tsx` | Review and edit draft questions. |
-| `src/app/(app)/sets/[id]/play/page.tsx` | Quiz play session. |
-| `src/app/(app)/sets/[id]/practice/page.tsx` | **Redirect only** → `/sets/[id]/play`. |
-| `src/app/(app)/sets/[id]/flashcards/page.tsx` | Flashcard session. |
-| `src/app/(app)/sets/[id]/done/page.tsx` | Completion step. |
-| `src/app/(app)/sets/[id]/parse/page.tsx` | Redirect only → `…/source`. |
-| `src/app/api/ai/forward/route.ts` | Same-origin AI proxy. |
-| `src/app/api/ai/vision-staging/route.ts` | Register `data:` URL → staging URL. |
-| `src/app/api/ai/vision-staging/[id]/route.ts` | Serve staged image (Blob redirect or memory bytes). |
-| `src/app/api/ai/vision-test-image/route.ts` | Fixed PNG for tests. |
-| `src/app/api/parse-jobs/route.ts` | Phase 15 stub: capability GET + POST placeholder. |
-| `src/app/api/parse-jobs/[id]/route.ts` | Phase 15 stub: job status placeholder. |
-
-## `src/components/` — UI modules
-
-| Directory | Purpose |
-|-----------|---------|
-| `src/components/ai/` | Parse orchestration: `AiParseSection`, progress overlays, estimates, OCR inspector, previews, preference toggles. |
-| `src/components/dashboard/` | Library widgets, stats, rename dialog. |
-| `src/components/flashcards/` | Flashcard session. |
-| `src/components/layout/` | `AppShell`, top bar, command palette, step progress, parse progress strip, providers, API status. |
-| `src/components/math/` | `MathText`, barrel — MathJax-backed rendering. |
-| `src/components/media/` | `StoredImage` — IDB media blobs. |
-| `src/components/play/` | Quiz play session. |
-| `src/components/providers/` | `app-root-providers.tsx` — root provider composition. |
-| `src/components/review/` | Question cards, editors, review section. |
-| `src/components/settings/` | `AiProviderForm` and related settings UI. |
-| `src/components/ui/` | Reusable primitives (button, dialog, tabs, …). |
-| `src/components/upload/` | PDF upload and info card. |
-| `src/components/viewer/` | Raw text viewer. |
-
-## `src/lib/` — Non-UI logic
-
-| Path | Purpose |
-|------|---------|
-| `src/lib/ai/` | Chunking, parse/vision/OCR runners, forward client, staging, dedupe, validate, capabilities, estimates, prompts. |
-| `src/lib/db/` | `studySetDb.ts` (IndexedDB), `migrateLegacyLocalStorage.ts`. |
-| `src/lib/pdf/` | pdf.js worker, **extractPdfText**, render to images, validation. |
-| `src/lib/review/` | Draft/approved bank, MCQ validation and diagnostics. |
-| `src/lib/learning/` | Barrel for learning-facing read helpers (see `docs/ARCHITECTURE-domain-boundaries.md`). |
-| `src/lib/studySet/` | PDF file reconstruction, activity tracking. |
-| `src/lib/validations/` | Zod schemas (e.g. AI settings). |
-| `src/lib/logging/` | `pipelineLogger.ts`. |
-| `src/lib/observability/` | `reportPipelineError.ts`. |
-| `src/lib/math/` | Math segment splitting for rendering. |
-| `src/lib/serverParse/` | `env.ts` — server parse queue flag. |
-| `src/lib/ids/` | `createRandomUuid.ts`. |
-| `src/lib/utils.ts` | `cn()` and small helpers. |
-| `src/lib/appEvents.ts` | Lightweight app events for shell/search. |
-
-## `src/types/`
-
-| File | Purpose |
-|------|---------|
-| `src/types/studySet.ts` | `StudySetMeta`, `StudySetDocumentRecord`, **`DB_VERSION`**, `DB_NAME`, parse progress phases. |
-| `src/types/question.ts` | `Question`, provider enums, **`localStorage` key constants** (legacy + forward triple). |
-| `src/types/ocr.ts` | OCR run/page/block types. |
-| `src/types/flashcardSession.ts` | Flashcard session typing. |
-| `src/types/parseJob.ts` | Server parse-job types for Phase 15 API contract. |
-
-## Naming conventions
-
-- **Routes:** Next conventions — `page.tsx`, `layout.tsx`, `route.ts`.
-- **Components:** PascalCase (`AiParseSection.tsx`).
-- **Libraries:** camelCase modules (`extractPdfText.ts`, `studySetDb.ts`).
-- **Imports:** Prefer `@/` → `src/` (`tsconfig.json` `paths`).
-
-## Where to add new code
-
-| Change | Primary location |
-|--------|------------------|
-| New page inside app shell | `src/app/(app)/…/page.tsx` |
-| New AI transport or staging behavior | `src/app/api/ai/*/route.ts` + client/helpers in `src/lib/ai/` |
-| New IDB store or schema bump | `src/types/studySet.ts` + `src/lib/db/studySetDb.ts` (`onupgradeneeded`) |
-| New parse stage or prompt | `src/lib/ai/` + wire from `src/components/ai/AiParseSection.tsx` |
-| New reusable control | `src/components/ui/` |
-| New study step in the wizard | `src/components/layout/StepProgressBar.tsx` + new `page.tsx` under `sets/[id]/` |
-| Learning-only read helper safe for review/play/flashcards | Prefer `src/lib/learning/index.ts` re-exports per `docs/ARCHITECTURE-domain-boundaries.md` |
-
-## Generated / copied artifacts
-
-- `public/pdf.worker.min.mjs` — copied on `postinstall`; ESLint-ignored.
-- `public/mathjax/es5/**` — copied from `node_modules/mathjax` on `postinstall`; ESLint-ignored.
-- `.next/` — build output (not source of truth).
+- Present: `ai`, `db`, `pdf`.
+- Equivalent naming today: `studySet/` (acts like `sets/` domain), `review/` + `learning/` + `routes/` hold quiz/set behavior.
+- Not present as named buckets: `quiz/`, `sets/`, `source/`, `storage/` (storage concerns are split across `db/`, `studySet/`, `ai/storage.ts`, `ai/ocrStorage.ts`).
 
 ---
 
-*Structure analysis: 2026-04-13*
+## 2) Analysis
+
+### A. Colocation vs separation
+
+- **Current style is mostly centralized by concern** (`src/components/*`, `src/lib/*`) rather than route-local.
+- App Router pages under `src/app/(app)` import from centralized feature folders.
+- Pros:
+  - Easy cross-route reuse.
+  - Predictable top-level feature folders.
+- Cons:
+  - Route ownership is less explicit (page + UI + domain logic spread across `app/`, `components/`, `lib/`).
+  - Flows like `sets/[id]/source` rely on `components/ai/*`, which is semantically broad and not obviously route-bounded.
+
+### B. Naming consistency
+
+- Mixed naming exists:
+  - `studySet/` (singular in folder name, plural in route path `sets`).
+  - `play/` (UI feature) vs route path `practice`.
+  - `review` exists in both route concepts and reusable component domain.
+- `source` exists as route segment, while implementation is grouped under `ai` (not `source`).
+- Overall: understandable, but not fully normalized around one taxonomy.
+
+### C. UI component split
+
+- `components/ui/*` is correctly used for primitives and reusable controls (shadcn-like base + custom primitives).
+- Feature UI is mostly outside `ui/` (good), inside domain folders (`dashboard`, `sets/new/*`, `review`, `ai`).
+- Some route-heavy flows (especially set-creation/import and quiz runtime) would benefit from `_components/` colocation to reduce global component surface area.
+
+### D. Lib organization and feature mirroring
+
+- Partial mirroring exists:
+  - `components/dashboard` ↔ `lib/dashboard` (good).
+  - `components/profile` ↔ `lib/profile` (good).
+- But quiz/set/source flows are spread:
+  - UI: `components/play`, `components/review`, `components/sets/new`, `components/ai`.
+  - Logic: `lib/studySet`, `lib/review`, `lib/ai`, `lib/routes`.
+- No single `lib/quiz` or `lib/sets` verticals; this increases cognitive load for feature work.
+
+### E. Type definitions strategy
+
+- `src/types` is centralized and clean for cross-cutting models (`studySet`, `question`, `parseJob`, etc.).
+- Good for shared contracts and DB model consistency.
+- Missing complement: route/feature-local view-model types are often implicit in components rather than colocated with feature modules.
+
+---
+
+## 3) Proposed Restructure
+
+> Goal: improve route ownership clarity while preserving reuse and current `@/` alias style.
+
+### A. Route colocation (App Router private folders)
+
+For route-specific, non-reusable components, colocate to `app/.../_components/`:
+
+- `app/(app)/quiz/[id]/_components/*`
+- `app/(app)/flashcards/[id]/_components/*`
+- `app/(app)/sets/new/_components/*`
+- `app/(app)/sets/[id]/source/_components/*`
+
+Keep truly reusable features in `src/components/*` and primitives in `src/components/ui/*`.
+
+### B. Naming normalization
+
+Pick one consistent feature taxonomy. Recommended:
+
+- **Plural for route/domain buckets**: `sets`, `quizzes`, `sources` (or keep route `quiz` if product language prefers singular, but make internal folder naming consistent).
+- Align runtime naming: either rename `play` → `practice` or rename route segment to `play`; avoid split vocabulary.
+
+Pragmatic recommendation (minimal URL churn):
+
+- Keep URLs as-is for product stability.
+- Normalize internal folder names:
+  - `components/play` → `components/practice`
+  - `lib/studySet` → `lib/sets`
+  - optional: `lib/routes/studySetPaths.ts` → `lib/routes/setPaths.ts`
+
+### C. Lib/component alignment
+
+Create mirrored verticals for major features:
+
+- `components/sets` ↔ `lib/sets`
+- `components/quiz`/`components/practice` ↔ `lib/quiz`
+- `components/source` (or route-local source components) ↔ `lib/source`/`lib/sources`
+
+If `ai` remains cross-cutting infra, keep `lib/ai/*` as platform layer and expose feature-level orchestration modules:
+
+- `lib/quiz/parseQuizFromSource.ts`
+- `lib/sets/importSetFromPdf.ts`
+
+### D. Type strategy
+
+Recommended hybrid strategy:
+
+1. Keep canonical domain models centralized in `src/types/*` (current strong point).
+2. Add feature-local types next to feature modules for view/model adapters:
+   - `app/(app)/quiz/[id]/_components/quiz.types.ts`
+   - `components/sets/new/import/import.types.ts`
+3. Optionally add `src/types/index.ts` barrel for stable imports.
+
+### E. Hooks extraction and placement
+
+Current hooks are minimal and centralized (`src/hooks`).
+
+- Keep cross-feature hooks in `src/hooks`.
+- Move route-specific hooks to route-local `_hooks` or `_components` folder:
+  - `app/(app)/dashboard/_hooks/useDashboardHome.ts` if only dashboard uses it.
+- Keep naming convention consistent: `useXxx.ts` (avoid mixed kebab + camel where possible).
+
+---
+
+## 4) Rename Map (analysis only, no execution)
+
+| FROM | TO |
+|---|---|
+| `src/components/play/` | `src/components/practice/` |
+| `src/lib/studySet/` | `src/lib/sets/` |
+| `src/components/sets/new/*` (route-bound pieces) | `src/app/(app)/sets/new/_components/*` |
+| `src/components/ai/*` used only by set source route | `src/app/(app)/sets/[id]/source/_components/*` |
+| `src/components/review/*` used only by quiz runtime | `src/app/(app)/quiz/[id]/_components/*` |
+| `src/components/flashcards/review/*` used only by flashcard route | `src/app/(app)/flashcards/[id]/_components/*` |
+| `src/lib/routes/studySetPaths.ts` | `src/lib/routes/setPaths.ts` (optional normalization) |
+| `src/hooks/useDashboardHome.ts` | `src/app/(app)/dashboard/_hooks/useDashboardHome.ts` (if non-reusable) |
+
+> Note: `src/lib/source/ → src/lib/sources/` is **not applied** because `lib/source` does not currently exist; if introduced later, choose one normalized convention at creation.
+
+---
+
+## 5) Migration Steps (safe refactor checklist)
+
+1. **Freeze target taxonomy first**
+   - Confirm naming decisions (`play` vs `practice`, `studySet` vs `sets`, singular/plural standard).
+
+2. **Create destination folders with App Router convention**
+   - Add `_components/` (and optional `_hooks/`) under target route segments.
+
+3. **Move files with git-aware renames**
+   - Use `git mv` in small batches by feature (dashboard, sets-new, quiz runtime, flashcards runtime).
+
+4. **Update imports incrementally**
+   - Keep `@/` alias style.
+   - Prefer feature-local relative imports inside each colocated route folder to reduce long alias chains.
+
+5. **Stabilize public/shared boundaries**
+   - Keep reusable primitives in `src/components/ui` unchanged.
+   - Keep cross-feature infra in `src/lib/ai` unless clearly route/domain-specific.
+
+6. **Normalize naming and paths**
+   - Rename folders/modules agreed in Step 1.
+   - Update `studySetPaths` references if renamed.
+
+7. **Type pass**
+   - Keep domain contracts in `src/types`.
+   - Introduce local `*.types.ts` only where route complexity justifies it.
+
+8. **Verification pass after each batch**
+   - `npm run lint`
+   - `npm run build`
+   - Smoke-test key routes: dashboard, sets/new, sets/[id]/source, quiz/[id], flashcards/[id], settings.
+
+9. **Cleanup and guardrails**
+   - Remove dead exports and stale barrels.
+   - Ensure no broken `@/` alias paths remain.
+
+---
+
+## Tóm tắt cấu trúc đề xuất
+
+Cấu trúc hiện tại của Doc2Quiz khá rõ ràng theo kiểu tách lớp (`app`, `components`, `lib`, `types`), nhưng còn hơi phân tán theo luồng tính năng (đặc biệt là quiz/sets/source). Đề xuất chính là **colocate component theo route** bằng `_components/` cho các phần chỉ dùng nội bộ route, giữ `components/ui` làm primitive chung, và chuẩn hóa tên miền tính năng (ưu tiên nhất quán giữa `play/practice`, `studySet/sets`).
+
+Về `lib`, nên tiến tới mô hình mirror với `components` theo feature để giảm chi phí tìm kiếm code. Về `types`, nên giữ `src/types` cho model domain dùng chung và bổ sung `*.types.ts` cục bộ cho các route phức tạp. Cách làm này giữ nguyên conventions của Next.js App Router, không phá alias `@/`, và phù hợp định hướng hiện có trong `CLAUDE.md` / `AGENTS.md`.

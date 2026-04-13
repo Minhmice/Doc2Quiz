@@ -12,7 +12,7 @@ import {
   Play,
   Trash2,
 } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/buttons/button";
 import { Textarea } from "@/components/ui/textarea";
 import { editFlashcards, flashcardsPlay } from "@/lib/routes/studySetPaths";
 import { cn } from "@/lib/utils";

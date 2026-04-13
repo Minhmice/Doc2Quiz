@@ -1,7 +1,7 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { ImportMcqCardShell } from "@/components/sets/new/import/ImportMcqCardShell";
+import { ImportMcqCardShell } from "@/components/edit/new/import/ImportMcqCardShell";
 import { cn } from "@/lib/utils";
 
 export function quizImportSkeletonCount(pageCount: number | null): number {

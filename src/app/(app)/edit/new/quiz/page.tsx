@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { QuizNewImportWorkbench } from "@/components/sets/new/quiz/QuizNewImportWorkbench";
-import { NewStudySetPdfImportFlow } from "@/app/(app)/sets/new/NewStudySetPdfImportFlow";
+import { QuizNewImportWorkbench } from "@/components/edit/new/quiz/QuizNewImportWorkbench";
+import { NewStudySetPdfImportFlow } from "@/app/(app)/edit/new/NewStudySetPdfImportFlow";
 import { editQuiz } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetQuizPage() {

@@ -16,7 +16,7 @@ import {
   getActivityStats,
   hasMistakesForStudySet,
   type ActivityStats,
-} from "@/lib/studySet/activityTracking";
+} from "@/lib/sets/activityTracking";
 import type { StudySetMeta } from "@/types/studySet";
 
 export type DashboardFilter = "all" | "ready" | "draft" | "in_review";

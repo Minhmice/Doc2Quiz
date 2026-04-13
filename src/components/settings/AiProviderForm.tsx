@@ -26,7 +26,7 @@ import {
   aiSettingsSchema,
   type AiSettingsFormValues,
 } from "@/lib/validations/aiSettings";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 
 export type ParsingWorkbenchStatusBannerProps = Readonly<{
   headline: string;

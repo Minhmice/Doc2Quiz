@@ -1,15 +1,15 @@
 /** Canonical study-set URLs (see `next.config.ts` redirects from legacy `/sets/…`). */
 
 export function newRoot(): string {
-  return "/new";
+  return "/edit/new";
 }
 
 export function newQuiz(): string {
-  return "/new/quiz";
+  return "/edit/new/quiz";
 }
 
 export function newFlashcards(): string {
-  return "/new/flashcards";
+  return "/edit/new/flashcards";
 }
 
 export function editQuiz(id: string): string {

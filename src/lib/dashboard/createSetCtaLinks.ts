@@ -1,4 +1,4 @@
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/buttons/button";
 import { cn } from "@/lib/utils";
 
 /** Top bar: global “new set” — compact primary (same shell as shadcn `Button`). */

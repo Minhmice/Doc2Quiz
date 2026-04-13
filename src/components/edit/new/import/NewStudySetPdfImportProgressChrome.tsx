@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import type { StudyContentKind } from "@/types/studySet";
-import type { NewStudySetPdfImportPhase } from "@/components/sets/new/import/newStudySetPdfImportPhase";
+import type { NewStudySetPdfImportPhase } from "@/components/edit/new/import/newStudySetPdfImportPhase";
 import { cn } from "@/lib/utils";
 
 const BAR_EASE = [0.22, 1, 0.36, 1] as const;

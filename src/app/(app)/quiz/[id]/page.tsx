@@ -7,7 +7,7 @@ import {
   PlaySession,
   QuizPlayNavigator,
   type QuizSessionMetrics,
-} from "@/components/play/PlaySession";
+} from "@/components/quiz/QuizSession";
 import { ensureStudySetDb, getStudySetMeta } from "@/lib/db/studySetDb";
 import { flashcardsPlay } from "@/lib/routes/studySetPaths";
 import { cn } from "@/lib/utils";

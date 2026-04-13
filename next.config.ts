@@ -4,15 +4,26 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdfjs-dist"],
   async redirects() {
     return [
-      { source: "/sets/new", destination: "/new", permanent: true },
+      { source: "/sets/new", destination: "/edit/new", permanent: true },
       {
         source: "/sets/new/quiz",
-        destination: "/new/quiz",
+        destination: "/edit/new/quiz",
         permanent: true,
       },
       {
         source: "/sets/new/flashcards",
-        destination: "/new/flashcards",
+        destination: "/edit/new/flashcards",
+        permanent: true,
+      },
+      { source: "/new", destination: "/edit/new", permanent: true },
+      {
+        source: "/new/quiz",
+        destination: "/edit/new/quiz",
+        permanent: true,
+      },
+      {
+        source: "/new/flashcards",
+        destination: "/edit/new/flashcards",
         permanent: true,
       },
       {

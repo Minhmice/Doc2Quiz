@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { OcrInspector } from "@/components/ai/OcrInspector";
 import { ensureStudySetDb, getDocument, getStudySetMeta } from "@/lib/db/studySetDb";
 import { editQuiz } from "@/lib/routes/studySetPaths";
-import { pdfFileFromDocument } from "@/lib/studySet/pdfFileFromDocument";
+import { pdfFileFromDocument } from "@/lib/sets/pdfFileFromDocument";
 import type { StudySetDocumentRecord, StudySetMeta } from "@/types/studySet";
 
 export default function DevOcrStudySetPage() {

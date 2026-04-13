@@ -10,7 +10,7 @@ import {
 import { editFlashcards } from "@/lib/routes/studySetPaths";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { Question } from "@/types/question";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/buttons/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";

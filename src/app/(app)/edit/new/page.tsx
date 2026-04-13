@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { FormatSelectionCard } from "@/components/sets/new/format-selection/FormatSelectionCard";
-import { FormatSelectionCardsGrid } from "@/components/sets/new/format-selection/FormatSelectionCardsGrid";
-import { HowItWorksStrip } from "@/components/sets/new/format-selection/HowItWorksStrip";
-import { NewStudySetFormatFooter } from "@/components/sets/new/format-selection/NewStudySetFormatFooter";
-import { NewStudySetFormatHero } from "@/components/sets/new/format-selection/NewStudySetFormatHero";
+import { FormatSelectionCard } from "@/components/edit/new/format-selection/FormatSelectionCard";
+import { FormatSelectionCardsGrid } from "@/components/edit/new/format-selection/FormatSelectionCardsGrid";
+import { HowItWorksStrip } from "@/components/edit/new/format-selection/HowItWorksStrip";
+import { NewStudySetFormatFooter } from "@/components/edit/new/format-selection/NewStudySetFormatFooter";
+import { NewStudySetFormatHero } from "@/components/edit/new/format-selection/NewStudySetFormatHero";
 import { newFlashcards, newQuiz } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetChooserPage() {

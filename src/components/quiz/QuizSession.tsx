@@ -13,9 +13,9 @@ import { isMcqComplete } from "@/lib/review/validateMcq";
 import {
   getMistakeQuestionIds,
   recordQuizCompletion,
-} from "@/lib/studySet/activityTracking";
+} from "@/lib/sets/activityTracking";
 import type { Question } from "@/types/question";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/buttons/button";
 import {
   Card,
   CardContent,

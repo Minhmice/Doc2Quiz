@@ -2,7 +2,7 @@
 
 import { AlertTriangleIcon, CheckCircleIcon } from "lucide-react";
 import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 import {
   Card,
   CardContent,

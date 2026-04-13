@@ -9,17 +9,17 @@ import {
   type ParseRunResult,
 } from "@/components/ai/AiParseSection";
 import { useParseProgress } from "@/components/ai/ParseProgressContext";
-import { ImportDraftLivePanel } from "@/components/sets/new/import/ImportDraftLivePanel";
-import { NewImportPdfViewer } from "@/components/sets/new/import/NewImportPdfViewer";
-import { UnifiedImportStatusCard } from "@/components/sets/new/import/UnifiedImportStatusCard";
-import type { NewStudySetPdfImportPhase } from "@/components/sets/new/import/newStudySetPdfImportPhase";
+import { ImportDraftLivePanel } from "@/components/edit/new/import/ImportDraftLivePanel";
+import { NewImportPdfViewer } from "@/components/edit/new/import/NewImportPdfViewer";
+import { UnifiedImportStatusCard } from "@/components/edit/new/import/UnifiedImportStatusCard";
+import type { NewStudySetPdfImportPhase } from "@/components/edit/new/import/newStudySetPdfImportPhase";
 import {
   FlashcardsImportDeckSkeleton,
   flashcardsImportSkeletonCount,
-} from "@/components/sets/new/flashcards/FlashcardsImportDeckSkeleton";
-import { useStudySetNewImportStepOptional } from "@/components/sets/new/import/StudySetNewImportStepContext";
+} from "@/components/edit/new/flashcards/FlashcardsImportDeckSkeleton";
+import { useStudySetNewImportStepOptional } from "@/components/edit/new/import/StudySetNewImportStepContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 import { UploadBox } from "@/components/upload/UploadBox";
 import { generateStudySetTitle } from "@/lib/ai/generateStudySetTitle";
 import {

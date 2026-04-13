@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, Layers2, SquareStack } from "lucide-react";
-import { ImportStepTabStrip } from "@/components/sets/new/import/StudySetNewImportStepContext";
+import { ImportStepTabStrip } from "@/components/edit/new/import/StudySetNewImportStepContext";
 import { newRoot } from "@/lib/routes/studySetPaths";
 
 export type FlashcardsImportWorkbenchHeaderProps = {

@@ -1,10 +1,10 @@
 "use client";
 
-import { NewStudySetPdfImportProgressChrome } from "@/components/sets/new/import/NewStudySetPdfImportProgressChrome";
-import type { NewStudySetPdfImportPhase } from "@/components/sets/new/import/newStudySetPdfImportPhase";
+import { NewStudySetPdfImportProgressChrome } from "@/components/edit/new/import/NewStudySetPdfImportProgressChrome";
+import type { NewStudySetPdfImportPhase } from "@/components/edit/new/import/newStudySetPdfImportPhase";
 import type { StudyContentKind } from "@/types/studySet";
 
-export type { NewStudySetPdfImportPhase } from "@/components/sets/new/import/newStudySetPdfImportPhase";
+export type { NewStudySetPdfImportPhase } from "@/components/edit/new/import/newStudySetPdfImportPhase";
 
 export type NewStudySetPdfImportLoadingWorkbenchProps = {
   phase: NewStudySetPdfImportPhase;

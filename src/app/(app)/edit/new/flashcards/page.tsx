@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { FlashcardsImportWorkbench } from "@/components/sets/new/flashcards/FlashcardsImportWorkbench";
-import { NewStudySetPdfImportFlow } from "@/app/(app)/sets/new/NewStudySetPdfImportFlow";
+import { FlashcardsImportWorkbench } from "@/components/edit/new/flashcards/FlashcardsImportWorkbench";
+import { NewStudySetPdfImportFlow } from "@/app/(app)/edit/new/NewStudySetPdfImportFlow";
 import { editFlashcards } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetFlashcardsPage() {

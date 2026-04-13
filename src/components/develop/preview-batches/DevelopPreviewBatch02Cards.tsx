@@ -1,6 +1,6 @@
 import { AlertTriangleIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 import {
   Card,
   CardContent,

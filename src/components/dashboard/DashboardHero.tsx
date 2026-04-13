@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 import { Input } from "@/components/ui/input";
 import {
   DISPLAY_NAME_MAX_LEN,

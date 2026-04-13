@@ -9,7 +9,7 @@ import { ApiStatusIndicator } from "@/components/layout/ApiStatusIndicator";
 import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
 import { useDisplayName } from "@/components/profile/DisplayNameProvider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/buttons/button";
 import {
   Dialog,
   DialogContent,

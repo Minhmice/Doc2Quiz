@@ -2,7 +2,7 @@
 
 import type { Question } from "@/types/question";
 import { isMcqComplete } from "@/lib/review/validateMcq";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 import { cn } from "@/lib/utils";
 
 export type QuestionReviewFinishProps = {

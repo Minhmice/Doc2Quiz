@@ -12,7 +12,7 @@ import {
 import {
   QuizImportQuestionCardSkeleton,
   quizImportSkeletonCount,
-} from "@/components/sets/new/quiz/QuizImportReviewSkeleton";
+} from "@/components/edit/new/quiz/QuizImportReviewSkeleton";
 import type { Question } from "@/types/question";
 import type { StudyContentKind } from "@/types/studySet";
 

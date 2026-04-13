@@ -6,7 +6,7 @@ import { MathText } from "@/components/math/MathText";
 import { McqOptionsPreview } from "@/components/review/McqOptionsPreview";
 import { QuestionEditor } from "@/components/review/QuestionEditor";
 import { StoredImage } from "@/components/media/StoredImage";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/buttons/button";
 import {
   Card,
   CardContent,
