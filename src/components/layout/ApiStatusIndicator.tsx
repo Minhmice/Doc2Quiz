@@ -142,10 +142,11 @@ export function ApiStatusIndicator() {
               }
               className={cn(
                 "h-7 min-h-7 min-w-[5.75rem] shrink-0 justify-center gap-1 rounded-full px-2.5 text-[10px] font-normal shadow-sm",
-                "border-border/55 bg-muted/25 dark:bg-muted/15",
+                // Keep badge distinct from `AppTopBar` chrome (bg-card/85).
+                "border-border/70 bg-background/70 dark:bg-background/10",
                 reduceMotion
                   ? "transition-colors duration-200 ease-out hover:border-border/65 hover:bg-muted/40 dark:hover:bg-muted/30"
-                  : "motion-safe:hover:-translate-y-px motion-safe:hover:border-border/70 motion-safe:hover:bg-muted/40 motion-safe:hover:shadow-md motion-safe:hover:shadow-foreground/[0.07] dark:motion-safe:hover:bg-muted/30 dark:motion-safe:hover:shadow-black/25",
+                  : "motion-safe:hover:-translate-y-px motion-safe:hover:border-border/80 motion-safe:hover:bg-background/85 motion-safe:hover:shadow-md motion-safe:hover:shadow-foreground/[0.07] dark:motion-safe:hover:bg-background/15 dark:motion-safe:hover:shadow-black/25",
                 "active:translate-y-0 disabled:pointer-events-none disabled:opacity-100",
                 "aria-busy:cursor-wait",
               )}

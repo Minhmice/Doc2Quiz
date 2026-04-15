@@ -7,6 +7,25 @@ import {
 } from "@/lib/ai/storage";
 import type { AiProvider } from "@/types/question";
 
+/**
+ * In-flight dedupe: concurrent `runAiReachabilityCheck` calls with the same
+ * provider + key + base URL + model share one probe. A secondary caller's
+ * `AbortSignal` does not cancel the shared request (acceptable for this UI probe).
+ */
+const inflightReachabilityByConfigKey = new Map<
+  string,
+  Promise<AiReachabilitySnapshot>
+>();
+
+function reachabilityConfigDedupeKey(
+  provider: AiProvider,
+  apiKey: string,
+  apiUrl: string,
+  model: string,
+): string {
+  return JSON.stringify([provider, apiKey, apiUrl, model]);
+}
+
 export const LS_LAST_AI_REACHABILITY = "doc2quiz:ai:lastReachability";
 
 /** Same-tab signal when Settings changes credentials */
@@ -113,35 +132,54 @@ export async function runAiReachabilityCheck(
     }
   }
 
-  let result: Awaited<ReturnType<typeof testAiConnection>>;
-  try {
-    result = await testAiConnection({
-      baseUrl: apiUrl,
-      apiKey,
-      modelId: model,
-      signal,
-    });
-  } catch {
-    const s: AiReachabilitySnapshot = {
-      ok: false,
-      message: "Reachability check failed",
-      checkedAt,
-      provider,
-    };
-    writeReachabilityToStorage(s);
-    return s;
+  const dedupeKey = reachabilityConfigDedupeKey(
+    provider,
+    apiKey,
+    apiUrl,
+    model,
+  );
+  const existing = inflightReachabilityByConfigKey.get(dedupeKey);
+  if (existing) {
+    return existing;
   }
 
-  const s: AiReachabilitySnapshot = result.ok
-    ? { ok: true, checkedAt, provider }
-    : {
+  const run = async (): Promise<AiReachabilitySnapshot> => {
+    let result: Awaited<ReturnType<typeof testAiConnection>>;
+    try {
+      result = await testAiConnection({
+        baseUrl: apiUrl,
+        apiKey,
+        modelId: model,
+        signal,
+      });
+    } catch {
+      const s: AiReachabilitySnapshot = {
         ok: false,
-        message: result.message,
+        message: "Reachability check failed",
         checkedAt,
         provider,
       };
-  writeReachabilityToStorage(s);
-  return s;
+      writeReachabilityToStorage(s);
+      return s;
+    }
+
+    const s: AiReachabilitySnapshot = result.ok
+      ? { ok: true, checkedAt, provider }
+      : {
+          ok: false,
+          message: result.message,
+          checkedAt,
+          provider,
+        };
+    writeReachabilityToStorage(s);
+    return s;
+  };
+
+  const p = run().finally(() => {
+    inflightReachabilityByConfigKey.delete(dedupeKey);
+  });
+  inflightReachabilityByConfigKey.set(dedupeKey, p);
+  return p;
 }
 
 export function dispatchAiConfigChanged(): void {

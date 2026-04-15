@@ -6,7 +6,7 @@ import {
 } from "@/lib/routes/studySetPaths";
 import type { StudySetMeta } from "@/types/studySet";
 
-export function reviewDraftHref(meta: StudySetMeta): string {
+export function openEditorHref(meta: StudySetMeta): string {
   if (meta.contentKind === "flashcards") {
     return editFlashcards(meta.id);
   }
@@ -14,11 +14,11 @@ export function reviewDraftHref(meta: StudySetMeta): string {
 }
 
 /**
- * @deprecated Use `reviewDraftHref` — same URL (`/edit/...`), kept so older
+ * @deprecated Use `openEditorHref` — same URL (`/edit/...`), kept so older
  * imports of `sourceHref` from this module keep building.
  */
 export function sourceHref(meta: StudySetMeta): string {
-  return reviewDraftHref(meta);
+  return openEditorHref(meta);
 }
 
 export function playHref(meta: StudySetMeta): string {

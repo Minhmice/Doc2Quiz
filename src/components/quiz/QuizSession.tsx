@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import {
   ensureStudySetDb,
   getApprovedBank,
@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { MathText } from "@/components/math/MathText";
+import { QuizInteractionHints } from "@/components/quiz/QuizInteractionHints";
 
 const LABELS = ["A", "B", "C", "D"] as const;
 
@@ -258,6 +259,7 @@ export function PlaySession({
   visualTheme = "default",
   onSessionMetrics,
 }: PlaySessionProps) {
+  const router = useRouter();
   const stitch = visualTheme === "stitch";
   const [playable, setPlayable] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,6 +269,7 @@ export function PlaySession({
   const [correctCount, setCorrectCount] = useState(0);
   const sessionRecordedRef = useRef(false);
   const wrongIdsRef = useRef<Set<string>>(new Set());
+  const didRedirectRef = useRef(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -398,14 +401,6 @@ export function PlaySession({
         return;
       }
       setPicked(choice);
-      const ok = choice === current.correctIndex;
-      if (!ok) {
-        wrongIdsRef.current.add(current.id);
-      }
-      toast[ok ? "success" : "error"](
-        ok ? "Correct!" : "Incorrect — check the highlighted answer.",
-        { duration: 2200 },
-      );
     },
     [current],
   );
@@ -423,11 +418,21 @@ export function PlaySession({
     });
   }, [finished, playable.length, correctCount, studySetId]);
 
+  useEffect(() => {
+    if (!stitch || !finished || didRedirectRef.current) {
+      return;
+    }
+    didRedirectRef.current = true;
+    router.push(`/quiz/${studySetId}/done`);
+  }, [router, stitch, finished, studySetId]);
+
   const goNext = useCallback(() => {
     if (picked === null || current === undefined) {
       return;
     }
-    if (picked === current.correctIndex) {
+    if (picked !== current.correctIndex) {
+      wrongIdsRef.current.add(current.id);
+    } else {
       setCorrectCount((c) => c + 1);
     }
     setPicked(null);
@@ -450,7 +455,7 @@ export function PlaySession({
         }
         return;
       }
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") {
         e.preventDefault();
         goNext();
       }
@@ -557,6 +562,28 @@ export function PlaySession({
   }
 
   if (finished) {
+    if (stitch) {
+      return (
+        <div
+          className={cn(
+            quizPlayStitchCardClass,
+            "flex min-h-0 flex-col gap-6 lg:col-start-1 lg:row-start-1",
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="space-y-2">
+            <p className="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--qp-secondary)]">
+              Session complete
+            </p>
+            <p className="text-sm text-[var(--qp-muted)]">
+              Preparing results…
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     const total = playable.length;
     const wrongCount = total - correctCount;
     const pct =
@@ -770,7 +797,6 @@ export function PlaySession({
         {current.options.map((opt, idx) => {
           const i = idx as 0 | 1 | 2 | 3;
           const isPicked = picked === i;
-          const isCorrect = i === current.correctIndex;
           let rowClass = cn(
             "flex w-full cursor-pointer gap-4 border px-4 py-4 text-left text-sm transition-colors",
             layout === "grid2"
@@ -780,49 +806,18 @@ export function PlaySession({
             revealed && "cursor-default",
           );
           if (stitch) {
-            if (!revealed) {
-              rowClass = cn(
-                rowClass,
-                "border-[color-mix(in_srgb,var(--qp-outline-variant)_32%,transparent)] bg-[var(--qp-surface-container-low)] text-[var(--qp-on-bg)] hover:bg-[var(--qp-surface-container)]",
-              );
-            } else if (isCorrect) {
-              rowClass = cn(
-                rowClass,
-                "border-[var(--qp-secondary)] bg-[color-mix(in_srgb,var(--qp-secondary-container)_28%,var(--qp-surface-container-lowest))] text-[var(--qp-on-bg)] ring-1 ring-[color-mix(in_srgb,var(--qp-secondary)_35%,transparent)]",
-              );
-            } else if (isPicked) {
-              rowClass = cn(
-                rowClass,
-                "border-red-500/55 bg-red-950/30 text-[var(--qp-on-bg)]",
-              );
-            } else {
-              rowClass = cn(
-                rowClass,
-                "border-[color-mix(in_srgb,var(--qp-outline-variant)_22%,transparent)] bg-[var(--qp-surface-container-lowest)] text-[var(--qp-muted)]",
-              );
-            }
+            rowClass = cn(
+              rowClass,
+              "border-[color-mix(in_srgb,var(--qp-outline-variant)_32%,transparent)] bg-[var(--qp-surface-container-low)] text-[var(--qp-on-bg)] hover:bg-[var(--qp-surface-container)]",
+              isPicked &&
+                "border-[color-mix(in_srgb,var(--qp-primary)_55%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--qp-primary)_25%,transparent)]",
+            );
           } else {
-            if (!revealed) {
-              rowClass = cn(
-                rowClass,
-                "border-border bg-secondary hover:bg-muted text-foreground",
-              );
-            } else if (isCorrect) {
-              rowClass = cn(
-                rowClass,
-                "border-emerald-500/60 bg-emerald-950/40 text-foreground ring-1 ring-emerald-500/50",
-              );
-            } else if (isPicked) {
-              rowClass = cn(
-                rowClass,
-                "border-red-400/50 bg-red-950/40 text-foreground",
-              );
-            } else {
-              rowClass = cn(
-                rowClass,
-                "border-border bg-background text-muted-foreground",
-              );
-            }
+            rowClass = cn(
+              rowClass,
+              "border-border bg-secondary hover:bg-muted text-foreground",
+              isPicked && "ring-1 ring-foreground/10",
+            );
           }
 
           const letterClass = cn(
@@ -832,15 +827,13 @@ export function PlaySession({
             stitch
               ? "font-label text-sm tracking-normal"
               : "text-xs ring-1 ring-border",
-            revealed && isCorrect
+            isPicked
               ? stitch
                 ? "border-0 bg-[var(--qp-primary)] text-[var(--qp-primary-foreground)]"
-                : "bg-emerald-600 text-white"
-              : revealed && isPicked
-                ? "bg-red-600 text-white"
-                : stitch
-                  ? "border border-[color-mix(in_srgb,var(--qp-outline-variant)_45%,transparent)] bg-[var(--qp-surface-container-lowest)] text-[var(--qp-secondary)]"
-                  : "bg-secondary text-foreground",
+                : "bg-foreground text-background"
+              : stitch
+                ? "border border-[color-mix(in_srgb,var(--qp-outline-variant)_45%,transparent)] bg-[var(--qp-surface-container-lowest)] text-[var(--qp-secondary)]"
+                : "bg-secondary text-foreground",
           );
 
           return (
@@ -891,7 +884,7 @@ export function PlaySession({
         <div className="space-y-4">
           <MathText
             source={current.question}
-            className="font-heading text-xl font-bold leading-tight tracking-tight text-[var(--qp-tertiary)] md:text-2xl"
+            className="font-heading text-lg font-bold leading-tight tracking-tight text-(--qp-tertiary) sm:text-xl md:text-2xl lg:text-[28px]"
           />
           {current.questionImageId ? (
             <div className="overflow-hidden rounded-sm border border-[color-mix(in_srgb,var(--qp-outline-variant)_14%,transparent)] bg-[color-mix(in_srgb,var(--qp-surface-container-low)_28%,white)] p-3">
@@ -914,27 +907,15 @@ export function PlaySession({
           })}
 
           <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-            <p
-              className="text-[11px] leading-relaxed tracking-wide text-[var(--qp-muted)]"
-              style={{
-                fontFamily:
-                  "var(--font-label), ui-monospace, system-ui, sans-serif",
-              }}
-            >
-              Keys{" "}
-              <kbd className="rounded-sm border border-[color-mix(in_srgb,var(--qp-outline-variant)_35%,transparent)] bg-[var(--qp-surface-container-low)] px-1.5 py-0.5 font-mono text-[11px] tracking-normal text-[var(--qp-on-bg)]">
-                1
-              </kbd>
-              –
-              <kbd className="rounded-sm border border-[color-mix(in_srgb,var(--qp-outline-variant)_35%,transparent)] bg-[var(--qp-surface-container-low)] px-1.5 py-0.5 font-mono text-[11px] tracking-normal text-[var(--qp-on-bg)]">
-                4
-              </kbd>{" "}
-              choose. When revealed,{" "}
-              <kbd className="rounded-sm border border-[color-mix(in_srgb,var(--qp-outline-variant)_35%,transparent)] bg-[var(--qp-surface-container-low)] px-1.5 py-0.5 font-mono text-[11px] tracking-normal text-[var(--qp-on-bg)]">
-                Enter
-              </kbd>{" "}
-              continues.
-            </p>
+            <div className="flex-1">
+              <QuizInteractionHints
+                items={[
+                  { key: "1–4", label: "Choose" },
+                  { key: "← →", label: "Navigation" },
+                ]}
+                className="mt-0 px-0 justify-start"
+              />
+            </div>
 
             {revealed ? (
               <Button
@@ -942,7 +923,7 @@ export function PlaySession({
                 onClick={goNext}
                 className="rounded-sm bg-[var(--qp-primary)] px-6 py-3 font-heading text-xs font-bold uppercase tracking-wide text-[var(--qp-primary-foreground)] shadow-none hover:bg-[var(--qp-primary-container)]"
               >
-                {index + 1 >= playable.length ? "See results" : "Next"}
+                {index + 1 >= playable.length ? "See results →" : "Next →"}
               </Button>
             ) : null}
           </div>
@@ -999,7 +980,7 @@ export function PlaySession({
         {revealed ? (
           <div className="flex flex-wrap gap-3">
             <Button type="button" onClick={goNext}>
-              {index + 1 >= playable.length ? "See results" : "Next"}
+              {index + 1 >= playable.length ? "See results →" : "Next →"}
             </Button>
           </div>
         ) : null}

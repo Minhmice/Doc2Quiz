@@ -76,6 +76,7 @@ async function postVisionCompletion(options: {
       },
     ],
     stream: false,
+    max_tokens: 16384,
   };
   if (useJsonObjectFormat) {
     body.response_format = { type: "json_object" };
@@ -127,6 +128,7 @@ async function postVisionCompletionPair(options: {
       },
     ],
     stream: false,
+    max_tokens: 16384,
   };
   if (useJsonObjectFormat) {
     body.response_format = { type: "json_object" };

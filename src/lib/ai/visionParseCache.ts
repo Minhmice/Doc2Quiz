@@ -2,7 +2,7 @@ import type { PageImageResult } from "@/lib/pdf/renderPagesToImages";
 import type { ParseOutputMode, VisionParseItem } from "@/types/visionParse";
 
 /** Bump when vision batch prompt/schema changes (invalidates in-memory cache). */
-export const VISION_BATCH_PROMPT_V = "24-2";
+export const VISION_BATCH_PROMPT_V = "26-flashcard-theory";
 
 type CacheEntry = {
   items: VisionParseItem[];
@@ -18,8 +18,13 @@ const memoryStore = new Map<string, CacheEntry>();
 export async function hashVisionBatch(
   pages: PageImageResult[],
   mode: ParseOutputMode,
+  /** When set (e.g. flashcard generation controls), cache key includes prompt-relevant knobs. */
+  extraFingerprint?: string,
 ): Promise<string> {
   const parts: string[] = [VISION_BATCH_PROMPT_V, mode];
+  if (extraFingerprint && extraFingerprint.length > 0) {
+    parts.push(extraFingerprint);
+  }
   for (const p of pages) {
     const head = p.dataUrl.slice(0, 200);
     parts.push(`${p.pageIndex}:${p.dataUrl.length}:${head}`);

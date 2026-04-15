@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { NewStudySetPdfImportFlow } from "../../sets/new/NewStudySetPdfImportFlow";
+import { NewStudySetPdfImportFlow } from "../../edit/new/NewStudySetPdfImportFlow";
 
 export default function DevOcrLabPage() {
   const getPostCreateHref = useCallback((studySetId: string) => `/dev/ocr/${studySetId}`, []);
@@ -16,7 +16,7 @@ export default function DevOcrLabPage() {
         contentKind="quiz"
         titlePrefix="[Dev OCR] "
         pageHeading="OCR lab — import PDF"
-        pageSubcopy="Creates a draft study set tagged for developers, then opens the OCR inspector."
+        pageSubcopy="Creates a developer-tagged study set, then opens the OCR inspector."
         runAiParseOnNewPage={false}
         getPostCreateHref={getPostCreateHref}
       />

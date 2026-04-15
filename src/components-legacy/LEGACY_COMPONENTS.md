@@ -18,10 +18,16 @@ This folder stores components removed from the active runtime tree during the ed
 | `src/components/practice/PlaySession.tsx` | `src/components/quiz/QuizSession.tsx` | Normalize runtime naming from `practice/play` to `quiz` | migrated |
 | `src/components/upload/PdfInfoCard.tsx` | `src/components-legacy/upload/PdfInfoCard.tsx` | Unused old component archived to reduce active component surface | archived |
 | `src/components/viewer/RawTextViewer.tsx` | `src/components-legacy/viewer/RawTextViewer.tsx` | Unused old component archived to reduce active component surface | archived |
+| `src/components/develop/preview-batches/*` | `src/components-legacy/develop/preview-batches/*` | Archived old preview batch components to reduce active runtime component surface | archived |
 
 ## Archived Components (do not import in runtime)
 
 - `src/components-legacy/upload/PdfInfoCard.tsx`
 - `src/components-legacy/viewer/RawTextViewer.tsx`
+- `src/components-legacy/develop/preview-batches/DevelopPreviewBatch01Buttons.tsx`
+- `src/components-legacy/develop/preview-batches/DevelopPreviewBatch02Cards.tsx`
+- `src/components-legacy/develop/preview-batches/DevelopPreviewBatch03Forms.tsx`
+- `src/components-legacy/develop/preview-batches/DevelopPreviewBatch04Overlays.tsx`
+- `src/components-legacy/develop/preview-batches/DevelopPreviewBatch05Layout.tsx`
 
 If you need to restore an archived component, move it back under `src/components/` and add explicit active usage in route or feature modules.

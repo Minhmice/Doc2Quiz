@@ -27,7 +27,7 @@ export type StudySetDocumentRecord = {
 };
 
 export const DB_NAME = "doc2quiz";
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 export type ParseProgressPhase =
   | "idle"

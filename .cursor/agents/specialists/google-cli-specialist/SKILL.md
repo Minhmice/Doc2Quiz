@@ -1,6 +1,6 @@
 ---
 name: google-cli-specialist
-model: gpt-5.3-codex-xhigh
+model: inherit
 description: Implements and maintains the gws Rust CLI for Google Workspace APIs. Use when working on gws commands, discovery, auth, validation, or adding new Google services.
 ---
 # Google CLI Specialist (gws)

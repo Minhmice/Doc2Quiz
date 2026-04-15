@@ -9,12 +9,7 @@ import { newFlashcards, newQuiz } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetChooserPage() {
   return (
-    <div className="d2q-blueprint-grid min-h-screen bg-background text-foreground selection:bg-accent">
-      <div
-        className="pointer-events-none fixed top-0 left-0 hidden h-screen w-1 bg-chart-2/20 lg:block"
-        aria-hidden
-      />
-
+    <div>
       <header className="mx-auto w-full max-w-[1440px] px-4 pt-8 sm:px-6 lg:px-8">
         <Link
           href="/dashboard"

@@ -65,13 +65,11 @@ export default function EditQuizReviewPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl">
       <ReviewSection
         studySetId={id}
         metaTitle={meta?.title ?? null}
         metaSubtitle={meta?.subtitle ?? null}
         sourceFileLabel={meta?.sourceFileName ?? null}
       />
-    </div>
   );
 }

@@ -8,7 +8,7 @@ export type HowItWorksStripProps = Readonly<{
 const steps = [
   { label: "1. Choose format", active: true },
   { label: "2. Upload PDF", active: false },
-  { label: "3. Review AI draft", active: false },
+  { label: "3. AI generates your set", active: false },
   { label: "4. Start studying", active: false },
 ] as const;
 

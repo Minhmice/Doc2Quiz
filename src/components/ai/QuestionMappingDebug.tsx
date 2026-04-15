@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getOcrResult } from "@/lib/ai/ocrDb";
-import { getDraftQuestions } from "@/lib/db/studySetDb";
+import { ensureStudySetDb, getApprovedBank } from "@/lib/db/studySetDb";
 import { renderSinglePdfPageToDataUrl } from "@/lib/pdf/renderPagesToImages";
 import type { Question } from "@/types/question";
 import { StoredImage } from "@/components/media/StoredImage";
@@ -35,8 +35,9 @@ export function QuestionMappingDebug({
       setQuestions([]);
       return;
     }
-    const qs = await getDraftQuestions(studySetId);
-    setQuestions(qs);
+    await ensureStudySetDb();
+    const bank = await getApprovedBank(studySetId);
+    setQuestions(bank?.questions ?? []);
   }, [studySetId]);
 
   useEffect(() => {
@@ -94,7 +95,7 @@ export function QuestionMappingDebug({
             </span>
           </CardTitle>
           <CardDescription>
-            Draft-only: provenance, OCR overlap mapping, crop-ready flags. Toggle
+            Approved bank: provenance, OCR overlap mapping, crop-ready flags. Toggle
             to load page previews.
           </CardDescription>
         </button>

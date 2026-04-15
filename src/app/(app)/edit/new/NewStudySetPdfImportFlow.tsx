@@ -9,7 +9,7 @@ import {
   type ParseRunResult,
 } from "@/components/ai/AiParseSection";
 import { useParseProgress } from "@/components/ai/ParseProgressContext";
-import { ImportDraftLivePanel } from "@/components/edit/new/import/ImportDraftLivePanel";
+import { ImportQuizLivePanel } from "@/components/edit/new/import/ImportQuizLivePanel";
 import { NewImportPdfViewer } from "@/components/edit/new/import/NewImportPdfViewer";
 import { UnifiedImportStatusCard } from "@/components/edit/new/import/UnifiedImportStatusCard";
 import type { NewStudySetPdfImportPhase } from "@/components/edit/new/import/newStudySetPdfImportPhase";
@@ -35,9 +35,15 @@ import {
 import { cn } from "@/lib/utils";
 import { extractPdfText } from "@/lib/pdf/extractPdfText";
 import { getPdfPageCount } from "@/lib/pdf/getPdfPageCount";
+import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
 import type { StudyContentKind } from "@/types/studySet";
+import {
+  DEFAULT_FLASHCARD_GENERATION_CONFIG,
+  type FlashcardGenerationConfig,
+} from "@/types/flashcardGeneration";
 import { parseOutputModeFromContentKind } from "@/types/visionParse";
+import { FlashcardsGenerationControls } from "@/components/edit/new/flashcards/FlashcardsGenerationControls";
 import { ChevronDown } from "lucide-react";
 
 function userMessageForImportFailure(phase: NewStudySetPdfImportPhase): string {
@@ -75,15 +81,17 @@ type ParseContextState = {
   pageCount: number;
 };
 
-function parseRunHasDraft(
+function parseRunHasUsableOutput(
   r: ParseRunResult,
   contentKind: StudyContentKind,
 ): boolean {
   const mode = parseOutputModeFromContentKind(contentKind);
   if (mode === "flashcard") {
-    return (r.flashcardItems?.length ?? 0) > 0;
+    return (r.flashcardItems?.filter(
+      (item) => item.front.trim().length > 0 && item.back.trim().length > 0,
+    ).length ?? 0) > 0;
   }
-  return r.questions.length > 0;
+  return r.questions.filter(isMcqComplete).length > 0;
 }
 
 export function NewStudySetPdfImportFlow({
@@ -104,6 +112,7 @@ export function NewStudySetPdfImportFlow({
   const parseRef = useRef<AiParseSectionHandle>(null);
   const parseContextRef = useRef<ParseContextState | null>(null);
   const parseKickGen = useRef(0);
+  const [parseRequested, setParseRequested] = useState(false);
 
   const [ingestBusy, setIngestBusy] = useState(false);
   const [importPhase, setImportPhase] = useState<NewStudySetPdfImportPhase>("idb");
@@ -114,6 +123,8 @@ export function NewStudySetPdfImportFlow({
   const [parseContext, setParseContext] = useState<ParseContextState | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [documentPreviewOpen, setDocumentPreviewOpen] = useState(false);
+  const [flashcardGenerationConfig, setFlashcardGenerationConfig] =
+    useState<FlashcardGenerationConfig>(DEFAULT_FLASHCARD_GENERATION_CONFIG);
 
   useEffect(() => {
     parseContextRef.current = parseContext;
@@ -149,10 +160,12 @@ export function NewStudySetPdfImportFlow({
     setParseContext(null);
     parseContextRef.current = null;
     setParseError(null);
+    setParseRequested(false);
     setImportPhase("idb");
     setLoadingFileName(null);
     setIngestPreviewFile(null);
     setIngestPageCount(null);
+    setFlashcardGenerationConfig(DEFAULT_FLASHCARD_GENERATION_CONFIG);
   }, [clearParse]);
 
   const handleParseFinished = useCallback(
@@ -171,7 +184,7 @@ export function NewStudySetPdfImportFlow({
         return;
       }
 
-      if (r.ok && parseRunHasDraft(r, contentKind)) {
+      if (r.ok && parseRunHasUsableOutput(r, contentKind)) {
         clearParse(id);
         router.push(getPostParseHref(id));
         return;
@@ -181,44 +194,30 @@ export function NewStudySetPdfImportFlow({
       const msg =
         fatal ||
         (r.ok
-          ? "No draft items were extracted. Check your provider in Settings, then try again."
+          ? "No usable items were extracted. Check your provider in Settings, then try again."
           : "Parse did not finish successfully. You can retry or start over.");
       setParseError(msg);
     },
     [clearParse, contentKind, getPostParseHref, router, runAiParseOnNewPage],
   );
 
-  useEffect(() => {
+  const handleStartParse = useCallback(() => {
     if (!parseContext || !runAiParseOnNewPage) {
       return;
     }
-    const gen = ++parseKickGen.current;
-    let cancelled = false;
-
-    const kick = async () => {
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => resolve());
-      });
-      if (cancelled || gen !== parseKickGen.current) {
-        return;
+    setParseRequested(true);
+    setParseError(null);
+    void (async () => {
+      try {
+        const r = await parseRef.current?.runParse();
+        if (r) {
+          handleParseFinished(r);
+        }
+      } finally {
+        setParseRequested(false);
       }
-      const ref = parseRef.current;
-      if (!ref) {
-        return;
-      }
-      setParseError(null);
-      const r = await ref.runParse();
-      if (cancelled || gen !== parseKickGen.current) {
-        return;
-      }
-      handleParseFinished(r);
-    };
-
-    void kick();
-    return () => {
-      cancelled = true;
-    };
-  }, [parseContext, handleParseFinished, runAiParseOnNewPage]);
+    })();
+  }, [handleParseFinished, parseContext, runAiParseOnNewPage]);
 
   const handleValidationError = useCallback((err: PdfValidationError) => {
     setError(
@@ -314,6 +313,7 @@ export function NewStudySetPdfImportFlow({
           const nextCtx: ParseContextState = { studySetId: id, file, pageCount };
           parseContextRef.current = nextCtx;
           setParseContext(nextCtx);
+          setParseRequested(false);
           setIngestPreviewFile(null);
           setImportPhase("ai");
           retainLoaderFilename = true;
@@ -379,10 +379,10 @@ export function NewStudySetPdfImportFlow({
   const previewFile = parseContext?.file ?? ingestPreviewFile;
   const pageCountForSkeleton =
     parseContext?.pageCount ?? ingestPageCount ?? null;
-  /** Draft strip active whenever we are ingesting or in inline parse flow (includes live parsing). */
-  const importDraftChromeActive =
+  /** Live import strip whenever we are ingesting or in inline parse flow (includes live parsing). */
+  const importLiveChromeActive =
     !parseError &&
-    (ingestBusy || (parseContext !== null && runAiParseOnNewPage));
+    (ingestBusy || parsing);
   return (
     <div className="mx-auto flex w-full max-w-6xl shrink-0 flex-col items-center px-4 py-4 sm:px-6 sm:py-6 lg:max-w-7xl lg:px-8">
       {showUploadChrome ? (
@@ -460,22 +460,18 @@ export function NewStudySetPdfImportFlow({
                 </div>
 
                 <div className="min-w-0 space-y-4">
-                  {contentKind === "flashcards" && importDraftChromeActive ? (
+                  {contentKind === "flashcards" && importLiveChromeActive ? (
                     <FlashcardsImportDeckSkeleton
                       count={flashcardsImportSkeletonCount(
                         pageCountForSkeleton,
                       )}
                     />
                   ) : null}
-                  {contentKind === "quiz" && importDraftChromeActive ? (
-                    <ImportDraftLivePanel
+                  {contentKind === "quiz" && importLiveChromeActive ? (
+                    <ImportQuizLivePanel
                       studySetId={parseContext?.studySetId ?? null}
                       pageCount={pageCountForSkeleton}
-                      enabled={Boolean(
-                        parseContext &&
-                          runAiParseOnNewPage &&
-                          !parseError,
-                      )}
+                      enabled={Boolean(parsing)}
                       contentKind={contentKind}
                       reduceMotion={reduceMotion}
                     />
@@ -500,6 +496,23 @@ export function NewStudySetPdfImportFlow({
 
                 {parseContext && runAiParseOnNewPage ? (
                   <>
+                    {contentKind === "flashcards" ? (
+                      <FlashcardsGenerationControls
+                        value={flashcardGenerationConfig}
+                        onChange={setFlashcardGenerationConfig}
+                        disabled={parsing}
+                      />
+                    ) : null}
+                    {!parsing && !parseError ? (
+                      <Alert aria-live="polite">
+                        <AlertTitle>Ready to parse</AlertTitle>
+                        <AlertDescription>
+                          {contentKind === "flashcards"
+                            ? "Flashcards generate theory/concept cards from page images. Quiz is for question-based practice."
+                            : "Quiz generates question-based practice. Flashcards are for theory/concept learning."}
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
                     <AiParseSection
                       ref={parseRef}
                       studySetId={parseContext.studySetId}
@@ -510,7 +523,12 @@ export function NewStudySetPdfImportFlow({
                       parseOutputMode={parseOutputModeFromContentKind(
                         contentKind,
                       )}
-                      autoStartWhenDraftEmpty={false}
+                      flashcardGenerationConfig={
+                        contentKind === "flashcards"
+                          ? flashcardGenerationConfig
+                          : undefined
+                      }
+                      autoStartWhenBankEmpty={false}
                       suppressEmbeddedRunningProgress={parsing}
                     />
                     {parseError ? (
@@ -540,6 +558,15 @@ export function NewStudySetPdfImportFlow({
                       </Alert>
                     ) : null}
                     <div className="flex flex-wrap justify-end gap-2">
+                      {!parseError ? (
+                        <Button
+                          type="button"
+                          onClick={handleStartParse}
+                          disabled={parsing}
+                        >
+                          {parseRequested && !parsing ? "Starting…" : "Parse"}
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         variant="outline"

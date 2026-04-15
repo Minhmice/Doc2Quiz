@@ -5,7 +5,87 @@ type Body = {
   targetUrl?: unknown;
   apiKey?: unknown;
   body?: unknown;
+  /** Default POST. GET sends no JSON body upstream (e.g. OpenAI-compatible `/v1/models`). */
+  method?: unknown;
 };
+
+function debugLog(
+  runId: string,
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>,
+) {
+  // #region agent log
+  fetch("http://127.0.0.1:7850/ingest/da1eed3c-ea0e-4aa4-8ecd-36a2ee99015c", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "2cfa66",
+    },
+    body: JSON.stringify({
+      sessionId: "2cfa66",
+      runId,
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+}
+
+const DEFAULT_OPENAI_CHAT_MAX_TOKENS = 16384;
+
+/**
+ * OpenAI-compatible `chat/completions` bodies sometimes omit `max_tokens` (older
+ * client bundles, alternate call sites). Proxies still wait on huge completions;
+ * ensure a cap so upstream + logs reflect the same shape.
+ */
+function serializeUpstreamPostBody(
+  targetUrl: string,
+  body: unknown,
+): { serialized: string; bodyKeys: string[] } {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    const serialized = JSON.stringify(body ?? {});
+    return {
+      serialized,
+      bodyKeys:
+        body && typeof body === "object" && !Array.isArray(body)
+          ? Object.keys(body as Record<string, unknown>).slice(0, 20)
+          : [],
+    };
+  }
+  let pathname = "";
+  try {
+    pathname = new URL(targetUrl).pathname;
+  } catch {
+    return {
+      serialized: JSON.stringify(body),
+      bodyKeys: Object.keys(body as Record<string, unknown>).slice(0, 20),
+    };
+  }
+  const isChatCompletions =
+    pathname.endsWith("/chat/completions") ||
+    pathname.endsWith("/v1/chat/completions");
+  const o = body as Record<string, unknown>;
+  if (
+    !isChatCompletions ||
+    !Array.isArray(o.messages) ||
+    o.max_tokens != null
+  ) {
+    return {
+      serialized: JSON.stringify(body),
+      bodyKeys: Object.keys(o).slice(0, 20),
+    };
+  }
+  const merged = { ...o, max_tokens: DEFAULT_OPENAI_CHAT_MAX_TOKENS };
+  return {
+    serialized: JSON.stringify(merged),
+    bodyKeys: Object.keys(merged).slice(0, 20),
+  };
+}
 
 function isAllowedTargetUrl(href: string): { ok: true; url: URL } | { ok: false } {
   let url: URL;
@@ -64,9 +144,47 @@ export async function POST(req: Request) {
     );
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  const method = parsed.method === "GET" ? "GET" : "POST";
+  const forwardRunId = `forward-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const headers: Record<string, string> = {};
+  const upstreamPost =
+    method === "POST"
+      ? serializeUpstreamPostBody(targetUrl, parsed.body)
+      : null;
+
+  // #region agent log
+  debugLog(forwardRunId, "H4", "forward/route.ts:request_start", "forward request start", {
+    provider,
+    method,
+    targetHost: (() => {
+      try {
+        return new URL(targetUrl).host;
+      } catch {
+        return "invalid-url";
+      }
+    })(),
+    targetPath: (() => {
+      try {
+        return new URL(targetUrl).pathname;
+      } catch {
+        return "invalid-url";
+      }
+    })(),
+    bodyKeys: upstreamPost?.bodyKeys ?? [],
+    maxTokensInjected:
+      upstreamPost &&
+      parsed.body &&
+      typeof parsed.body === "object" &&
+      !Array.isArray(parsed.body) &&
+      !("max_tokens" in (parsed.body as Record<string, unknown>)) &&
+      upstreamPost.bodyKeys.includes("max_tokens"),
+  });
+  // #endregion
+  if (method === "POST") {
+    headers["Content-Type"] = "application/json";
+  } else {
+    headers.Accept = "application/json";
+  }
   if (provider === "openai" || provider === "custom") {
     headers.Authorization = `Bearer ${apiKey}`;
   } else {
@@ -75,18 +193,43 @@ export async function POST(req: Request) {
   }
 
   let upstream: Response;
+  const t0 = Date.now();
   try {
-    upstream = await fetch(targetUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(parsed.body ?? {}),
-    });
+    upstream = await fetch(
+      targetUrl,
+      method === "GET"
+        ? { method: "GET", headers }
+        : {
+            method: "POST",
+            headers,
+            body: upstreamPost?.serialized ?? JSON.stringify(parsed.body ?? {}),
+          },
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upstream request failed";
+    // #region agent log
+    debugLog(forwardRunId, "H5", "forward/route.ts:fetch_throw", "upstream fetch threw", {
+      provider,
+      method,
+      targetUrl,
+      latencyMs: Date.now() - t0,
+      error: message,
+    });
+    // #endregion
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
   const text = await upstream.text();
+  // #region agent log
+  debugLog(forwardRunId, "H4", "forward/route.ts:upstream_response", "upstream response received", {
+    provider,
+    method,
+    targetUrl,
+    status: upstream.status,
+    latencyMs: Date.now() - t0,
+    textPreview: text.slice(0, 240),
+  });
+  // #endregion
   const contentType =
     upstream.headers.get("content-type") ?? "application/json";
   return new NextResponse(text, {

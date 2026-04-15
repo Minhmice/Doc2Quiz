@@ -16,21 +16,25 @@ function json(body: object, status = 200) {
   return NextResponse.json(body, { status, headers: NO_STORE });
 }
 
-export async function POST(req: Request) {
-  let parsed: { dataUrl?: unknown };
-  try {
-    parsed = (await req.json()) as { dataUrl?: unknown };
-  } catch {
-    return json({ error: "Invalid JSON" }, 400);
-  }
+const MAX_BATCH_SIZE = 20;
 
-  if (typeof parsed.dataUrl !== "string") {
-    return json({ error: "dataUrl string required" }, 400);
-  }
+interface StagingResult {
+  url: string;
+  id: string;
+  error?: string;
+}
 
-  const m = DATA_URL_RE.exec(parsed.dataUrl.trim());
+async function stageOneImage(
+  dataUrl: string,
+  origin: string,
+): Promise<StagingResult> {
+  const m = DATA_URL_RE.exec(dataUrl.trim());
   if (!m) {
-    return json({ error: "dataUrl must be data:*;base64,..." }, 400);
+    return {
+      url: "",
+      id: "",
+      error: "dataUrl must be data:*;base64,...",
+    };
   }
 
   const contentType = m[1].trim() || "application/octet-stream";
@@ -39,14 +43,15 @@ export async function POST(req: Request) {
   try {
     bytes = Buffer.from(b64, "base64");
   } catch {
-    return json({ error: "Invalid base64" }, 400);
+    return { url: "", id: "", error: "Invalid base64" };
   }
 
   if (bytes.length === 0 || bytes.length > VISION_STAGING_MAX_BYTES) {
-    return json(
-      { error: `Image size must be 1–${VISION_STAGING_MAX_BYTES} bytes` },
-      400,
-    );
+    return {
+      url: "",
+      id: "",
+      error: `Image size must be 1–${VISION_STAGING_MAX_BYTES} bytes`,
+    };
   }
 
   const id = randomUUID();
@@ -61,15 +66,62 @@ export async function POST(req: Request) {
         token,
         addRandomSuffix: false,
       });
-      return json({ url, id });
+      return { url, id };
     } catch (e) {
       console.error("[vision-staging] blob put failed", e);
-      return json({ error: "Staging failed" }, 502);
+      return { url: "", id: "", error: "Staging failed" };
     }
   }
 
   putVisionStaging(bytes, contentType, id);
-  const origin = new URL(req.url).origin;
   const url = `${origin}/api/ai/vision-staging/${id}`;
-  return json({ url, id });
+  return { url, id };
+}
+
+export async function POST(req: Request) {
+  let parsed: { dataUrl?: unknown; dataUrls?: unknown };
+  try {
+    parsed = (await req.json()) as { dataUrl?: unknown; dataUrls?: unknown };
+  } catch {
+    return json({ error: "Invalid JSON" }, 400);
+  }
+
+  const origin = new URL(req.url).origin;
+
+  // Batch mode
+  if (Array.isArray(parsed.dataUrls)) {
+    if (parsed.dataUrls.length === 0) {
+      return json({ error: "dataUrls array is empty" }, 400);
+    }
+    if (parsed.dataUrls.length > MAX_BATCH_SIZE) {
+      return json(
+        { error: `Batch size must be <= ${MAX_BATCH_SIZE}` },
+        400,
+      );
+    }
+
+    const results: StagingResult[] = [];
+    for (const dataUrl of parsed.dataUrls) {
+      if (typeof dataUrl !== "string") {
+        results.push({ url: "", id: "", error: "dataUrl must be string" });
+        continue;
+      }
+      const result = await stageOneImage(dataUrl, origin);
+      results.push(result);
+    }
+
+    return json({ results });
+  }
+
+  // Single mode (backward compatible)
+  if (typeof parsed.dataUrl !== "string") {
+    return json({ error: "dataUrl string required" }, 400);
+  }
+
+  const result = await stageOneImage(parsed.dataUrl, origin);
+  if (result.error) {
+    return json({ error: result.error }, 400);
+  }
+
+  return json({ url: result.url, id: result.id });
 }

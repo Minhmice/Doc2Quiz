@@ -3,9 +3,22 @@
  * Quiz vs flashcard are explicit — do not infer from URL alone downstream.
  */
 
+/**
+ * Parse output mode — determines which schema to generate and validate.
+ *
+ * - `"quiz"`: MCQ question extraction (`question`, `options`, `correctIndex`).
+ * - `"flashcard"`: theory/concept extraction (`front`, `back`).
+ *
+ * Modes are mutually exclusive and must not be mixed.
+ */
 export type ParseOutputMode = "quiz" | "flashcard";
 
-/** Map product `StudySetMeta.contentKind` to parse mode. */
+/**
+ * Canonical mapping from `StudySetMeta.contentKind` to parse mode.
+ *
+ * - `"quiz"` -> `"quiz"`
+ * - `"flashcards"` -> `"flashcard"`
+ */
 export function parseOutputModeFromContentKind(
   kind: "quiz" | "flashcards" | undefined,
 ): ParseOutputMode {
@@ -25,9 +38,15 @@ export type PageBatchMeta = {
   pageIndexes: readonly number[];
 };
 
+/**
+ * Quiz item emitted by the vision parse engine.
+ * Strict MCQ shape for the Quiz lane only.
+ */
 export type QuizVisionItem = {
+  /** Discriminant for strict lane routing. */
   kind: "quiz";
   question: string;
+  /** Exactly four answer choices [A, B, C, D]. */
   options: [string, string, string, string];
   correctIndex: 0 | 1 | 2 | 3;
   confidence: number;
@@ -39,7 +58,12 @@ export type QuizVisionItem = {
   includePageImage?: boolean;
 };
 
+/**
+ * Flashcard item emitted by the vision parse engine.
+ * Theory/concept shape for the Flashcard lane only.
+ */
 export type FlashcardVisionItem = {
+  /** Discriminant for strict lane routing. */
   kind: "flashcard";
   /** Stable id for review list / IDB round-trip */
   id?: string;
@@ -47,6 +71,16 @@ export type FlashcardVisionItem = {
   back: string;
   confidence: number;
   sourcePages?: number[];
+};
+
+/**
+ * Approved flashcard deck in IndexedDB — **not** `ApprovedBank` / `Question[]`.
+ * Replaces the legacy “MCQ carrier” encoding for flashcard-only study sets.
+ */
+export type ApprovedFlashcardBank = {
+  version: 1;
+  savedAt: string;
+  items: FlashcardVisionItem[];
 };
 
 export type VisionParseItem = QuizVisionItem | FlashcardVisionItem;
@@ -92,6 +126,7 @@ export type VisionPipelineStage =
   | "render_pages_done"
   | "batch_start"
   | "batch_cache_hit"
+  | "batch_staging_complete"
   | "batch_request_start"
   | "batch_request_done"
   | "batch_parse_success"

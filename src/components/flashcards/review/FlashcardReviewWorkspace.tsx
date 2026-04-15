@@ -25,8 +25,8 @@ export type FlashcardReviewWorkspaceProps = Readonly<{
   studySetId: string;
   title?: string;
   subtitle?: string;
-  draft: FlashcardVisionItem[];
-  initialDraft: FlashcardVisionItem[];
+  cards: FlashcardVisionItem[];
+  initialCards: FlashcardVisionItem[];
   activeCardId: string | null;
   onActiveCardIdChange: (id: string | null) => void;
   approvedIds: ReadonlySet<string>;
@@ -53,22 +53,22 @@ function statusForCard(
   id: string,
   approvedIds: ReadonlySet<string>,
   edited: boolean,
-): "draft" | "edited" | "approved" {
+): "pending" | "edited" | "approved" {
   if (approvedIds.has(id)) {
     return "approved";
   }
   if (edited) {
     return "edited";
   }
-  return "draft";
+  return "pending";
 }
 
 export function FlashcardReviewWorkspace({
   studySetId,
   title,
   subtitle,
-  draft,
-  initialDraft,
+  cards,
+  initialCards,
   activeCardId,
   onActiveCardIdChange,
   approvedIds,
@@ -84,17 +84,17 @@ export function FlashcardReviewWorkspace({
 
   const initialById = useMemo(() => {
     const m = new Map<string, FlashcardVisionItem>();
-    for (const c of initialDraft) {
+    for (const c of initialCards) {
       if (c.id) {
         m.set(c.id, c);
       }
     }
     return m;
-  }, [initialDraft]);
+  }, [initialCards]);
 
   const editedIds = useMemo(() => {
     const s = new Set<string>();
-    for (const c of draft) {
+    for (const c of cards) {
       if (!c.id) {
         continue;
       }
@@ -104,31 +104,31 @@ export function FlashcardReviewWorkspace({
       }
     }
     return s;
-  }, [draft, initialById]);
+  }, [cards, initialById]);
 
   useEffect(() => {
-    const ids = draft.map((c) => c.id).filter((x): x is string => Boolean(x));
+    const ids = cards.map((c) => c.id).filter((x): x is string => Boolean(x));
     if (activeCardId && !ids.includes(activeCardId)) {
       onActiveCardIdChange(ids[0] ?? null);
     }
-  }, [draft, activeCardId, onActiveCardIdChange]);
+  }, [cards, activeCardId, onActiveCardIdChange]);
 
   const activeCard = useMemo(
-    () => draft.find((c) => c.id === activeCardId) ?? null,
-    [draft, activeCardId],
+    () => cards.find((c) => c.id === activeCardId) ?? null,
+    [cards, activeCardId],
   );
 
   const reviewedCount = approvedIds.size;
-  const total = draft.length;
+  const total = cards.length;
   const revisionCount = editedIds.size;
 
   const navigatorSlots = useMemo(() => {
-    return draft.map((c, i) => ({
+    return cards.map((c, i) => ({
       card: c,
       index: i,
       id: c.id ?? `idx-${i}`,
     }));
-  }, [draft]);
+  }, [cards]);
 
   const frontTooLong =
     activeCard && activeCard.front.length > FRONT_WARN_CHARS;
@@ -141,11 +141,11 @@ export function FlashcardReviewWorkspace({
     [onActiveCardIdChange],
   );
 
-  if (draft.length === 0) {
+  if (cards.length === 0) {
     return (
       <div className="mx-auto max-w-2xl space-y-6 rounded-xl border border-dashed border-border bg-muted/20 p-10 text-center">
         <p className="font-heading text-lg font-semibold text-foreground">
-          No draft cards yet
+          No cards yet
         </p>
         <p className="text-sm text-muted-foreground">
           Run <span className="font-medium text-foreground">Parse with AI</span>{" "}
@@ -174,10 +174,10 @@ export function FlashcardReviewWorkspace({
           >
             <span className="text-[color:var(--d2q-blue)]">Doc2Quiz</span>
             <ChevronRight className="size-3 opacity-50" aria-hidden />
-            <span className="opacity-80">Step 2 · Review flashcards</span>
+            <span className="opacity-80">Step 2 · Edit flashcards</span>
           </nav>
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-accent-foreground sm:text-4xl">
-            Review your flashcards
+            Edit your flashcards
           </h1>
           {title ? (
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -186,8 +186,8 @@ export function FlashcardReviewWorkspace({
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           ) : null}
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Refine the front and back of each card before studying. Approve cards
-            you are happy with, then save and open the deck to study.
+            Refine the front and back of each card before studying. Mark cards you
+            are happy with, then save and open the deck to study.
           </p>
         </div>
 
@@ -307,7 +307,7 @@ export function FlashcardReviewWorkspace({
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="font-label text-xs text-muted-foreground">
                     Card{" "}
-                    {draft.findIndex((c) => c.id === activeCard.id) + 1}
+                    {cards.findIndex((c) => c.id === activeCard.id) + 1}
                   </span>
                   <span
                     className={cn(
@@ -388,7 +388,7 @@ export function FlashcardReviewWorkspace({
                 </div>
                 <div className="relative space-y-2 md:border-l md:border-border/60 md:pl-8">
                   <label className="font-label text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Back (answer)
+                    Back
                   </label>
                   <Textarea
                     value={activeCard.back}
@@ -414,10 +414,10 @@ export function FlashcardReviewWorkspace({
 
           <div className="space-y-3">
             <p className="font-label text-[10px] uppercase tracking-widest text-muted-foreground">
-              Deck ({draft.length} cards)
+              Deck ({cards.length} cards)
             </p>
-            {draft.map((c) => {
-              const idx = draft.findIndex((x) => x === c);
+            {cards.map((c) => {
+              const idx = cards.findIndex((x) => x === c);
               const cid = c.id ?? `idx-${idx}`;
               const isActive = c.id === activeCardId;
               if (isActive && listMode === "list") {
@@ -425,7 +425,7 @@ export function FlashcardReviewWorkspace({
               }
               const st = c.id
                 ? statusForCard(c.id, approvedIds, editedIds.has(c.id))
-                : "draft";
+                : "pending";
               const warn =
                 c.front.length > FRONT_WARN_CHARS ||
                 c.back.length > BACK_WARN_CHARS;
@@ -495,7 +495,7 @@ export function FlashcardReviewWorkspace({
               {navigatorSlots.map(({ card, index, id }) => {
                 const st = card.id
                   ? statusForCard(card.id, approvedIds, editedIds.has(card.id))
-                  : "draft";
+                  : "pending";
                 const active = card.id === activeCardId;
                 return (
                   <button
@@ -511,7 +511,7 @@ export function FlashcardReviewWorkspace({
                         "bg-[color:var(--d2q-blue)] text-white hover:opacity-90",
                       st === "edited" &&
                         "bg-primary/20 text-primary hover:bg-primary/25",
-                      st === "draft" &&
+                      st === "pending" &&
                         "bg-muted text-muted-foreground hover:bg-muted/80",
                     )}
                   >
@@ -531,7 +531,7 @@ export function FlashcardReviewWorkspace({
               </div>
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-muted-foreground/40" />
-                Draft
+                Pending
               </div>
             </div>
           </section>

@@ -13,7 +13,7 @@ export type DashboardLibraryHeaderProps = Readonly<{
 const CHIPS: { id: DashboardFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "ready", label: "Ready" },
-  { id: "draft", label: "Draft" },
+  { id: "needs_edit", label: "Needs edit" },
   { id: "in_review", label: "In review" },
 ];
 

@@ -1,10 +1,6 @@
 type StudySetFlowPageShellProps = Readonly<{
   studySetId: string;
   children: React.ReactNode;
-  /**
-   * `default` — padded canvas for most set flows.
-   * `flush` — single width cap like edit review (`max-w-6xl`), no extra shell padding.
-   */
   variant?: "default" | "flush";
 }>;
 
@@ -15,7 +11,7 @@ export function StudySetFlowPageShell({
 }: StudySetFlowPageShellProps) {
   void studySetId;
   if (variant === "flush") {
-    return <div className="w-full max-w-6xl">{children}</div>;
+    return <div className="w-full">{children}</div>;
   }
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:max-w-6xl">

@@ -7,7 +7,12 @@ import {
 } from "@/lib/logging/pipelineLogger";
 import { extractPdfText } from "@/lib/pdf/extractPdfText";
 import type { ApprovedBank, Question } from "@/types/question";
-import type { FlashcardVisionItem } from "@/types/visionParse";
+import type { FlashcardGenerationConfig } from "@/types/flashcardGeneration";
+import { normalizeFlashcardGenerationConfig } from "@/types/flashcardGeneration";
+import type {
+  ApprovedFlashcardBank,
+  FlashcardVisionItem,
+} from "@/types/visionParse";
 import {
   DB_NAME,
   DB_VERSION,
@@ -83,6 +88,11 @@ function openDb(): Promise<IDBDatabase> {
             db.createObjectStore("studyWrongHistory", {
               keyPath: "studySetId",
             });
+          }
+        }
+        if (from < 6) {
+          if (!db.objectStoreNames.contains("approvedFlashcards")) {
+            db.createObjectStore("approvedFlashcards", { keyPath: "studySetId" });
           }
         }
       };
@@ -170,6 +180,9 @@ export async function deleteStudySet(id: string): Promise<void> {
     "parseProgress",
     "ocr",
   ];
+  if (db.objectStoreNames.contains("approvedFlashcards")) {
+    storeNames.splice(4, 0, "approvedFlashcards");
+  }
   if (db.objectStoreNames.contains("quizSessions")) {
     storeNames.push("quizSessions");
   }
@@ -186,6 +199,9 @@ export async function deleteStudySet(id: string): Promise<void> {
     tx.objectStore("document").delete(id);
     tx.objectStore("draft").delete(id);
     tx.objectStore("approved").delete(id);
+    if (db.objectStoreNames.contains("approvedFlashcards")) {
+      tx.objectStore("approvedFlashcards").delete(id);
+    }
     tx.objectStore("parseProgress").delete(id);
     tx.objectStore("ocr").delete(id);
     if (db.objectStoreNames.contains("studyWrongHistory")) {
@@ -295,6 +311,8 @@ type DraftRow = {
   questions?: Question[];
   /** Phase 21 — flashcard vision pipeline (separate from MCQ `questions`). */
   flashcardVisionItems?: FlashcardVisionItem[];
+  /** Last-used flashcard generation controls (optional; survives flashcard draft writes). */
+  flashcardGenerationConfig?: FlashcardGenerationConfig;
 };
 
 export async function getDraftQuestions(
@@ -308,6 +326,22 @@ export async function getDraftQuestions(
     req.onsuccess = () => {
       const row = req.result as DraftRow | undefined;
       resolve(Array.isArray(row?.questions) ? row.questions : []);
+    };
+  });
+}
+
+export async function getDraftFlashcardGenerationConfig(
+  studySetId: string,
+): Promise<FlashcardGenerationConfig | undefined> {
+  const db = await ensureStudySetDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("draft", "readonly");
+    const req = tx.objectStore("draft").get(studySetId);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const row = req.result as DraftRow | undefined;
+      const cfg = row?.flashcardGenerationConfig;
+      resolve(cfg ? normalizeFlashcardGenerationConfig(cfg) : undefined);
     };
   });
 }
@@ -332,6 +366,7 @@ export async function getDraftFlashcardVisionItems(
 export async function putDraftFlashcardVisionItems(
   studySetId: string,
   items: FlashcardVisionItem[],
+  generationConfig?: FlashcardGenerationConfig,
 ): Promise<void> {
   const db = await ensureStudySetDb();
   await withRetries("idb_put", undefined, async () => {
@@ -344,6 +379,12 @@ export async function putDraftFlashcardVisionItems(
     const withIds = items.map((it) =>
       it.id ? it : { ...it, id: createRandomUuid() },
     );
+    const normalizedGen =
+      generationConfig !== undefined
+        ? normalizeFlashcardGenerationConfig(generationConfig)
+        : row?.flashcardGenerationConfig !== undefined
+          ? normalizeFlashcardGenerationConfig(row.flashcardGenerationConfig)
+          : undefined;
     const tx = db.transaction("draft", "readwrite");
     tx.objectStore("draft").put({
       ...row,
@@ -351,6 +392,9 @@ export async function putDraftFlashcardVisionItems(
       savedAt: new Date().toISOString(),
       questions: [],
       flashcardVisionItems: withIds,
+      ...(normalizedGen !== undefined
+        ? { flashcardGenerationConfig: normalizedGen }
+        : {}),
     });
     await txDone(tx);
   });
@@ -367,8 +411,15 @@ export async function putDraftQuestions(
   try {
     await withRetries("idb_put", undefined, async () => {
       const db = await ensureStudySetDb();
+      const row = await new Promise<DraftRow | undefined>((resolve, reject) => {
+        const rtx = db.transaction("draft", "readonly");
+        const r = rtx.objectStore("draft").get(studySetId);
+        r.onerror = () => reject(r.error);
+        r.onsuccess = () => resolve(r.result as DraftRow | undefined);
+      });
       const tx = db.transaction("draft", "readwrite");
       tx.objectStore("draft").put({
+        ...row,
         studySetId,
         savedAt: new Date().toISOString(),
         questions,
@@ -390,6 +441,131 @@ export async function putDraftQuestions(
 }
 
 type ApprovedRow = ApprovedBank & { studySetId: string };
+
+type ApprovedFlashcardRow = ApprovedFlashcardBank & { studySetId: string };
+
+/** Legacy encoding: flashcards were stored as fake MCQs (back in options[0], placeholders). */
+function isLegacyFlashcardCarrierQuestion(q: Question): boolean {
+  return (
+    q.correctIndex === 0 &&
+    q.options[1] === "—" &&
+    q.options[2] === "—" &&
+    q.options[3] === "—"
+  );
+}
+
+async function readApprovedFlashcardRowRaw(
+  db: IDBDatabase,
+  studySetId: string,
+): Promise<ApprovedFlashcardRow | undefined> {
+  if (!db.objectStoreNames.contains("approvedFlashcards")) {
+    return undefined;
+  }
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("approvedFlashcards", "readonly");
+    const req = tx.objectStore("approvedFlashcards").get(studySetId);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () =>
+      resolve(req.result as ApprovedFlashcardRow | undefined);
+  });
+}
+
+/**
+ * One-time migration from `approved.questions` carrier rows → `approvedFlashcards`.
+ * Clears quiz `approved` row for that study set after success.
+ */
+async function migrateLegacyFlashcardCarrierToApprovedFlashcards(
+  studySetId: string,
+): Promise<void> {
+  const db = await ensureStudySetDb();
+  if (!db.objectStoreNames.contains("approvedFlashcards")) {
+    return;
+  }
+  const meta = await getStudySetMeta(studySetId);
+  if (meta?.contentKind !== "flashcards") {
+    return;
+  }
+  const bank = await getApprovedBank(studySetId);
+  if (!bank || bank.questions.length === 0) {
+    return;
+  }
+  if (!bank.questions.every(isLegacyFlashcardCarrierQuestion)) {
+    return;
+  }
+  const items: FlashcardVisionItem[] = bank.questions
+    .map((q) => ({
+      kind: "flashcard" as const,
+      id: q.id,
+      front: q.question.trim(),
+      back: (q.options[q.correctIndex] ?? "").trim(),
+      confidence:
+        typeof q.parseConfidence === "number" ? q.parseConfidence : 0.5,
+      sourcePages:
+        q.sourcePageIndex !== undefined && q.sourcePageIndex >= 1
+          ? [q.sourcePageIndex]
+          : undefined,
+    }))
+    .filter((c) => c.front.length > 0 && c.back.length > 0);
+  const savedAt = new Date().toISOString();
+  await putApprovedFlashcardBankForStudySet(studySetId, {
+    version: 1,
+    savedAt,
+    items,
+  });
+}
+
+export async function getApprovedFlashcardBank(
+  studySetId: string,
+): Promise<ApprovedFlashcardBank | null> {
+  const db = await ensureStudySetDb();
+  if (!db.objectStoreNames.contains("approvedFlashcards")) {
+    return null;
+  }
+  let row = await readApprovedFlashcardRowRaw(db, studySetId);
+  if (!row) {
+    await migrateLegacyFlashcardCarrierToApprovedFlashcards(studySetId);
+    row = await readApprovedFlashcardRowRaw(db, studySetId);
+  }
+  if (!row) {
+    return null;
+  }
+  return {
+    version: row.version,
+    savedAt: row.savedAt,
+    items: Array.isArray(row.items) ? row.items : [],
+  };
+}
+
+/**
+ * Persists an approved flashcard deck and clears the MCQ `approved` row for the
+ * same study set (flashcard lane must not leave quiz-shaped carriers behind).
+ */
+export async function putApprovedFlashcardBankForStudySet(
+  studySetId: string,
+  bank: ApprovedFlashcardBank,
+): Promise<void> {
+  const db = await ensureStudySetDb();
+  if (!db.objectStoreNames.contains("approvedFlashcards")) {
+    pipelineLog("IDB", "approved-flashcards", "warn", "store missing", {
+      studySetId,
+    });
+    return;
+  }
+  const tx = db.transaction(["approvedFlashcards", "approved"], "readwrite");
+  tx.objectStore("approvedFlashcards").put({
+    studySetId,
+    version: bank.version,
+    savedAt: bank.savedAt,
+    items: bank.items,
+  });
+  tx.objectStore("approved").put({
+    studySetId,
+    version: 1,
+    savedAt: bank.savedAt,
+    questions: [],
+  });
+  await txDone(tx);
+}
 
 export async function getApprovedBank(
   studySetId: string,
@@ -419,13 +595,24 @@ export async function putApprovedBankForStudySet(
   bank: ApprovedBank,
 ): Promise<void> {
   const db = await ensureStudySetDb();
-  const tx = db.transaction("approved", "readwrite");
+  const storeNames =
+    db.objectStoreNames.contains("approvedFlashcards") &&
+    bank.questions.length > 0
+      ? (["approved", "approvedFlashcards"] as const)
+      : (["approved"] as const);
+  const tx = db.transaction(storeNames, "readwrite");
   tx.objectStore("approved").put({
     studySetId,
     version: bank.version,
     savedAt: bank.savedAt,
     questions: bank.questions,
   });
+  if (
+    db.objectStoreNames.contains("approvedFlashcards") &&
+    bank.questions.length > 0
+  ) {
+    tx.objectStore("approvedFlashcards").delete(studySetId);
+  }
   await txDone(tx);
 }
 

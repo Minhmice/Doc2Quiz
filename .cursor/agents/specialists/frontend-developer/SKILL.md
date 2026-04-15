@@ -1,6 +1,6 @@
 ---
 name: frontend-developer
-model: claude-4.6-sonnet-medium-thinking
+model: inherit
 description: Implement frontend UI behavior, state, accessibility, and performance for web applications. Use for pages, components, and client-side user flows. Uses ui-ux-pro-max for design system and UX guidelines.
 ---
 # Frontend Developer

@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuestionPreviewCard } from "@/components/ai/QuestionPreviewList";
 import { QuestionReviewNavigator } from "@/components/review/QuestionReviewNavigator";
 import {
-  getDraftQuestions,
-  putDraftQuestions,
+  getApprovedBank,
+  putApprovedBankForStudySet,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
 import {
@@ -18,7 +18,7 @@ import type { StudyContentKind } from "@/types/studySet";
 
 const POLL_MS = 650;
 
-export type ImportDraftLivePanelProps = Readonly<{
+export type ImportQuizLivePanelProps = Readonly<{
   /** When null (e.g. during ingest), only skeleton slots render. */
   studySetId: string | null;
   pageCount: number | null;
@@ -57,16 +57,15 @@ function questionsShallowChanged(prev: Question[], next: Question[]): boolean {
 }
 
 /**
- * Quiz import: merged skeleton slots + live MCQ rows from IndexedDB poll.
- * Flashcard drafts stay out of scope (parent renders flashcard skeleton separately).
+ * Quiz import: merged skeleton slots + live MCQ rows polled from the approved bank.
  */
-export function ImportDraftLivePanel({
+export function ImportQuizLivePanel({
   studySetId,
   pageCount,
   enabled,
   contentKind,
   reduceMotion,
-}: ImportDraftLivePanelProps) {
+}: ImportQuizLivePanelProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
     null,
@@ -90,7 +89,8 @@ export function ImportDraftLivePanel({
       return;
     }
     try {
-      const next = await getDraftQuestions(studySetId);
+      const bank = await getApprovedBank(studySetId);
+      const next = bank?.questions ?? [];
       setQuestions((prev) =>
         questionsShallowChanged(prev, next) ? next : prev,
       );
@@ -137,7 +137,11 @@ export function ImportDraftLivePanel({
         );
         void (async () => {
           try {
-            await putDraftQuestions(studySetId, nextList);
+            await putApprovedBankForStudySet(studySetId, {
+              version: 1,
+              savedAt: new Date().toISOString(),
+              questions: nextList,
+            });
             await touchStudySetMeta(studySetId, {});
           } catch {
             /* keep optimistic UI; next poll may resync */
@@ -153,8 +157,8 @@ export function ImportDraftLivePanel({
     return null;
   }
 
-  const draftList = (
-    <ul className="space-y-4" aria-label="Draft questions loading">
+  const importList = (
+    <ul className="space-y-4" aria-label="Imported questions loading">
       {questions.map((q, i) => (
         <motion.li
           key={q.id}
@@ -191,12 +195,12 @@ export function ImportDraftLivePanel({
   );
 
   if (questions.length === 0) {
-    return draftList;
+    return importList;
   }
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch">
-      <div className="min-w-0 space-y-4 lg:col-span-8">{draftList}</div>
+      <div className="min-w-0 space-y-4 lg:col-span-8">{importList}</div>
       <aside
         className="min-h-0 lg:col-span-4"
         aria-label="Question navigator"

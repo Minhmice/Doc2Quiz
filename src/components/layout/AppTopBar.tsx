@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { useTheme } from "next-themes";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SearchIcon } from "lucide-react";
 import { ApiStatusIndicator } from "@/components/layout/ApiStatusIndicator";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
 import { useDisplayName } from "@/components/profile/DisplayNameProvider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import { topBarCreateSetLinkClassName } from "@/lib/dashboard/createSetCtaLinks";
 import { newRoot } from "@/lib/routes/studySetPaths";
 import { cn } from "@/lib/utils";
+import { ensureStudySetDb, getStudySetMeta } from "@/lib/db/studySetDb";
+import type { StudySetMeta } from "@/types/studySet";
 
 function avatarInitial(displayName: string): string {
   const t = displayName.trim();
@@ -39,6 +41,7 @@ function avatarInitial(displayName: string): string {
 
 export function AppTopBar() {
   const router = useRouter();
+  const pathname = usePathname();
   const {
     search,
     setSearch,
@@ -46,9 +49,48 @@ export function AppTopBar() {
     setMobileSearchOpen,
     desktopSearchRef,
   } = useLibrarySearch();
-  const { theme, setTheme, resolvedTheme } = useTheme();
   const { displayName } = useDisplayName();
   const mobileInputRef = useRef<HTMLInputElement>(null);
+  const [studyMeta, setStudyMeta] = useState<StudySetMeta | null>(null);
+  const [studyMetaError, setStudyMetaError] = useState<string | null>(null);
+
+  const studyRoute = useMemo(() => {
+    if (!pathname) {
+      return null;
+    }
+    const match = pathname.match(/^\/(flashcards|quiz)\/([^/]+)(?:\/done)?$/);
+    if (!match) {
+      return null;
+    }
+    const kind = match[1] as "flashcards" | "quiz";
+    const id = match[2] ?? "";
+    if (!id) {
+      return null;
+    }
+    return { kind, id };
+  }, [pathname]);
+
+  const isStudyMode = studyRoute !== null;
+
+  const loadStudyMeta = useCallback(async () => {
+    if (!studyRoute) {
+      setStudyMeta(null);
+      setStudyMetaError(null);
+      return;
+    }
+    setStudyMetaError(null);
+    try {
+      await ensureStudySetDb();
+      const meta = await getStudySetMeta(studyRoute.id);
+      setStudyMeta(meta ?? null);
+      if (!meta) {
+        setStudyMetaError("Study set not found.");
+      }
+    } catch (e) {
+      setStudyMeta(null);
+      setStudyMetaError(e instanceof Error ? e.message : "Failed to load study set.");
+    }
+  }, [studyRoute]);
 
   useEffect(() => {
     if (mobileSearchOpen) {
@@ -56,11 +98,9 @@ export function AppTopBar() {
     }
   }, [mobileSearchOpen]);
 
-  const toggleTheme = () => {
-    const next =
-      resolvedTheme === "dark" || theme === "dark" ? "light" : "dark";
-    setTheme(next);
-  };
+  useEffect(() => {
+    void loadStudyMeta();
+  }, [loadStudyMeta]);
 
   return (
     <header
@@ -84,48 +124,70 @@ export function AppTopBar() {
             </span>
           </Link>
 
-          <div className="hidden min-w-0 flex-1 justify-center sm:flex md:px-2">
-            <div className="relative w-full max-w-md lg:max-w-xl xl:max-w-2xl">
-              <SearchIcon
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                ref={desktopSearchRef}
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search study sets…"
-                className="h-9 w-full pl-9"
-                aria-label="Search study sets"
-              />
+          {isStudyMode ? (
+            <div className="hidden min-w-0 flex-1 justify-center sm:flex md:px-2">
+              <div className="min-w-0 text-center">
+                <div className="line-clamp-1 font-heading text-base font-extrabold tracking-tight text-foreground">
+                  {studyMeta?.title ?? (studyMetaError ? "Study set unavailable" : "Loading…")}
+                </div>
+                {studyMeta?.subtitle ? (
+                  <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                    {studyMeta.subtitle}
+                  </div>
+                ) : studyMeta?.sourceFileName ? (
+                  <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                    Source: {studyMeta.sourceFileName}
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="hidden min-w-0 flex-1 justify-center sm:flex md:px-2">
+              <div className="relative w-full max-w-md lg:max-w-xl xl:max-w-2xl">
+                <SearchIcon
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <Input
+                  ref={desktopSearchRef}
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search study sets…"
+                  className="h-9 w-full pl-9"
+                  aria-label="Search study sets"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="shrink-0 sm:hidden"
-            aria-label="Search study sets"
-            onClick={() => setMobileSearchOpen(true)}
-          >
-            <SearchIcon className="size-4" />
-          </Button>
+          {!isStudyMode ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0 sm:hidden"
+              aria-label="Search study sets"
+              onClick={() => setMobileSearchOpen(true)}
+            >
+              <SearchIcon className="size-4" />
+            </Button>
+          ) : null}
 
-          <Link
-            href={newRoot()}
-            className={topBarCreateSetLinkClassName}
-          >
-            <span className="sm:hidden">New set</span>
-            <span className="hidden sm:inline">Create New Set</span>
-          </Link>
+          {!isStudyMode ? (
+            <Link href={newRoot()} className={topBarCreateSetLinkClassName}>
+              <span className="sm:hidden">New set</span>
+              <span className="hidden sm:inline">Create New Set</span>
+            </Link>
+          ) : null}
 
           <div className="hidden lg:block">
             <ApiStatusIndicator />
           </div>
+
+          <ThemeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -136,7 +198,7 @@ export function AppTopBar() {
               aria-label="Account menu"
             >
               <Avatar className="size-10 border-2 border-border">
-                <AvatarFallback className="bg-gradient-to-br from-[color:var(--d2q-blue)] to-[color:var(--chart-4)] text-sm font-bold text-white">
+                <AvatarFallback className="bg-linear-to-br from-(--d2q-blue) to-chart-4 text-sm font-bold text-white">
                   {avatarInitial(displayName)}
                 </AvatarFallback>
               </Avatar>
@@ -150,14 +212,6 @@ export function AppTopBar() {
                 onClick={() => router.push("/settings")}
               >
                 Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer" onClick={toggleTheme}>
-                Toggle theme
-                {theme ? (
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    ({theme})
-                  </span>
-                ) : null}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -175,28 +229,30 @@ export function AppTopBar() {
         </div>
       </div>
 
-      <Dialog open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Search study sets</DialogTitle>
-          </DialogHeader>
-          <div className="relative mt-2">
-            <SearchIcon
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              ref={mobileInputRef}
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search study sets…"
-              className="h-10 pl-9"
-              aria-label="Search study sets"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {!isStudyMode ? (
+        <Dialog open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Search study sets</DialogTitle>
+            </DialogHeader>
+            <div className="relative mt-2">
+              <SearchIcon
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                ref={mobileInputRef}
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search study sets…"
+                className="h-10 pl-9"
+                aria-label="Search study sets"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </header>
   );
 }

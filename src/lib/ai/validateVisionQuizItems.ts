@@ -49,7 +49,16 @@ function isCorrectIndex(n: unknown): n is 0 | 1 | 2 | 3 {
   );
 }
 
-/** Normalize raw model rows into quiz vision items (drops invalid rows). */
+/**
+ * Validate quiz vision items.
+ * Strict schema: question (string), options (4 strings), correctIndex (0-3),
+ *                confidence, sourcePages.
+ * Do not coerce flashcards or summaries into quiz items.
+ *
+ * Rows that are flashcard-shaped (e.g. have `front`/`back` keys but lack
+ * `question`/`options`/`correctIndex`) are silently dropped — they will never
+ * be coerced into quiz output.
+ */
 export function validateVisionQuizItems(
   raw: unknown[],
   opts?: ValidateVisionQuizOptions,

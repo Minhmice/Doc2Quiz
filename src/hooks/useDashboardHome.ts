@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
 import {
   ACTIVITY_STATS_CHANGED_EVENT,
@@ -9,7 +9,7 @@ import {
 import {
   ensureStudySetDb,
   getApprovedBank,
-  getDraftQuestions,
+  getApprovedFlashcardBank,
   listStudySetMetas,
 } from "@/lib/db/studySetDb";
 import {
@@ -19,13 +19,35 @@ import {
 } from "@/lib/sets/activityTracking";
 import type { StudySetMeta } from "@/types/studySet";
 
-export type DashboardFilter = "all" | "ready" | "draft" | "in_review";
+export type DashboardFilter = "all" | "ready" | "needs_edit" | "in_review";
 export type DashboardSort = "recent" | "title";
 
 export type DashboardSetCounts = Record<
   string,
-  { draft: number; approved: number }
+  /** Reserved for future staged counts; always 0. Classification uses `StudySetMeta.status` + approved bank size. */
+  { editorStaging: number; approved: number }
 >;
+
+function classifyDashboardSet(
+  set: StudySetMeta,
+  count: { editorStaging: number; approved: number },
+): DashboardFilter {
+  if (count.approved <= 0) {
+    return "needs_edit";
+  }
+  if (set.status === "ready") {
+    return "ready";
+  }
+  return "in_review";
+}
+
+function isNeedsEditSet(
+  set: StudySetMeta,
+  count: { editorStaging: number; approved: number },
+): boolean {
+  const category = classifyDashboardSet(set, count);
+  return category === "needs_edit" || category === "in_review";
+}
 
 export function dispatchStudySetsChanged(): void {
   if (typeof window !== "undefined") {
@@ -39,12 +61,16 @@ export function useDashboardHome() {
   const [counts, setCounts] = useState<DashboardSetCounts>({});
   const [mistakes, setMistakes] = useState<Record<string, boolean>>({});
   const [activity, setActivity] = useState<ActivityStats | null>(null);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<DashboardFilter>("all");
   const [sort, setSort] = useState<DashboardSort>("recent");
+  const refreshSeqRef = useRef(0);
 
   const refresh = useCallback(async () => {
     setLoadError(null);
+    const seq = ++refreshSeqRef.current;
+    setLoading(true);
     try {
       await ensureStudySetDb();
       const [list, act] = await Promise.all([
@@ -57,14 +83,19 @@ export function useDashboardHome() {
       const mist: Record<string, boolean> = {};
       await Promise.all(
         list.map(async (s) => {
-          const [draft, bank] = await Promise.all([
-            getDraftQuestions(s.id),
-            getApprovedBank(s.id),
-          ]);
-          next[s.id] = {
-            draft: draft.length,
-            approved: bank?.questions.length ?? 0,
-          };
+          if (s.contentKind === "flashcards") {
+            const fc = await getApprovedFlashcardBank(s.id);
+            next[s.id] = {
+              editorStaging: 0,
+              approved: fc?.items.length ?? 0,
+            };
+          } else {
+            const bank = await getApprovedBank(s.id);
+            next[s.id] = {
+              editorStaging: 0,
+              approved: bank?.questions.length ?? 0,
+            };
+          }
           mist[s.id] = await hasMistakesForStudySet(s.id);
         }),
       );
@@ -74,6 +105,10 @@ export function useDashboardHome() {
       setLoadError(
         e instanceof Error ? e.message : "Could not load study sets.",
       );
+    } finally {
+      if (refreshSeqRef.current === seq) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -92,8 +127,12 @@ export function useDashboardHome() {
     };
   }, [refresh]);
 
-  const setsWithDrafts = useMemo(
-    () => sets.filter((s) => (counts[s.id]?.draft ?? 0) > 0).length,
+  const setsNeedingEditsCount = useMemo(
+    () =>
+      sets.filter((s) => {
+        const c = counts[s.id] ?? { editorStaging: 0, approved: 0 };
+        return isNeedsEditSet(s, c);
+      }).length,
     [sets, counts],
   );
 
@@ -102,8 +141,11 @@ export function useDashboardHome() {
     [sets, counts],
   );
 
-  const featuredDraft = useMemo(() => {
-    const candidates = sets.filter((s) => (counts[s.id]?.draft ?? 0) > 0);
+  const featuredNeedsEdit = useMemo(() => {
+    const candidates = sets.filter((s) => {
+      const c = counts[s.id] ?? { editorStaging: 0, approved: 0 };
+      return isNeedsEditSet(s, c);
+    });
     if (candidates.length === 0) {
       return null;
     }
@@ -112,7 +154,7 @@ export function useDashboardHome() {
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
     const meta = sorted[0]!;
-    return { meta, draftCount: counts[meta.id]?.draft ?? 0 };
+    return { meta };
   }, [sets, counts]);
 
   const resumeLatest = useMemo(() => {
@@ -151,18 +193,11 @@ export function useDashboardHome() {
 
   const chipFiltered = useMemo(() => {
     return searchFiltered.filter((s) => {
-      const c = counts[s.id] ?? { draft: 0, approved: 0 };
+      const c = counts[s.id] ?? { editorStaging: 0, approved: 0 };
       if (filter === "all") {
         return true;
       }
-      if (filter === "ready") {
-        return c.approved > 0 && c.draft === 0;
-      }
-      if (filter === "draft") {
-        return c.approved === 0 && c.draft > 0;
-      }
-      /* in_review */
-      return c.approved > 0 && c.draft > 0;
+      return classifyDashboardSet(s, c) === filter;
     });
   }, [searchFiltered, filter, counts]);
 
@@ -182,6 +217,7 @@ export function useDashboardHome() {
   }, [chipFiltered, sort]);
 
   return {
+    loading,
     loadError,
     sets,
     counts,
@@ -192,9 +228,9 @@ export function useDashboardHome() {
     sort,
     setSort,
     refresh,
-    setsWithDrafts,
+    setsNeedingEditsCount,
     setsWithApproved,
-    featuredDraft,
+    featuredNeedsEdit,
     resumeLatest,
     streakRingPercent,
     filteredSortedSets,

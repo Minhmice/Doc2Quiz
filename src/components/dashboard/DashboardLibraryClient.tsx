@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { RenameStudySetDialog } from "@/components/dashboard/RenameStudySetDialog";
 import { DashboardLibraryHeader } from "@/components/dashboard/DashboardLibraryHeader";
 import { DashboardStudySetCard } from "@/components/dashboard/DashboardStudySetCard";
 import type { DashboardStudySetCardVariant } from "@/components/dashboard/DashboardStudySetCard";
 import { formatRelativeShort } from "@/components/dashboard/dashboardFormat";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +54,31 @@ const EMPTY_HEADLINE_IDLE = "No study sets yet.";
 const EMPTY_HEADLINE_CTA = "Create study set";
 
 const HIDE_FALLBACK_MS = 720;
+
+function LibraryCardsSkeletonGrid() {
+  return (
+    <div
+      className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+      role="status"
+      aria-label="Loading your study sets"
+    >
+      {Array.from({ length: 9 }).map((_, idx) => (
+        <div
+          key={idx}
+          className="rounded-xl border border-border/70 bg-card p-5 shadow-sm"
+        >
+          <Skeleton className="h-5 w-3/4 motion-reduce:animate-none" />
+          <Skeleton className="mt-2 h-4 w-1/2 motion-reduce:animate-none" />
+          <div className="mt-5 flex items-center gap-3">
+            <Skeleton className="h-9 w-24 motion-reduce:animate-none" />
+            <Skeleton className="h-9 w-20 motion-reduce:animate-none" />
+            <Skeleton className="ml-auto h-9 w-9 rounded-full motion-reduce:animate-none" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /** Dashed “import PDF” CTA — empty library + trailing “more quiz” grid tile */
 const dashboardPdfImportDashedLinkClassName = cn(
@@ -223,19 +250,20 @@ function EmptyLibraryZeroState() {
 }
 
 function cardVariantFor(
-  draft: number,
+  set: StudySetMeta,
   approved: number,
 ): DashboardStudySetCardVariant {
-  if (approved > 0 && draft > 0) {
-    return "in_progress";
+  if (approved <= 0) {
+    return "needs_edit";
   }
-  if (approved > 0) {
+  if (set.status === "ready") {
     return "ready";
   }
-  return "draft";
+  return "in_progress";
 }
 
 export type DashboardLibraryClientProps = Readonly<{
+  loading: boolean;
   loadError: string | null;
   setsLength: number;
   search: string;
@@ -251,6 +279,7 @@ export type DashboardLibraryClientProps = Readonly<{
 }>;
 
 export function DashboardLibraryClient({
+  loading,
   loadError,
   setsLength,
   search,
@@ -280,8 +309,14 @@ export function DashboardLibraryClient({
     dispatchStudySetsChanged();
   }, [deleteTarget, onRefresh]);
 
+  const reduceMotion = useReducedMotion() === true;
+
   return (
-    <section id="library" className="space-y-6 scroll-mt-24">
+    <section
+      id="library"
+      className="space-y-6 scroll-mt-24"
+      aria-busy={loading ? "true" : "false"}
+    >
       <DashboardLibraryHeader
         totalSets={totalSets}
         filter={filter}
@@ -296,7 +331,11 @@ export function DashboardLibraryClient({
         </p>
       ) : null}
 
-      {setsLength === 0 && !loadError ? <EmptyLibraryZeroState /> : null}
+      {setsLength === 0 && !loadError && loading ? (
+        <LibraryCardsSkeletonGrid />
+      ) : null}
+
+      {setsLength === 0 && !loadError && !loading ? <EmptyLibraryZeroState /> : null}
 
       {setsLength > 0 && !loadError ? (
         <>
@@ -311,46 +350,87 @@ export function DashboardLibraryClient({
               )}
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <motion.div
+              className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+              initial={reduceMotion ? false : "hidden"}
+              animate={reduceMotion ? undefined : "show"}
+              variants={{
+                hidden: {},
+                show: {
+                  transition: {
+                    staggerChildren: 0.2,
+                    delayChildren: 0.09,
+                  },
+                },
+              }}
+            >
               {filteredSortedSets.map((s, index) => {
-                const c = counts[s.id] ?? { draft: 0, approved: 0 };
-                const variant = cardVariantFor(c.draft, c.approved);
+                const c = counts[s.id] ?? { editorStaging: 0, approved: 0 };
+                const variant = cardVariantFor(s, c.approved);
                 return (
-                  <DashboardStudySetCard
+                  <motion.div
                     key={s.id}
-                    meta={s}
-                    draftCount={c.draft}
-                    approvedCount={c.approved}
-                    hasMistakes={mistakes[s.id] === true}
-                    variant={variant}
-                    gradientClass={gradientFor(s.id, index)}
-                    updatedLabel={formatRelativeShort(s.updatedAt)}
-                    onRename={() => setRenameMeta(s)}
-                    onDelete={() =>
-                      setDeleteTarget({ meta: s, approvedCount: c.approved })
-                    }
-                  />
+                    variants={{
+                      hidden: { opacity: 0, y: 14 },
+                      show: {
+                        opacity: 1,
+                        y: 0,
+                        transition: {
+                          duration: 0.72,
+                          ease: [0.22, 1, 0.36, 1],
+                        },
+                      },
+                    }}
+                  >
+                    <DashboardStudySetCard
+                      meta={s}
+                      editorStagingCount={c.editorStaging}
+                      approvedCount={c.approved}
+                      hasMistakes={mistakes[s.id] === true}
+                      variant={variant}
+                      gradientClass={gradientFor(s.id, index)}
+                      updatedLabel={formatRelativeShort(s.updatedAt)}
+                      onRename={() => setRenameMeta(s)}
+                      onDelete={() =>
+                        setDeleteTarget({ meta: s, approvedCount: c.approved })
+                      }
+                    />
+                  </motion.div>
                 );
               })}
 
-              <Link
-                href={newRoot()}
-                aria-label="Add another study set. Import a PDF to build more quizzes."
-                className={cn(
-                  dashboardPdfImportDashedLinkClassName,
-                  "flex min-h-68 w-full flex-col items-center justify-center self-stretch",
-                )}
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, y: 14 },
+                  show: {
+                    opacity: 1,
+                    y: 0,
+                    transition: {
+                      duration: 0.72,
+                      ease: [0.22, 1, 0.36, 1],
+                    },
+                  },
+                }}
               >
-                <div className="mx-auto flex max-w-md flex-col items-center px-2">
-                  <p className="text-lg font-semibold text-foreground sm:text-xl">
-                    More quiz
-                  </p>
-                  <p className="mt-2 text-pretty text-sm text-muted-foreground">
-                    Import a PDF to add another study set.
-                  </p>
-                </div>
-              </Link>
-            </div>
+                <Link
+                  href={newRoot()}
+                  aria-label="Add another study set. Import a PDF to build more quizzes."
+                  className={cn(
+                    dashboardPdfImportDashedLinkClassName,
+                    "flex min-h-68 w-full flex-col items-center justify-center self-stretch",
+                  )}
+                >
+                  <div className="mx-auto flex max-w-md flex-col items-center px-2">
+                    <p className="text-lg font-semibold text-foreground sm:text-xl">
+                      More quiz
+                    </p>
+                    <p className="mt-2 text-pretty text-sm text-muted-foreground">
+                      Import a PDF to add another study set.
+                    </p>
+                  </div>
+                </Link>
+              </motion.div>
+            </motion.div>
           )}
         </>
       ) : null}

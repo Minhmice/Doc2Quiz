@@ -11,6 +11,8 @@
  */
 import { decideParseRoute } from "@/lib/ai/parseRoutePolicy";
 import type { ParseStrategy } from "@/lib/ai/parseLocalStorage";
+import { planVisionBatches } from "@/lib/ai/visionBatching";
+import type { PageImageResult } from "@/lib/pdf/renderPagesToImages";
 import { VISION_MAX_PAGES_DEFAULT } from "@/lib/pdf/renderPagesToImages";
 
 /** Rough wall-time for pdf.js render pass once per run (ms). */
@@ -38,6 +40,10 @@ export type ParseRunEstimateInput = {
   parseStrategy: ParseStrategy;
   enableOcr: boolean;
   attachPageImage: boolean;
+  /**
+   * Flashcard lane: no OCR/chunk — vision batch windows only (`planVisionBatches` min_requests).
+   */
+  visionBatchSequentialOnly?: boolean;
 };
 
 export type ParseRunEstimate = {
@@ -94,9 +100,40 @@ export function estimateParseRun(
     parseStrategy,
     enableOcr,
     attachPageImage,
+    visionBatchSequentialOnly,
   } = input;
 
   const cappedPages = cappedPageCount(pageCount);
+
+  if (visionBatchSequentialOnly) {
+    const fakePages = Array.from({ length: cappedPages }, (_, i) => ({
+      pageIndex: i + 1,
+      dataUrl: "data:image/jpeg;base64,",
+    })) as PageImageResult[];
+    const batchCount = Math.max(
+      1,
+      planVisionBatches(fakePages, "min_requests").length,
+    );
+    const primaryVisionMs = batchCount * HEURISTIC_MS_PER_VISION_STEP;
+    const msMin = HEURISTIC_MS_RENDER_ONCE + primaryVisionMs;
+    const msMax = msMin;
+    return {
+      cappedPages,
+      visionApiCalls: batchCount,
+      chunkParseApiCallsUpperBound: 0,
+      visionFallbackApiCallsUpperBound: 0,
+      estimatedVisionInputTokensUpper:
+        batchCount * HEURISTIC_VISION_INPUT_TOKENS_PER_STEP,
+      estimatedVisionOutputTokensUpper:
+        batchCount * HEURISTIC_VISION_OUTPUT_TOKENS_PER_STEP,
+      estimatedChunkInputTokensUpper: 0,
+      estimatedChunkOutputTokensUpper: 0,
+      estimatedDurationSecondsMin: msToSecondsCeil(msMin * 0.75),
+      estimatedDurationSecondsMax: msToSecondsCeil(msMax * 1.15),
+      disclaimer: PARSE_RUN_ESTIMATE_DISCLAIMER,
+    };
+  }
+
   const route = decideParseRoute({
     pageCount,
     extractedTextCharCount,

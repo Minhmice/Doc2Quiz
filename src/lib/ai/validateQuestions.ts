@@ -32,13 +32,13 @@ function extractQuestionsArray(raw: unknown): unknown[] {
 }
 
 export type ValidateQuestionsOptions = {
-  /** When true, reuse `id` from each item if it is a non-empty string (draft round-trip). */
+  /** When true, reuse `id` from each item if it is a non-empty string (round-trip from storage). */
   preserveIds?: boolean;
 };
 
 /**
  * Validates model JSON (top-level `{ questions: [...] }` or a raw array per D-12)
- * and returns only well-formed MCQs with new ids unless `preserveIds` is set for draft load.
+ * and returns only well-formed MCQs with new ids unless `preserveIds` is set for stored rows.
  */
 export function validateQuestionsFromJson(
   raw: unknown,

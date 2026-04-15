@@ -24,3 +24,29 @@ export function normalizeOpenAiChatCompletionsUrl(raw: string): string {
   }
   return u.toString();
 }
+
+/**
+ * When `endpoint` is OpenAI-style `…/chat/completions`, returns sibling `…/models`
+ * for a cheap GET key check. Otherwise `null`.
+ */
+export function deriveOpenAiModelsListUrlFromChatCompletions(
+  chatCompletionsUrl: string,
+): string | null {
+  let u: URL;
+  try {
+    u = new URL(chatCompletionsUrl.trim());
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    return null;
+  }
+  const path = u.pathname.replace(/\/+$/, "") || "/";
+  const pl = path.toLowerCase();
+  const suffix = "/chat/completions";
+  if (!pl.endsWith(suffix)) {
+    return null;
+  }
+  u.pathname = `${path.slice(0, path.length - suffix.length)}/models`;
+  return u.toString();
+}

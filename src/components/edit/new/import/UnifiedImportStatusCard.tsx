@@ -56,8 +56,8 @@ export function UnifiedImportStatusCard({
     }
     if (parseContext && runAiParseOnNewPage && !ingestBusy) {
       return {
-        headline: "Starting AI draft…",
-        stageEyebrow: "CONNECTING TO YOUR MODEL…",
+        headline: "Starting AI generation…",
+        stageEyebrow: "PREPARING QUESTION GENERATION…",
         etaPrimary: null as string | null,
         onCancel: undefined as (() => void) | undefined,
       };

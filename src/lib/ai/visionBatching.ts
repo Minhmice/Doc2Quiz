@@ -11,6 +11,16 @@ export const VISION_BATCH_LEGACY_PAGE_SIZE = 10;
 export const VISION_BATCH_LEGACY_OVERLAP = 2;
 
 /**
+ * Hard cap on **pages per multimodal chat request** (images + prompt).
+ *
+ * Rationale (runtime): edge proxies (e.g. Cloudflare) often return **524** after
+ * ~100–125s when a single `/v1/chat/completions` carries many full-page JPEGs.
+ * Logs also showed **524 at ~125s** for 3-page and 1-page batches on slow routers,
+ * so default to **one page per multimodal request** (more round-trips, shorter waits).
+ */
+export const VISION_MULTIMODAL_MAX_PAGES_PER_REQUEST = 1;
+
+/**
  * `min_requests` — fewest chat calls: windows of up to `VISION_MAX_PAGES_DEFAULT`
  * pages with **overlap 0** (model must tag `sourcePages` per item).
  * `legacy_10_2` — Phase 21 default (10 pages, 2 overlap).
@@ -28,13 +38,28 @@ export function planVisionBatches(
     return [];
   }
   if (preset === "legacy_10_2") {
-    return buildVisionBatches(
-      pages,
-      VISION_BATCH_LEGACY_PAGE_SIZE,
-      VISION_BATCH_LEGACY_OVERLAP,
+    const batchSize = Math.max(
+      1,
+      Math.min(
+        VISION_BATCH_LEGACY_PAGE_SIZE,
+        pages.length,
+        VISION_MULTIMODAL_MAX_PAGES_PER_REQUEST,
+      ),
     );
+    const overlap =
+      batchSize > 1
+        ? Math.min(VISION_BATCH_LEGACY_OVERLAP, batchSize - 1)
+        : 0;
+    return buildVisionBatches(pages, batchSize, overlap);
   }
-  const batchSize = Math.min(pages.length, VISION_MAX_PAGES_DEFAULT);
+  const batchSize = Math.max(
+    1,
+    Math.min(
+      pages.length,
+      VISION_MAX_PAGES_DEFAULT,
+      VISION_MULTIMODAL_MAX_PAGES_PER_REQUEST,
+    ),
+  );
   return buildVisionBatches(pages, batchSize, 0);
 }
 

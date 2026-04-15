@@ -15,7 +15,7 @@ export type ParsePipelineSurface =
   | "layout_chunk_llm"
   | "vision_multimodal"
   | "vision_attach"
-  | "idb_draft_persist";
+  | "idb_bank_persist";
 
 export type SurfaceAvailability = {
   surface: ParsePipelineSurface;
@@ -38,7 +38,7 @@ function isPlausibleHttpUrl(baseUrl: string): boolean {
 
 /**
  * v1 rules: require non-empty API key for any LLM/OCR forward surface; require model id when a custom base URL is set.
- * `idb_draft_persist` is always allowed (local-only; failures are IDB errors, not “missing key”).
+ * `idb_bank_persist` is always allowed (local-only; failures are IDB errors, not “missing key”).
  */
 export function getSurfaceAvailability(args: {
   settings: ForwardClientSettings;
@@ -87,7 +87,7 @@ export function getSurfaceAvailability(args: {
       ...llmRow,
     },
     {
-      surface: "idb_draft_persist" as const,
+      surface: "idb_bank_persist" as const,
       status: "allowed" as const,
     },
   ];

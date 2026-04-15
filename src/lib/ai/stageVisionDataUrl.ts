@@ -88,3 +88,104 @@ export async function stageVisionDataUrlForUpstream(
   }
   return { url: dataUrl, staged: false };
 }
+
+const BATCH_CHUNK_SIZE = 20;
+
+/**
+ * Batch staging: send multiple data URLs in one request to `/api/ai/vision-staging`.
+ * Chunks large batches into BATCH_CHUNK_SIZE requests. Falls back to sequential
+ * single-image staging if batch request fails.
+ */
+export async function stageVisionDataUrlsBatch(
+  dataUrls: string[],
+  signal?: AbortSignal,
+): Promise<Array<{ url: string; staged: boolean }>> {
+  if (typeof window === "undefined") {
+    return dataUrls.map((dataUrl) => ({ url: dataUrl, staged: false }));
+  }
+
+  if (dataUrls.length === 0) {
+    return [];
+  }
+
+  // Single image → use existing function
+  if (dataUrls.length === 1) {
+    const result = await stageVisionDataUrlForUpstream(dataUrls[0], signal);
+    return [result];
+  }
+
+  const results: Array<{ url: string; staged: boolean }> = [];
+
+  // Process in chunks of BATCH_CHUNK_SIZE
+  for (let i = 0; i < dataUrls.length; i += BATCH_CHUNK_SIZE) {
+    const chunk = dataUrls.slice(i, i + BATCH_CHUNK_SIZE);
+
+    try {
+      const res = await fetch("/api/ai/vision-staging", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrls: chunk }),
+        signal,
+      });
+
+      if (!res.ok) {
+        // Fallback to sequential for this chunk
+        console.warn(
+          `[vision-staging] Batch request failed (${res.status}), falling back to sequential`,
+        );
+        for (const dataUrl of chunk) {
+          const fallback = await stageVisionDataUrlForUpstream(dataUrl, signal);
+          results.push(fallback);
+        }
+        continue;
+      }
+
+      const j = (await res.json()) as {
+        results?: Array<{ url?: string; id?: string; error?: string }>;
+      };
+
+      if (!Array.isArray(j.results) || j.results.length !== chunk.length) {
+        // Malformed response → fallback
+        console.warn(
+          "[vision-staging] Batch response malformed, falling back to sequential",
+        );
+        for (const dataUrl of chunk) {
+          const fallback = await stageVisionDataUrlForUpstream(dataUrl, signal);
+          results.push(fallback);
+        }
+        continue;
+      }
+
+      // Process batch results
+      for (let idx = 0; idx < chunk.length; idx++) {
+        const item = j.results[idx];
+        const dataUrl = chunk[idx];
+
+        if (
+          item.error ||
+          typeof item.url !== "string" ||
+          !/^https?:\/\//i.test(item.url)
+        ) {
+          // This image failed → fallback to original dataUrl
+          results.push({ url: dataUrl, staged: false });
+        } else {
+          results.push({ url: item.url, staged: true });
+        }
+      }
+    } catch (e) {
+      // Network error / abort → fallback to sequential for this chunk
+      console.warn("[vision-staging] Batch request exception, falling back", e);
+      for (const dataUrl of chunk) {
+        try {
+          const fallback = await stageVisionDataUrlForUpstream(dataUrl, signal);
+          results.push(fallback);
+        } catch {
+          // Even fallback failed (likely abort) → use original dataUrl
+          results.push({ url: dataUrl, staged: false });
+        }
+      }
+    }
+  }
+
+  return results;
+}

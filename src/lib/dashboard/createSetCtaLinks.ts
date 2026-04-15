@@ -23,7 +23,7 @@ export const dashboardHeroFirstSetLinkClassName = cn(
   "cursor-pointer border-transparent bg-[color:var(--d2q-accent)] text-sm font-semibold tracking-tight text-primary-foreground shadow-md hover:bg-primary hover:text-primary-foreground normal-case dark:text-primary-foreground",
 );
 
-/** Hero: review draft. */
+/** Hero: secondary accent (e.g. open editor). */
 export const dashboardHeroBluePrimaryLinkClassName = cn(
   buttonVariants({ variant: "default", size: "lg" }),
   heroTall,

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Anatomy Prep - Study Mode</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Space_Grotesk:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7faf8",
+                        "tertiary": "#00352d",
+                        "on-secondary-fixed": "#002117",
+                        "inverse-surface": "#2d3130",
+                        "tertiary-container": "#004e42",
+                        "surface-variant": "#e0e3e1",
+                        "on-primary-fixed-variant": "#872108",
+                        "on-tertiary-fixed": "#00201a",
+                        "on-tertiary-fixed-variant": "#045044",
+                        "surface": "#f7faf8",
+                        "on-secondary-container": "#3d6d5d",
+                        "on-surface-variant": "#404945",
+                        "surface-container-high": "#e6e9e7",
+                        "on-surface": "#181c1b",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdad2",
+                        "on-background": "#181c1b",
+                        "primary-container": "#841f06",
+                        "surface-bright": "#f7faf8",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed": "#3d0700",
+                        "secondary-container": "#baeed9",
+                        "surface-container-highest": "#e0e3e1",
+                        "secondary": "#376757",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#ffb4a3",
+                        "primary-fixed-dim": "#ffb4a3",
+                        "outline-variant": "#c0c9c3",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#93d3c3",
+                        "surface-container-low": "#f1f4f2",
+                        "secondary-fixed-dim": "#9ed1bd",
+                        "inverse-on-surface": "#eef1ef",
+                        "on-primary-container": "#ff967d",
+                        "outline": "#707974",
+                        "tertiary-fixed": "#afefdf",
+                        "surface-dim": "#d7dbd9",
+                        "on-tertiary-container": "#7fbeaf",
+                        "surface-container": "#ebefed",
+                        "primary": "#5f0f00",
+                        "surface-tint": "#a7391e",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#baeed9",
+                        "on-secondary-fixed-variant": "#1d4f40"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Space Grotesk"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ghost-grid {
+            background-image: 
+                linear-gradient(to right, rgba(192, 201, 195, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(192, 201, 195, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        /* 3D Flip Animation */
+        .card-perspective {
+            perspective: 1000px;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .card-inner.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen selection:bg-primary-container/30 overflow-x-hidden">
+<!-- Top Navigation Anchor -->
+<header class="bg-[#f7faf8] flex justify-between items-center px-6 py-4 w-full border-b-[0.5px] border-[#376757]/10 sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<button class="hover:bg-[#ebefed] transition-colors p-2 rounded-sm scale-95 active:opacity-80 flex items-center justify-center">
+<span class="material-symbols-outlined text-[#376757]">close</span>
+</button>
+<div class="flex flex-col">
+<h1 class="font-headline font-extrabold text-[#376757] tracking-tight text-lg leading-none">Anatomy Prep</h1>
+<span class="font-label text-[10px] uppercase tracking-widest text-secondary font-bold opacity-60">Lower Limb Osteology</span>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-[#ff967d] font-bold font-headline tracking-tighter uppercase text-xs" href="#">Study</a>
+<a class="text-[#376757] font-headline tracking-tighter uppercase text-xs hover:text-primary transition-colors" href="#">Library</a>
+<a class="text-[#376757] font-headline tracking-tighter uppercase text-xs hover:text-primary transition-colors" href="#">Insights</a>
+</nav>
+<button class="hover:bg-[#ebefed] transition-colors p-2 rounded-sm scale-95 active:opacity-80">
+<span class="material-symbols-outlined text-[#376757]">more_vert</span>
+</button>
+</div>
+</header>
+<main class="relative pt-6 pb-24 px-4 md:px-0 max-w-6xl mx-auto ghost-grid min-h-[calc(100vh-80px)] flex flex-col items-center">
+<!-- Simplified Header Module -->
+<section class="mb-10 text-center w-full max-w-3xl">
+<div class="flex items-baseline justify-center gap-3 mb-2">
+<h2 class="font-headline text-3xl font-extrabold text-tertiary tracking-tight">Flashcards</h2>
+<span class="text-secondary font-medium text-sm opacity-60">Đề trắc nghiệm chi dưới</span>
+</div>
+<div class="flex justify-center gap-4">
+<button class="font-label text-[10px] uppercase tracking-widest text-secondary/60 hover:text-secondary flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-sm">quiz</span> Take Quiz
+            </button>
+<div class="w-[1px] h-3 bg-outline-variant/30 self-center"></div>
+<button class="font-label text-[10px] uppercase tracking-widest text-secondary/60 hover:text-secondary flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-sm">settings</span> Session Settings
+            </button>
+</div>
+</section>
+<!-- Progress Tracking -->
+<section class="w-full max-w-2xl mb-12 px-4">
+<div class="flex justify-between items-baseline mb-2">
+<span class="font-label text-sm text-tertiary font-bold tracking-tight">
+                CARD 1 <span class="text-outline">/ 4</span>
+</span>
+<span class="font-label text-[10px] uppercase tracking-widest text-secondary/60 font-bold">25% COMPLETE</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-on-primary-container w-1/4 transition-all duration-700 ease-out"></div>
+</div>
+</section>
+<!-- Immersive Study Canvas -->
+<div class="card-perspective w-full max-w-[700px] h-[480px]">
+<div class="card-inner shadow-2xl hover:shadow-primary/5 transition-all" id="study-card">
+<!-- FRONT STATE -->
+<div class="card-front bg-surface-container-lowest border border-outline-variant/20 p-8 md:p-12 cursor-pointer" onclick="this.closest('.card-inner').classList.toggle('is-flipped')">
+<div class="absolute top-6 left-1/2 -translate-x-1/2">
+<span class="font-label text-[10px] uppercase tracking-[0.2em] text-on-primary-container/60 font-bold">FRONT (QUESTION)</span>
+</div>
+<!-- Image Content Area -->
+<div class="w-full h-full flex flex-col items-center justify-center pt-4">
+<div class="w-full h-3/5 mb-8 bg-surface-container-low flex items-center justify-center relative overflow-hidden group">
+<img alt="Anatomy detail" class="max-h-full max-w-full object-contain mix-blend-multiply opacity-90 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJhzpOiM2jeILkVDEWKUpC2vPMXyUBABWY0bEbnBroBv9JwAwK7bQvD1rt3Pr9WR8C1QHoNqdaJQZX1W1OtawWJxto7u88OdN75hFXH6gaS2li76sFSBiLMkgwZFOgt4lnj2Vmxw5BI2WNXBK7CgmDYAUfwgSr7gFKV-tyo9QtrPksYu2B27kVeNIjHeQh2A-XUHkIJJ0njCTmCkLtEhcp8pKYxkYI8FlM-R-ttulVEgUsO_3V7iOZg48iVTU5n9xvHKDK_NLmj8oW"/>
+<div class="absolute bottom-4 right-4 bg-tertiary text-white px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="font-label text-[10px] uppercase tracking-tighter">Fig. 2.14</span>
+</div>
+</div>
+<h3 class="font-headline text-2xl md:text-3xl font-bold text-tertiary leading-tight px-4">
+                        Identify the primary weight-bearing surface shown in the highlighted section.
+                    </h3>
+</div>
+</div>
+<!-- BACK STATE -->
+<div class="card-back bg-surface-container-lowest border border-secondary/20 p-8 md:p-12 cursor-pointer" onclick="this.closest('.card-inner').classList.toggle('is-flipped')">
+<div class="absolute top-6 left-1/2 -translate-x-1/2">
+<span class="font-label text-[10px] uppercase tracking-[0.2em] text-secondary/60 font-bold">BACK (ANSWER)</span>
+</div>
+<div class="w-full h-full flex flex-col items-center justify-center">
+<div class="mb-6">
+<span class="material-symbols-outlined text-secondary text-5xl opacity-40">task_alt</span>
+</div>
+<h3 class="font-headline text-3xl font-extrabold text-secondary leading-tight mb-4">
+                        Superior Articular Surface of the Tibia
+                    </h3>
+<p class="font-body text-on-surface-variant max-w-md text-sm leading-relaxed">
+                        Also known as the tibial plateau, this surface supports the femoral condyles and transmits the weight of the body to the tibial shaft.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Enhanced Interaction Hints -->
+<div class="mt-8 flex gap-6 justify-center">
+<div class="flex items-center gap-2 bg-white/40 px-3 py-1.5 border border-outline-variant/10">
+<span class="font-label text-[11px] uppercase tracking-widest font-bold text-tertiary">SPACE</span>
+<span class="text-outline-variant text-[10px]">→</span>
+<span class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">Flip Card</span>
+</div>
+<div class="flex items-center gap-2 bg-white/40 px-3 py-1.5 border border-outline-variant/10">
+<span class="font-label text-[11px] uppercase tracking-widest font-bold text-tertiary">← →</span>
+<span class="text-outline-variant text-[10px]">→</span>
+<span class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">Navigate</span>
+</div>
+</div>
+<!-- Refined Action Hierarchy -->
+<div class="mt-12 w-full max-w-[700px] flex items-center gap-4 px-4">
+<!-- Secondary Actions -->
+<div class="flex-none flex gap-2">
+<button class="h-14 px-6 bg-surface-container-low text-secondary font-label text-xs uppercase tracking-widest font-bold hover:bg-surface-container-high transition-all flex items-center gap-2 border border-outline-variant/10">
+<span class="material-symbols-outlined text-lg">arrow_back</span>
+                Prev
+            </button>
+<button class="h-14 px-4 bg-surface-container-low text-on-surface-variant hover:text-error transition-all group border border-outline-variant/10" title="Review Later">
+<span class="material-symbols-outlined text-lg">history</span>
+</button>
+</div>
+<!-- Primary Mastery Action -->
+<button class="flex-1 h-14 bg-secondary text-white hover:bg-tertiary transition-all flex items-center justify-center gap-3">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label text-sm uppercase tracking-[0.2em] font-extrabold">I Knew This</span>
+</button>
+<!-- Primary Navigation Action -->
+<button class="flex-none h-14 px-8 bg-on-primary-container text-white font-label text-xs uppercase tracking-[0.2em] font-extrabold hover:bg-primary transition-all flex items-center gap-2">
+            Next
+            <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</main>
+<!-- Bottom Navigation Shell (Mobile Only Pivot) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-8 pb-6 pt-2 h-20 bg-[#ffffff]/80 backdrop-blur-md">
+<a class="flex flex-col items-center justify-center text-[#376757] opacity-50 pt-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined">layers</span>
+<span class="font-['Space_Grotesk'] text-[10px] uppercase tracking-widest">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#ff967d] border-t-2 border-[#ff967d] pt-2 transform translate-y-[-2px] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-['Space_Grotesk'] text-[10px] uppercase tracking-widest">Study</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#376757] opacity-50 pt-2 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-['Space_Grotesk'] text-[10px] uppercase tracking-widest">Insights</span>
+</a>
+</nav>
+<!-- Background Blueprint Accents -->
+<div class="fixed top-0 right-0 w-1/3 h-screen pointer-events-none opacity-[0.03] z-[-1] overflow-hidden">
+<svg class="w-full h-full text-tertiary" viewbox="0 0 100 100">
+<line stroke="currentColor" stroke-width="0.1" x1="0" x2="100" y1="20" y2="20"></line>
+<line stroke="currentColor" stroke-width="0.1" x1="0" x2="100" y1="40" y2="40"></line>
+<line stroke="currentColor" stroke-width="0.1" x1="0" x2="100" y1="60" y2="60"></line>
+<line stroke="currentColor" stroke-width="0.1" x1="80" x2="80" y1="0" y2="100"></line>
+<circle cx="80" cy="20" fill="none" r="2" stroke="currentColor" stroke-width="0.1"></circle>
+<circle cx="80" cy="40" fill="none" r="2" stroke="currentColor" stroke-width="0.1"></circle>
+<circle cx="80" cy="60" fill="none" r="2" stroke="currentColor" stroke-width="0.1"></circle>
+</svg>
+</div>
+<script>
+    // Simple keyboard listener for UX feel
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            document.getElementById('study-card').classList.toggle('is-flipped');
+        }
+    });
+</script>
+</body></html>

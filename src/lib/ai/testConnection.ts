@@ -6,7 +6,9 @@ import {
   resolveModelId,
 } from "@/lib/ai/parseChunk";
 import type { AiProvider } from "@/types/question";
+import { deriveOpenAiModelsListUrlFromChatCompletions } from "@/lib/ai/openAiEndpoint";
 import {
+  forwardAiGet,
   forwardAiPost,
   parseProxyForwardErrorBody,
 } from "@/lib/ai/sameOriginForward";
@@ -36,6 +38,31 @@ function logAiTest(
   payload: Record<string, unknown>,
 ): void {
   console.info(AI_TEST_LOG, kind, runId, step, payload);
+}
+
+/** True when body looks like OpenAI `GET /v1/models` (or compatible) JSON. */
+function openAiModelsListResponseLooksValid(raw: string): boolean {
+  try {
+    const j = JSON.parse(raw) as unknown;
+    if (!j || typeof j !== "object") {
+      return false;
+    }
+    const o = j as Record<string, unknown>;
+    if (!Array.isArray(o.data)) {
+      return false;
+    }
+    if (o.data.length === 0) {
+      return true;
+    }
+    const first = o.data[0];
+    return (
+      first !== null &&
+      typeof first === "object" &&
+      typeof (first as { id?: unknown }).id === "string"
+    );
+  } catch {
+    return false;
+  }
 }
 
 function summarizeOpenAiSuccessBody(raw: string): Record<string, unknown> {
@@ -237,17 +264,96 @@ export async function testAiConnection(options: {
   const t0 =
     typeof performance !== "undefined" ? performance.now() : Date.now();
 
+  const forwardProvider = provider === "custom" ? "custom" : "openai";
+  const modelsProbeUrl = deriveOpenAiModelsListUrlFromChatCompletions(endpoint);
+
+  if (modelsProbeUrl && (provider === "openai" || provider === "custom")) {
+    logAiTest("connection", runId, "models_probe_start", {
+      provider,
+      modelsProbeUrl,
+      resolvedChatEndpoint: endpoint,
+      forwardRoute: "GET via POST /api/ai/forward",
+    });
+    try {
+      const resModels = await forwardAiGet({
+        provider: forwardProvider,
+        targetUrl: modelsProbeUrl,
+        apiKey: key,
+        signal,
+      });
+      const modelsBody = await resModels.text();
+      const msModels =
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+        t0;
+      logAiTest("connection", runId, "models_probe_response", {
+        httpStatus: resModels.status,
+        durationMs: Math.round(msModels),
+        responseChars: modelsBody.length,
+        bodySnippet: truncateForLog(modelsBody, 2500),
+      });
+
+      if (resModels.status === 401) {
+        logAiTest("connection", runId, "result", {
+          ok: false,
+          reason: "401",
+          via: "models_list",
+        });
+        return { ok: false, message: "Invalid API key or unauthorized." };
+      }
+      if (resModels.status === 429) {
+        logAiTest("connection", runId, "result", {
+          ok: false,
+          reason: "429",
+          via: "models_list",
+        });
+        return { ok: false, message: "Rate limited. Try again shortly." };
+      }
+
+      if (resModels.ok && openAiModelsListResponseLooksValid(modelsBody)) {
+        logAiTest("connection", runId, "result", {
+          ok: true,
+          via: "models_list",
+        });
+        return { ok: true };
+      }
+
+      logAiTest("connection", runId, "models_probe_fallback", {
+        httpStatus: resModels.status,
+        responseOk: resModels.ok,
+        listingParsed: openAiModelsListResponseLooksValid(modelsBody),
+      });
+    } catch (e) {
+      const msCatch =
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+        t0;
+      if (e instanceof DOMException && e.name === "AbortError") {
+        logAiTest("connection", runId, "result", {
+          ok: false,
+          reason: "aborted",
+          via: "models_list",
+          durationMs: Math.round(msCatch),
+        });
+        return { ok: false, message: "Cancelled." };
+      }
+      logAiTest("connection", runId, "models_probe_fallback", {
+        reason: "exception",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   logAiTest("connection", runId, "start", {
     provider,
     resolvedEndpoint: endpoint,
     modelId: resolvedModelId,
     forwardRoute: "POST /api/ai/forward",
     upstreamShape: "openai-compatible chat (text ping, max_tokens 1)",
+    modelsProbeSkipped: !modelsProbeUrl,
   });
 
   try {
     const res = await forwardAiPost({
-      provider: provider === "custom" ? "custom" : "openai",
+      provider: forwardProvider,
       targetUrl: endpoint,
       apiKey: key,
       signal,

@@ -1,6 +1,5 @@
 ---
 name: orchestrator
-model: gpt-5.3-codex-high
 description: Route requests to registered specialists. Never implement directly—always delegate for any code or file changes.
 ---
 # Orchestrator

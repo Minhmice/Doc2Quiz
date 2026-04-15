@@ -41,3 +41,28 @@ export async function forwardAiPost(
     }),
   });
 }
+
+export type ForwardAiGetParams = {
+  provider: AiProvider;
+  targetUrl: string;
+  apiKey: string;
+  signal?: AbortSignal;
+};
+
+/** Same-origin proxy GET (e.g. OpenAI-compatible `/v1/models` key probe). */
+export async function forwardAiGet(
+  params: ForwardAiGetParams,
+): Promise<Response> {
+  const { provider, targetUrl, apiKey, signal } = params;
+  return fetch("/api/ai/forward", {
+    method: "POST",
+    ...(signal ? { signal } : {}),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider,
+      targetUrl,
+      apiKey,
+      method: "GET",
+    }),
+  });
+}

@@ -1,3 +1,8 @@
+/**
+ * Flashcard vision JSON → typed rows. When `requireSourcePages` is true (flashcard product lane),
+ * any card missing valid, in-bounds `sourcePages` is **dropped** — never silently invent page ranges.
+ */
+
 import type {
   FlashcardVisionItem,
 } from "@/types/visionParse";

@@ -19,17 +19,17 @@ import {
 import { cn } from "@/lib/utils";
 import {
   playHref,
-  reviewDraftHref,
+  openEditorHref,
   reviewMistakesHref,
 } from "@/lib/dashboard/studySetDashboardLinks";
 import { StudySetCardPdfCover } from "@/components/dashboard/StudySetCardPdfCover";
 import type { StudySetMeta } from "@/types/studySet";
 
-export type DashboardStudySetCardVariant = "draft" | "ready" | "in_progress";
+export type DashboardStudySetCardVariant = "needs_edit" | "ready" | "in_progress";
 
 export type DashboardStudySetCardProps = Readonly<{
   meta: StudySetMeta;
-  draftCount: number;
+  editorStagingCount: number;
   approvedCount: number;
   hasMistakes: boolean;
   variant: DashboardStudySetCardVariant;
@@ -63,9 +63,9 @@ function statusBadge(variant: DashboardStudySetCardVariant): {
   label: string;
   className: string;
 } {
-  if (variant === "draft") {
+  if (variant === "needs_edit") {
     return {
-      label: "Draft",
+      label: "Needs edit",
       className: "bg-[color:var(--chart-4)] text-white",
     };
   }
@@ -87,7 +87,7 @@ function unitLabel(meta: StudySetMeta): string {
 
 export function DashboardStudySetCard({
   meta,
-  draftCount,
+  editorStagingCount,
   approvedCount,
   hasMistakes,
   variant,
@@ -98,17 +98,17 @@ export function DashboardStudySetCard({
 }: DashboardStudySetCardProps) {
   const router = useRouter();
   const badge = statusBadge(variant);
-  const total = draftCount + approvedCount;
+  const total = editorStagingCount + approvedCount;
   const pctComplete =
     total > 0 ? Math.round((approvedCount / total) * 100) : 0;
   const play = playHref(meta);
-  const review = reviewDraftHref(meta);
+  const review = openEditorHref(meta);
   const mistakesHref = reviewMistakesHref(meta);
 
-  const primaryHref = variant === "draft" ? review : play;
+  const primaryHref = variant === "needs_edit" ? review : play;
   const primaryLabel =
-    variant === "draft"
-      ? "Review draft"
+    variant === "needs_edit"
+      ? "Open editor"
       : variant === "ready"
         ? meta.contentKind === "flashcards"
           ? "Study flashcards"
@@ -116,16 +116,17 @@ export function DashboardStudySetCard({
         : "Resume";
 
   const borderHover =
-    variant === "draft"
+    variant === "needs_edit"
       ? "hover:border-primary/50"
       : "hover:border-[color:var(--d2q-blue)]/50";
 
   return (
     <article
       className={cn(
-        "group flex flex-col overflow-hidden rounded-lg border border-border/30 bg-card shadow-sm transition-all duration-300",
+        "group flex h-full flex-col overflow-hidden rounded-lg border border-border/30 bg-card shadow-sm transition-all duration-300",
         borderHover,
-        "hover:shadow-md",
+        "hover:-translate-y-1 hover:shadow-lg",
+        "motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-md",
       )}
     >
       <div
@@ -141,7 +142,9 @@ export function DashboardStudySetCard({
         <div className="absolute left-3 top-3 z-10">
           <span
             className={cn(
-              "px-2 py-0.5 font-label text-[8px] font-bold uppercase tracking-widest",
+              // Use heavier weight + slightly larger size for legibility.
+              // (Some fonts don't visually distinguish 800 vs 900 much.)
+              "inline-flex items-center rounded-full px-3 py-1 font-label text-[10px] font-extrabold uppercase leading-none tracking-[0.16em] shadow-sm ring-1 ring-inset ring-white/35 backdrop-blur-md",
               badge.className,
             )}
           >
@@ -161,7 +164,7 @@ export function DashboardStudySetCard({
             {updatedLabel}
           </span>
         </div>
-        <h4 className="mb-2 line-clamp-2 text-lg font-bold leading-tight text-accent-foreground transition-colors duration-200 group-hover:text-primary">
+        <h4 className="mb-2 min-h-[2.5rem] line-clamp-2 text-lg font-bold leading-tight text-accent-foreground transition-colors duration-200 group-hover:text-primary">
           {meta.title}
         </h4>
         <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-muted-foreground">
@@ -191,14 +194,14 @@ export function DashboardStudySetCard({
             href={primaryHref}
             className={cn(
               "w-full cursor-pointer py-2.5 text-center font-label text-[10px] font-black uppercase tracking-widest transition-colors duration-200",
-              variant === "draft"
+              variant === "needs_edit"
                 ? "bg-muted text-accent-foreground group-hover:bg-primary group-hover:text-primary-foreground"
                 : "bg-[color:var(--d2q-blue)] text-white hover:bg-[color:var(--chart-4)]",
             )}
           >
             {primaryLabel}
           </Link>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-h-6 flex-wrap items-center gap-2">
             {mistakesHref && hasMistakes && approvedCount > 0 ? (
               <Link
                 href={mistakesHref}
@@ -221,7 +224,7 @@ export function DashboardStudySetCard({
                   className="cursor-pointer"
                   onClick={() => router.push(review)}
                 >
-                  Edit draft
+                  Open editor
                 </DropdownMenuItem>
                 <DropdownMenuItem className="cursor-pointer" onClick={onRename}>
                   Rename

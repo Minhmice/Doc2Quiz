@@ -7,9 +7,8 @@ import type { Question } from "@/types/question";
 import {
   deleteMedia,
   ensureStudySetDb,
-  getDraftQuestions,
+  getApprovedBank,
   putApprovedBankForStudySet,
-  putDraftQuestions,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
 import { countUncertainMappings } from "@/lib/learning";
@@ -21,7 +20,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export type ReviewSectionProps = {
   studySetId: string;
-  draftReloadKey?: number;
+  /** Bump to force a reload from IndexedDB (e.g. after external bank writes). */
+  reloadKey?: number;
   metaTitle?: string | null;
   metaSubtitle?: string | null;
   sourceFileLabel?: string | null;
@@ -31,7 +31,7 @@ const APPROVE_ERROR = "Some questions are incomplete. Please fix before saving."
 
 export function ReviewSection({
   studySetId,
-  draftReloadKey = 0,
+  reloadKey = 0,
   metaTitle,
   metaSubtitle,
   sourceFileLabel,
@@ -50,10 +50,11 @@ export function ReviewSection({
     setLoading(true);
     try {
       await ensureStudySetDb();
-      const loaded = await getDraftQuestions(studySetId);
-      setQuestions(loaded);
-      if (loaded.length > 0) {
-        initialTotalRef.current = loaded.length;
+      const approved = await getApprovedBank(studySetId);
+      const list = approved?.questions ?? [];
+      setQuestions(list);
+      if (list.length > 0) {
+        initialTotalRef.current = list.length;
       }
     } finally {
       setLoading(false);
@@ -64,7 +65,7 @@ export function ReviewSection({
 
   useEffect(() => {
     void reload();
-  }, [studySetId, draftReloadKey, reload]);
+  }, [studySetId, reloadKey, reload]);
 
   useEffect(() => {
     if (questions.length === 0) {
@@ -179,7 +180,11 @@ export function ReviewSection({
     async (_id: string, next: Question) => {
       setQuestions((prev) => {
         const nextList = prev.map((q) => (q.id === next.id ? next : q));
-        void putDraftQuestions(studySetId, nextList);
+        void putApprovedBankForStudySet(studySetId, {
+          version: 1,
+          savedAt: new Date().toISOString(),
+          questions: nextList,
+        });
         void touchStudySetMeta(studySetId, {});
         return nextList;
       });
@@ -196,7 +201,11 @@ export function ReviewSection({
         const nextList = prev.map((q) =>
           q.id === qid ? { ...q, correctIndex: index } : q,
         );
-        void putDraftQuestions(studySetId, nextList);
+        void putApprovedBankForStudySet(studySetId, {
+          version: 1,
+          savedAt: new Date().toISOString(),
+          questions: nextList,
+        });
         void touchStudySetMeta(studySetId, {});
         return nextList;
       });
@@ -228,7 +237,11 @@ export function ReviewSection({
           })();
         }
         const nextList = prev.filter((q) => q.id !== qid);
-        void putDraftQuestions(studySetId, nextList);
+        void putApprovedBankForStudySet(studySetId, {
+          version: 1,
+          savedAt: new Date().toISOString(),
+          questions: nextList,
+        });
         void touchStudySetMeta(studySetId, {});
         return nextList;
       });
@@ -253,7 +266,6 @@ export function ReviewSection({
     };
     try {
       await putApprovedBankForStudySet(studySetId, payload);
-      await putDraftQuestions(studySetId, questions);
       await touchStudySetMeta(studySetId, { status: "ready" });
       return true;
     } catch {
@@ -302,7 +314,7 @@ export function ReviewSection({
             id="review-heading"
             className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
           >
-            Review questions
+            Edit questions
             {metaTitle ? (
               <>
                 {" "}
@@ -312,7 +324,7 @@ export function ReviewSection({
           </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
             {metaSubtitle ??
-              "Edits save automatically to your draft. When every question is a complete MCQ, use Done in the sidebar to finalize the bank and return to your library."}
+              "Edits save automatically. When every question is a complete MCQ, use Done in the sidebar to save and return to your library."}
           </p>
         </header>
 
@@ -381,7 +393,7 @@ export function ReviewSection({
               >
                 New quiz
               </Link>{" "}
-              to generate a draft bank.
+              to generate a question bank.
             </p>
             <p>
               <Link

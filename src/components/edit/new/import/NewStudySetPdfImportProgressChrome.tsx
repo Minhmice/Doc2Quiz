@@ -62,9 +62,9 @@ export function importPhaseMeta(
       };
     case "ai":
       return {
-        headline: "Drafting with AI…",
-        stageLine: "Stage 4 of 4 — AI draft",
-        liveMessage: `${product} import: AI is drafting questions from your document.`,
+        headline: "Generating with AI…",
+        stageLine: "Stage 4 of 4 — AI generation",
+        liveMessage: `${product} import: AI is generating questions from your document.`,
       };
   }
 }
@@ -87,7 +87,7 @@ export type NewStudySetPdfImportProgressChromeProps = Readonly<{
    * `embedded` — inner chrome only; parent supplies border/radius.
    */
   variant?: "standalone" | "embedded";
-  /** Optional override for the primary headline (e.g. “Starting AI draft…”). */
+  /** Optional override for the primary headline (e.g. “Starting AI generation…”). */
   headlineOverride?: string | null;
   /** Optional override for the stage line under the headline. */
   stageLineOverride?: string | null;
@@ -119,7 +119,7 @@ export function NewStudySetPdfImportProgressChrome({
   const inner = (
     <>
       <div
-        className="d2q-technical-grid border-b border-border bg-muted/30 px-4 py-5 sm:px-6"
+        className="border-b border-border bg-muted/30 px-4 py-5 sm:px-6"
         role="region"
         aria-labelledby="new-import-loading-heading"
       >
@@ -209,7 +209,7 @@ export function NewStudySetPdfImportProgressChrome({
             />
             {showFourStepRow ? (
               <StepItem
-                label="AI draft"
+                label="AI generation"
                 state={active > 3 ? "done" : active === 3 ? "current" : "upcoming"}
                 icon={Wand2Icon}
               />
@@ -322,7 +322,7 @@ export function ImportProgressChromeStepsBody({
           />
           {showFourStepRow ? (
             <StepItem
-              label="AI draft"
+              label="AI generation"
               state={active > 3 ? "done" : active === 3 ? "current" : "upcoming"}
               icon={Wand2Icon}
             />

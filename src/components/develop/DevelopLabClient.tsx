@@ -6,12 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { DevelopPreviewBatch01Buttons } from "./preview-batches/DevelopPreviewBatch01Buttons";
-import { DevelopPreviewBatch02Cards } from "./preview-batches/DevelopPreviewBatch02Cards";
-import { DevelopPreviewBatch03Forms } from "./preview-batches/DevelopPreviewBatch03Forms";
-import { DevelopPreviewBatch04Overlays } from "./preview-batches/DevelopPreviewBatch04Overlays";
-import { DevelopPreviewBatch05Layout } from "./preview-batches/DevelopPreviewBatch05Layout";
 
 export function DevelopLabClient() {
   return (
@@ -27,15 +21,22 @@ export function DevelopLabClient() {
         </p>
       </div>
 
-      <DevelopPreviewBatch01Buttons />
-      <Separator />
-      <DevelopPreviewBatch02Cards />
-      <Separator />
-      <DevelopPreviewBatch03Forms />
-      <Separator />
-      <DevelopPreviewBatch04Overlays />
-      <Separator />
-      <DevelopPreviewBatch05Layout />
+      <Card className="border-amber-200 bg-amber-50 shadow-sm dark:border-amber-800 dark:bg-amber-950/30">
+        <CardHeader>
+          <CardTitle className="font-heading text-base text-amber-800 dark:text-amber-300">
+            Preview batches archived
+          </CardTitle>
+          <CardDescription className="text-amber-700 dark:text-amber-400">
+            The preview-batch components (Buttons, Cards, Forms, Overlays,
+            Layout) have been archived and are no longer rendered here. Source
+            code is preserved at{" "}
+            <code className="rounded bg-amber-100 px-1 py-0.5 text-xs text-amber-900 dark:bg-amber-900/50 dark:text-amber-200">
+              src/components-legacy/develop/preview-batches
+            </code>
+            .
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
       <Card className="border-border/80 shadow-sm" size="sm">
         <CardHeader>

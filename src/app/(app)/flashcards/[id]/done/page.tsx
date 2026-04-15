@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ensureStudySetDb,
-  getApprovedBank,
+  getApprovedFlashcardBank,
   getStudySetMeta,
 } from "@/lib/db/studySetDb";
 import { editFlashcards, flashcardsPlay } from "@/lib/routes/studySetPaths";
@@ -35,8 +35,8 @@ export default function FlashcardsDonePage() {
       setHeadline(meta.title);
       setSubtitle(meta.subtitle);
       setSourceName(meta.sourceFileName);
-      const bank = await getApprovedBank(id);
-      setApprovedCount(bank?.questions.length ?? 0);
+      const bank = await getApprovedFlashcardBank(id);
+      setApprovedCount(bank?.items.length ?? 0);
     } catch (e) {
       setLoadError(
         e instanceof Error ? e.message : "Failed to load study set.",

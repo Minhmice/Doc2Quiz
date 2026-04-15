@@ -7,10 +7,12 @@ import { FlashcardReviewWorkspace } from "@/components/flashcards/review/Flashca
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
   ensureStudySetDb,
+  getApprovedFlashcardBank,
   getDraftFlashcardVisionItems,
-  getDraftQuestions,
   getStudySetMeta,
+  putApprovedFlashcardBankForStudySet,
   putDraftFlashcardVisionItems,
+  touchStudySetMeta,
 } from "@/lib/db/studySetDb";
 import type { FlashcardVisionItem } from "@/types/visionParse";
 import type { StudySetMeta } from "@/types/studySet";
@@ -19,8 +21,8 @@ export default function EditFlashcardsReviewPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
   const [meta, setMeta] = useState<StudySetMeta | null>(null);
-  const [draft, setDraft] = useState<FlashcardVisionItem[]>([]);
-  const [initialDraft, setInitialDraft] = useState<FlashcardVisionItem[]>([]);
+  const [cards, setCards] = useState<FlashcardVisionItem[]>([]);
+  const [initialCards, setInitialCards] = useState<FlashcardVisionItem[]>([]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState(() => new Set<string>());
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,31 +39,15 @@ export default function EditFlashcardsReviewPage() {
       const m = await getStudySetMeta(id);
       setMeta(m ?? null);
 
-      let next: FlashcardVisionItem[] = [];
-      const vision = await getDraftFlashcardVisionItems(id);
-      if (vision.length > 0) {
-        next = vision.map((it) =>
-          it.id ? it : { ...it, id: createRandomUuid() },
-        );
-      } else {
-        const qs = await getDraftQuestions(id);
-        if (qs.length > 0) {
-          next = qs.map((q) => ({
-            kind: "flashcard" as const,
-            id: q.id,
-            front: q.question,
-            back: q.options[q.correctIndex] ?? "",
-            confidence:
-              typeof q.parseConfidence === "number" ? q.parseConfidence : 0.5,
-            sourcePages:
-              q.sourcePageIndex !== undefined && q.sourcePageIndex >= 1
-                ? [q.sourcePageIndex]
-                : undefined,
-          }));
-        }
-      }
-      setDraft(next);
-      setInitialDraft(
+      const [approvedFc, draftFc] = await Promise.all([
+        getApprovedFlashcardBank(id),
+        getDraftFlashcardVisionItems(id),
+      ]);
+      const fromApproved = approvedFc?.items ?? [];
+      const next: FlashcardVisionItem[] =
+        fromApproved.length > 0 ? fromApproved : draftFc;
+      setCards(next);
+      setInitialCards(
         next.map((c) => ({
           ...c,
           front: c.front,
@@ -80,15 +66,33 @@ export default function EditFlashcardsReviewPage() {
     void load();
   }, [load]);
 
-  const saveDraft = useCallback(async () => {
+  const saveChanges = useCallback(async () => {
     if (!id) {
       return;
     }
     setSaving(true);
     try {
-      await putDraftFlashcardVisionItems(id, draft);
-      setInitialDraft(
-        draft.map((c) => ({
+      const normalized = cards
+        .map((card) => (card.id ? card : { ...card, id: createRandomUuid() }))
+        .filter(
+          (c) => c.front.trim().length > 0 && c.back.trim().length > 0,
+        );
+
+      const savedAt = new Date().toISOString();
+      await putApprovedFlashcardBankForStudySet(id, {
+        version: 1,
+        savedAt,
+        items: normalized,
+      });
+      await putDraftFlashcardVisionItems(id, normalized);
+
+      await touchStudySetMeta(id, {
+        status: normalized.length > 0 ? "ready" : "draft",
+      });
+
+      setCards(normalized);
+      setInitialCards(
+        normalized.map((c) => ({
           ...c,
           front: c.front,
           back: c.back,
@@ -98,18 +102,18 @@ export default function EditFlashcardsReviewPage() {
     } finally {
       setSaving(false);
     }
-  }, [draft, id]);
+  }, [cards, id]);
 
   const setFront = useCallback((cardId: string, text: string) => {
     setDirty(true);
-    setDraft((prev) =>
+    setCards((prev) =>
       prev.map((c) => (c.id === cardId ? { ...c, front: text } : c)),
     );
   }, []);
 
   const setBack = useCallback((cardId: string, text: string) => {
     setDirty(true);
-    setDraft((prev) =>
+    setCards((prev) =>
       prev.map((c) => (c.id === cardId ? { ...c, back: text } : c)),
     );
   }, []);
@@ -121,18 +125,18 @@ export default function EditFlashcardsReviewPage() {
       n.delete(cardId);
       return n;
     });
-    setDraft((prev) => prev.filter((c) => c.id !== cardId));
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
   }, []);
 
   useEffect(() => {
-    if (draft.length === 0) {
+    if (cards.length === 0) {
       setActiveCardId(null);
       return;
     }
-    if (!activeCardId || !draft.some((c) => c.id === activeCardId)) {
-      setActiveCardId(draft[0]?.id ?? null);
+    if (!activeCardId || !cards.some((c) => c.id === activeCardId)) {
+      setActiveCardId(cards[0]?.id ?? null);
     }
-  }, [draft, activeCardId]);
+  }, [cards, activeCardId]);
 
   const onApprove = useCallback((cardId: string) => {
     setApprovedIds((prev) => new Set(prev).add(cardId));
@@ -158,15 +162,15 @@ export default function EditFlashcardsReviewPage() {
       studySetId={id}
       title={meta?.title}
       subtitle={meta?.subtitle}
-      draft={draft}
-      initialDraft={initialDraft}
+      cards={cards}
+      initialCards={initialCards}
       activeCardId={activeCardId}
       onActiveCardIdChange={setActiveCardId}
       approvedIds={approvedIds}
       onApprove={onApprove}
       dirty={dirty}
       saving={saving}
-      onSaveAll={() => void saveDraft()}
+      onSaveAll={() => void saveChanges()}
       onFrontChange={setFront}
       onBackChange={setBack}
       onRemove={removeAt}

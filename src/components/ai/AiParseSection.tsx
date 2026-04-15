@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Parse orchestration (vision / OCR / layout chunk) for study sets.
+ *
+ * **Flashcards (parseOutputMode === "flashcard"):** vision **batch** only, **theory-only**
+ * concept cards — no OCR prefetch, no layout/chunk/hybrid, no `Question[]` / MCQ sequential vision.
+ * **Quiz** owns MCQ prompts, parsers, chunk paths, and review routes.
+ */
+
 import Link from "next/link";
 import {
   forwardRef,
@@ -75,15 +83,17 @@ import { AiParseSectionHeader } from "@/components/ai/AiParseSectionHeader";
 import { useParseProgress } from "@/components/ai/ParseProgressContext";
 import {
   ensureStudySetDb,
+  getApprovedBank,
   getDocument,
-  getDraftQuestions,
   getParseProgressRecord,
   getStudySetMeta,
+  putApprovedBankForStudySet,
+  putApprovedFlashcardBankForStudySet,
   putDraftFlashcardVisionItems,
-  putDraftQuestions,
   putParseProgressRecord,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
+import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
   fileSummary,
   normalizeUnknownError,
@@ -96,12 +106,15 @@ import {
 } from "@/lib/pdf/renderPagesToImages";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { OcrRunResult } from "@/types/ocr";
-import type { Question } from "@/types/question";
+import type { ApprovedBank, Question } from "@/types/question";
 import type {
+  ApprovedFlashcardBank,
   FlashcardVisionItem,
   ParseOutputMode,
   QuizVisionItem,
 } from "@/types/visionParse";
+import type { FlashcardGenerationConfig } from "@/types/flashcardGeneration";
+import { normalizeFlashcardGenerationConfig } from "@/types/flashcardGeneration";
 import type { ParseProgressPhase } from "@/types/studySet";
 import { QuestionPreviewList } from "@/components/ai/QuestionPreviewList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -110,6 +123,23 @@ import { toast } from "sonner";
 
 export type { ParseStrategy } from "@/lib/ai/parseLocalStorage";
 
+function formatTimeStamp(): string {
+  return new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+/**
+ * Result of a single parse run.
+ *
+ * Lane contract:
+ * - Quiz lane: `questions` populated, `flashcardItems` empty/undefined.
+ * - Flashcard lane: `flashcardItems` populated, `questions` intentionally empty.
+ *
+ * `parseOutputMode` is the authoritative lane tag for downstream routing.
+ */
 export type ParseRunResult = {
   ok: boolean;
   aborted: boolean;
@@ -148,13 +178,17 @@ export type AiParseSectionProps = {
   pageCount: number | null;
   /** Persist document to IDB immediately before starting parse */
   onBeforeParse?: () => Promise<void>;
-  onDraftPersisted?: () => void;
+  /** Called after questions are persisted to the approved bank (and meta touched). */
+  onBankPersisted?: () => void;
   variant?: "full" | "embedded";
   /** Layout vs parse chrome: use `product` on `/sets/[id]/source` (ingest hub) for quiz/flashcards sets. */
   surface?: AiParseSurface;
   /** Vision MVP: explicit quiz vs flashcard parse (from `StudySetMeta.contentKind`). */
   parseOutputMode?: ParseOutputMode;
-  autoStartWhenDraftEmpty?: boolean;
+  /** Flashcard lane — vision batch prompts + generation controls. */
+  flashcardGenerationConfig?: FlashcardGenerationConfig;
+  /** Embedded: auto-start parse when the approved bank has no questions yet. */
+  autoStartWhenBankEmpty?: boolean;
   autoStartResetKey?: string | number;
   onEmbeddedParseFinished?: (result: ParseRunResult) => void;
   /**
@@ -173,11 +207,12 @@ export const AiParseSection = forwardRef<
     activePdfFile,
     pageCount = null,
     onBeforeParse,
-    onDraftPersisted,
+    onBankPersisted,
     variant = "full",
     surface = "developer",
     parseOutputMode = "quiz",
-    autoStartWhenDraftEmpty = false,
+    flashcardGenerationConfig,
+    autoStartWhenBankEmpty = false,
     autoStartResetKey = "default",
     onEmbeddedParseFinished,
     suppressEmbeddedRunningProgress = false,
@@ -249,6 +284,11 @@ export const AiParseSection = forwardRef<
 
   const isEmbedded = variant === "embedded";
   const isProductSurface = surface === "product";
+  const isFlashcardParse = parseOutputMode === "flashcard";
+  const resolvedFlashcardConfig = useMemo(
+    () => normalizeFlashcardGenerationConfig(flashcardGenerationConfig),
+    [flashcardGenerationConfig],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -399,20 +439,29 @@ export const AiParseSection = forwardRef<
     parseOverlay,
   ]);
 
-  const reloadDraft = useCallback(async () => {
-    const draft = await getDraftQuestions(studySetId);
-    setQuestions(draft);
+  const reloadApprovedQuestions = useCallback(async () => {
+    await ensureStudySetDb();
+    const bank = await getApprovedBank(studySetId);
+    setQuestions(bank?.questions ?? []);
   }, [studySetId]);
 
   useEffect(() => {
-    void reloadDraft();
-  }, [reloadDraft]);
+    void reloadApprovedQuestions();
+  }, [reloadApprovedQuestions]);
 
   const provider = getProvider();
   const forwardSettings = readForwardSettings();
   const keyInput = forwardSettings.apiKey;
   const urlInput = forwardSettings.baseUrl;
   const modelInput = forwardSettings.modelId;
+
+  // Strict single-lane contract:
+  // - quiz: vision batch only
+  // - flashcard: vision batch only
+  // No sequential attach/hybrid/layout routes for either lane.
+  const isQuizParse = parseOutputMode === "quiz";
+  const batchOnlyVisionParse = isFlashcardParse || isQuizParse;
+  const effectiveAttachPageImage = batchOnlyVisionParse ? false : attachPageImage;
 
   const hasKey = keyInput.trim().length > 0;
   const hasCustomEndpoint =
@@ -422,9 +471,12 @@ export const AiParseSection = forwardRef<
 
   const surfaceList = getSurfaceAvailability({
     settings: forwardSettings,
-    attachPageImages: attachPageImage,
+    attachPageImages: effectiveAttachPageImage,
   });
-  const visionSurface = attachPageImage ? "vision_attach" : "vision_multimodal";
+  const visionSurface =
+    isFlashcardParse || !effectiveAttachPageImage
+      ? "vision_multimodal"
+      : "vision_attach";
   const visionBlockReasonKey = surfaceBlockReason(surfaceList, visionSurface);
   const visionForwardReady = visionBlockReasonKey === undefined;
 
@@ -479,7 +531,8 @@ export const AiParseSection = forwardRef<
         extractedTextCharCount: estimateDocChars,
         parseStrategy,
         enableOcr,
-        attachPageImage,
+        attachPageImage: effectiveAttachPageImage,
+        visionBatchSequentialOnly: batchOnlyVisionParse,
       }),
     [
       estimatePageCount,
@@ -487,7 +540,8 @@ export const AiParseSection = forwardRef<
       estimateDocChars,
       parseStrategy,
       enableOcr,
-      attachPageImage,
+      effectiveAttachPageImage,
+      batchOnlyVisionParse,
     ],
   );
 
@@ -512,20 +566,47 @@ export const AiParseSection = forwardRef<
 
   const persistQuestions = useCallback(
     async (qs: Question[]) => {
-      await putDraftQuestions(studySetId, qs);
-      await touchStudySetMeta(studySetId, {});
-      onDraftPersisted?.();
+      const bank: ApprovedBank = {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        questions: qs,
+      };
+      await putApprovedBankForStudySet(studySetId, bank);
+      await touchStudySetMeta(studySetId, { status: "ready" });
+      onBankPersisted?.();
     },
-    [studySetId, onDraftPersisted],
+    [studySetId, onBankPersisted],
   );
 
-  const persistFlashcardVisionItemsDraft = useCallback(
-    async (items: FlashcardVisionItem[]) => {
-      await putDraftFlashcardVisionItems(studySetId, items);
-      await touchStudySetMeta(studySetId, {});
-      onDraftPersisted?.();
+  const persistFlashcardVisionItemsForImmediateUse = useCallback(
+    async (
+      items: FlashcardVisionItem[],
+      generationConfig?: FlashcardGenerationConfig,
+    ) => {
+      const normalizedItems = items
+        .map((item) => ({
+          ...item,
+          id: item.id?.trim().length ? item.id : createRandomUuid(),
+        }))
+        .filter(
+          (it) => it.front.trim().length > 0 && it.back.trim().length > 0,
+        );
+      const savedAt = new Date().toISOString();
+      const bank: ApprovedFlashcardBank = {
+        version: 1,
+        savedAt,
+        items: normalizedItems,
+      };
+      await putApprovedFlashcardBankForStudySet(studySetId, bank);
+      await putDraftFlashcardVisionItems(
+        studySetId,
+        normalizedItems,
+        generationConfig,
+      );
+      await touchStudySetMeta(studySetId, { status: "ready" });
+      onBankPersisted?.();
     },
-    [studySetId, onDraftPersisted],
+    [studySetId, onBankPersisted],
   );
 
   type RenderOcrPrepared = {
@@ -542,6 +623,7 @@ export const AiParseSection = forwardRef<
       forwardProvider: "openai" | "custom",
       timeStamp: () => string,
       afterOcrParseMode: "vision" | "none",
+      options?: { forceSkipOcr?: boolean },
     ): Promise<ParseRunResult | RenderOcrPrepared> => {
       const pages = await renderPdfPagesToImages(file, {
         signal: controller.signal,
@@ -596,7 +678,9 @@ export const AiParseSection = forwardRef<
 
       let ocrForMapping: OcrRunResult | null = null;
       /** Learner create (`surface=product`): no OCR API prefetch — vision reads rasterized pages only. Developer + `/dev/ocr` keep `enableOcr` + toggles. */
+      const forceSkipOcr = options?.forceSkipOcr === true;
       const enableOcrEffective =
+        !forceSkipOcr &&
         enableOcr &&
         !isProductSurface &&
         studySetId.trim().length > 0 &&
@@ -924,7 +1008,17 @@ export const AiParseSection = forwardRef<
         );
         setQuestions([]);
         if (!aborted) {
-          await persistFlashcardVisionItemsDraft(flashItems);
+          setParseOverlay((p) => ({
+            ...p,
+            log: [
+              ...p.log,
+              `${formatTimeStamp()} — Saving ${flashItems.length} flashcard${flashItems.length === 1 ? "" : "s"} to database...`,
+            ],
+          }));
+          await persistFlashcardVisionItemsForImmediateUse(
+            flashItems,
+            resolvedFlashcardConfig,
+          );
         }
 
         const n = flashItems.length;
@@ -1014,6 +1108,13 @@ export const AiParseSection = forwardRef<
       }
 
       if (!aborted) {
+        setParseOverlay((p) => ({
+          ...p,
+          log: [
+            ...p.log,
+            `${formatTimeStamp()} — Saving ${questions.length} question${questions.length === 1 ? "" : "s"} to database...`,
+          ],
+        }));
         await persistQuestions(questions);
         const { summary, uncertainCount } = appendUncertainMappingSummaryClause(
           baseSummary,
@@ -1053,7 +1154,8 @@ export const AiParseSection = forwardRef<
       studySetId,
       parseOutputMode,
       persistQuestions,
-      persistFlashcardVisionItemsDraft,
+      persistFlashcardVisionItemsForImmediateUse,
+      resolvedFlashcardConfig,
     ],
   );
 
@@ -1066,6 +1168,11 @@ export const AiParseSection = forwardRef<
       apiKey: string,
       timeStamp: () => string,
     ): Promise<ParseRunResult> => {
+      if (parseOutputMode === "flashcard") {
+        throw new FatalParseError(
+          "Flashcard study sets use vision batch only — layout chunk parse is disabled.",
+        );
+      }
       const chunks = buildLayoutChunksFromRun(ocrForMapping);
       chunkRawByIdRef.current = {};
       setParseMode("chunk");
@@ -1236,6 +1343,7 @@ export const AiParseSection = forwardRef<
       modelInput,
       persistQuestions,
       runVisionSequentialWithUi,
+      parseOutputMode,
     ],
   );
 
@@ -1313,6 +1421,7 @@ export const AiParseSection = forwardRef<
         forwardProvider,
         timeStamp,
         "vision",
+        { forceSkipOcr: isFlashcardParse || isQuizParse || isProductSurface },
       );
       if (!("kind" in prep) || prep.kind !== "prepared") {
         return prep as ParseRunResult;
@@ -1328,96 +1437,129 @@ export const AiParseSection = forwardRef<
         };
       }
 
-      const attachEffective =
-        attachPageImage && studySetId.trim().length > 0;
+      const mustUseVisionBatch = batchOnlyVisionParse;
 
-      if (!attachEffective) {
-        const plannedBatches = planVisionBatches(pages, "min_requests");
-        const batchTotal = Math.max(1, plannedBatches.length);
-        const strategyHint =
-          plannedBatches.length === 1 && pages.length > 1
-            ? `1 API request (all ${pages.length} pages, overlap 0; may fall back to 10+2 if it fails)`
-            : `${plannedBatches.length} API request(s) (≤${VISION_MAX_PAGES_DEFAULT} pages/batch, overlap 0)`;
-        setProgress({ current: 0, total: batchTotal, status: "running" });
+      if (mustUseVisionBatch) {
+        const runVisionBatchWithUi = async (): Promise<RunVisionBatchSequentialResult> => {
+          const plannedBatches = planVisionBatches(pages, "min_requests");
+          const batchTotal = Math.max(1, plannedBatches.length);
+          const strategyHint =
+            plannedBatches.length === 1 && pages.length > 1
+              ? isFlashcardParse
+                ? `1 API request (all ${pages.length} pages, overlap 0; theory flashcards, strict page citations)`
+                : `1 API request (all ${pages.length} pages, overlap 0; may fall back to 10+2 if it fails)`
+              : `${plannedBatches.length} API request(s) (≤${VISION_MAX_PAGES_DEFAULT} pages/batch, overlap 0)`;
+          setProgress({ current: 0, total: batchTotal, status: "running" });
+          setParseOverlay((p) => ({
+            ...p,
+            log: [
+              ...p.log,
+              `${timeStamp()} — Vision batch parse · ${pages.length} page image${pages.length === 1 ? "" : "s"} · ${strategyHint}`,
+            ].slice(-16),
+          }));
+
+          pipelineLog("VISION", "run", "info", "runVisionBatchSequential starting", {
+            studySetId: studySetId.trim() || "(empty)",
+            parseOutputMode,
+            batchCount: plannedBatches.length,
+            pageImages: pages.length,
+          });
+
+          if (parseOutputMode === "quiz") {
+            setQuestions([]);
+          }
+
+          let extractedSoFar = 0;
+          let batchTotalLive = batchTotal;
+          return await runVisionBatchSequential({
+            pages,
+            mode: parseOutputMode,
+            signal: controller.signal,
+            forwardProvider,
+            apiKey,
+            apiUrl: urlInput,
+            model: modelInput,
+            flashcardGeneration: isFlashcardParse
+              ? resolvedFlashcardConfig
+              : undefined,
+            onBatchPlanResolved: ({ batches, reason }) => {
+              batchTotalLive = Math.max(1, batches.length);
+              setProgress((prev) => ({
+                ...prev,
+                current: 0,
+                total: batchTotalLive,
+                status: "running",
+              }));
+              if (reason === "legacy_fallback") {
+                setParseOverlay((p) => ({
+                  ...p,
+                  log: [
+                    ...p.log,
+                    `${timeStamp()} — Retrying vision with legacy windows (${batches.length} request${batches.length === 1 ? "" : "s"}, 10+overlap2)`,
+                  ].slice(-16),
+                }));
+              }
+            },
+            onItemsExtracted: (items, meta) => {
+              extractedSoFar += items.length;
+              setProgress({
+                current: meta.batchIndex + 1,
+                total: batchTotalLive,
+                status: "running",
+              });
+              if (parseOutputMode === "quiz") {
+                const qs = items
+                  .filter((it): it is QuizVisionItem => it.kind === "quiz")
+                  .map((it) => quizVisionItemToQuestion(it));
+                setQuestions((prev) => [...prev, ...qs]);
+              }
+              setParseOverlay((p) => ({
+                ...p,
+                extractedCount: extractedSoFar,
+                log: [
+                  ...p.log,
+                  `${timeStamp()} — Batch ${meta.batchIndex + 1}/${batchTotalLive} (p.${meta.startPage}–${meta.endPage}) · +${items.length} item${items.length === 1 ? "" : "s"}${meta.cacheHit ? " · cache" : ""} · ~${extractedSoFar} raw (deduped at end)`,
+                ].slice(-16),
+              }));
+            },
+          });
+        };
+
+        const batchResult = await runVisionBatchWithUi();
+
+        // Progress: Dedupe and validation stage
         setParseOverlay((p) => ({
           ...p,
           log: [
             ...p.log,
-            `${timeStamp()} — Vision batch parse · ${pages.length} page image${pages.length === 1 ? "" : "s"} · ${strategyHint}`,
-          ].slice(-16),
+            `${timeStamp()} — Deduplicating and validating...`,
+          ],
         }));
 
-        pipelineLog("VISION", "run", "info", "runVisionBatchSequential starting", {
-          studySetId: studySetId.trim() || "(empty)",
-          parseOutputMode,
-          batchCount: plannedBatches.length,
-          pageImages: pages.length,
-        });
-
-        if (parseOutputMode === "quiz") {
-          setQuestions([]);
-        }
-
-        let extractedSoFar = 0;
-        let batchTotalLive = batchTotal;
-        const batchResult = await runVisionBatchSequential({
-          pages,
-          mode: parseOutputMode,
-          signal: controller.signal,
-          forwardProvider,
-          apiKey,
-          apiUrl: urlInput,
-          model: modelInput,
-          onBatchPlanResolved: ({ batches, reason }) => {
-            batchTotalLive = Math.max(1, batches.length);
-            setProgress((prev) => ({
-              ...prev,
-              current: 0,
-              total: batchTotalLive,
-              status: "running",
-            }));
-            if (reason === "legacy_fallback") {
-              setParseOverlay((p) => ({
-                ...p,
-                log: [
-                  ...p.log,
-                  `${timeStamp()} — Retrying vision with legacy windows (${batches.length} request${batches.length === 1 ? "" : "s"}, 10+overlap2)`,
-                ].slice(-16),
-              }));
-            }
-          },
-          onItemsExtracted: (items, meta) => {
-            extractedSoFar += items.length;
-            setProgress({
-              current: meta.batchIndex + 1,
-              total: batchTotalLive,
-              status: "running",
-            });
-            if (parseOutputMode === "quiz") {
-              const qs = items
-                .filter((it): it is QuizVisionItem => it.kind === "quiz")
-                .map((it) => quizVisionItemToQuestion(it));
-              setQuestions((prev) => [...prev, ...qs]);
-            }
-            setParseOverlay((p) => ({
-              ...p,
-              extractedCount: extractedSoFar,
-              log: [
-                ...p.log,
-                `${timeStamp()} — Batch ${meta.batchIndex + 1}/${batchTotalLive} (p.${meta.startPage}–${meta.endPage}) · +${items.length} item${items.length === 1 ? "" : "s"}${meta.cacheHit ? " · cache" : ""} · ~${extractedSoFar} raw (deduped at end)`,
-              ].slice(-16),
-            }));
-          },
-        });
-
-        return await finalizeVisionBatchParseResult(
+        const finalResult = await finalizeVisionBatchParseResult(
           batchResult,
           controller,
           ocrForMapping,
           activePdfFile,
         );
+
+        // Progress: Completion stage
+        if (!controller.signal.aborted) {
+          setParseOverlay((p) => ({
+            ...p,
+            log: [
+              ...p.log,
+              `${timeStamp()} — Done! Redirecting to review...`,
+            ],
+          }));
+        }
+
+        return finalResult;
       }
 
+      // Non-product surfaces may still support sequential attach parsing.
+      const attachEffective =
+        effectiveAttachPageImage && studySetId.trim().length > 0;
       const { result, attachEffective: attachSeq } =
         await runVisionSequentialWithUi(
           pages,
@@ -1429,7 +1571,7 @@ export const AiParseSection = forwardRef<
       return await finalizeVisionParseResult(
         result,
         pages,
-        attachSeq,
+        attachSeq && attachEffective,
         controller,
         ocrForMapping,
         activePdfFile,
@@ -1483,13 +1625,18 @@ export const AiParseSection = forwardRef<
     provider,
     modelInput,
     studySetId,
-    attachPageImage,
+    effectiveAttachPageImage,
     parseOutputMode,
     urlInput,
     runRenderPagesAndOptionalOcr,
     runVisionSequentialWithUi,
     finalizeVisionParseResult,
     finalizeVisionBatchParseResult,
+    isFlashcardParse,
+    isQuizParse,
+    isProductSurface,
+    resolvedFlashcardConfig,
+    batchOnlyVisionParse,
   ]);
 
   const handleLayoutAwareParse =
@@ -1501,6 +1648,13 @@ export const AiParseSection = forwardRef<
           fatalError: null,
           questions: [],
         };
+      }
+
+      if (parseOutputMode === "flashcard") {
+        pipelineLog("VISION", "flashcard-guard", "info", "layout parse blocked; using vision batch", {
+          studySetId: studySetId.trim() || "(empty)",
+        });
+        return handleVisionParse();
       }
 
       setError(null);
@@ -1666,6 +1820,7 @@ export const AiParseSection = forwardRef<
       runVisionSequentialWithUi,
       finalizeVisionParseResult,
       runLayoutChunkPipelineFromPrepared,
+      parseOutputMode,
     ]);
 
   const handleHybridParse = useCallback(async (): Promise<ParseRunResult> => {
@@ -1676,6 +1831,13 @@ export const AiParseSection = forwardRef<
         fatalError: null,
         questions: [],
       };
+    }
+
+    if (parseOutputMode === "flashcard") {
+      pipelineLog("VISION", "flashcard-guard", "info", "hybrid parse blocked; using vision batch", {
+        studySetId: studySetId.trim() || "(empty)",
+      });
+      return handleVisionParse();
     }
 
     setError(null);
@@ -1865,6 +2027,7 @@ export const AiParseSection = forwardRef<
     runVisionSequentialWithUi,
     finalizeVisionParseResult,
     runLayoutChunkPipelineFromPrepared,
+    parseOutputMode,
   ]);
 
   const runUnifiedParseInternal =
@@ -1982,8 +2145,12 @@ export const AiParseSection = forwardRef<
        * when executed inside the same invoked parse for Fast/Hybrid chunk path.
        */
       const runWallT0 = performance.now();
+      // Strict product lanes: quiz + flashcard are vision-batch lanes.
+      // Do not route quiz into hybrid/layout/chunk parse families.
       let routed: ParseRunResult;
-      if (parseStrategy === "accurate") {
+      if (parseOutputMode === "flashcard" || parseOutputMode === "quiz") {
+        routed = await handleVisionParse();
+      } else if (parseStrategy === "accurate") {
         routed = await handleVisionParse();
       } else if (parseStrategy === "hybrid") {
         routed = await handleHybridParse();
@@ -2011,6 +2178,7 @@ export const AiParseSection = forwardRef<
       handleVisionParse,
       handleHybridParse,
       handleLayoutAwareParse,
+      parseOutputMode,
     ]);
 
   useImperativeHandle(
@@ -2023,7 +2191,7 @@ export const AiParseSection = forwardRef<
   );
 
   useEffect(() => {
-    if (!isEmbedded || !autoStartWhenDraftEmpty) {
+    if (!isEmbedded || !autoStartWhenBankEmpty) {
       return;
     }
     const key = autoStartResetKey ?? "default";
@@ -2058,7 +2226,7 @@ export const AiParseSection = forwardRef<
     })();
   }, [
     isEmbedded,
-    autoStartWhenDraftEmpty,
+    autoStartWhenBankEmpty,
     autoStartResetKey,
     questions.length,
     isRunning,
@@ -2091,7 +2259,9 @@ export const AiParseSection = forwardRef<
       : VISION_MAX_PAGES_DEFAULT;
 
   const attachEffectiveForUi =
-    attachPageImage && studySetId.trim().length > 0;
+    !isFlashcardParse &&
+    attachPageImage &&
+    studySetId.trim().length > 0;
 
   const showInlineProgress = !isEmbedded && isRunning;
 
@@ -2120,6 +2290,7 @@ export const AiParseSection = forwardRef<
             .
           </p>
           {isProductSurface ? (
+            isFlashcardParse ? null : (
             <details className="rounded-lg border border-border bg-muted/20 p-3">
               <summary className="cursor-pointer text-sm font-medium text-foreground">
                 Advanced
@@ -2134,24 +2305,33 @@ export const AiParseSection = forwardRef<
                 <AiParseEstimatePanel estimate={parseEstimate} />
               </div>
             </details>
+            )
           ) : (
             <>
-              <AiParsePreferenceToggles
-                attachCheckboxId={attachCheckboxId}
-                ocrCheckboxId={ocrCheckboxId}
-                attachPageImage={attachPageImage}
-                enableOcr={enableOcr}
-                onAttachChange={(e) =>
-                  setAttachPageImagePreference(e.target.checked)
-                }
-                onOcrChange={(e) => setEnableOcrPreference(e.target.checked)}
-              />
-              <AiParseParseStrategyPanel
-                parseStrategy={parseStrategy}
-                parseStrategyGroupId={parseStrategyGroupId}
-                onSelectStrategy={setParseStrategyPreference}
-                documentHint={documentHint}
-              />
+              {!isFlashcardParse ? (
+                <>
+                  <AiParsePreferenceToggles
+                    attachCheckboxId={attachCheckboxId}
+                    ocrCheckboxId={ocrCheckboxId}
+                    attachPageImage={attachPageImage}
+                    enableOcr={enableOcr}
+                    showAttach={!batchOnlyVisionParse}
+                    onAttachChange={(e) =>
+                      setAttachPageImagePreference(e.target.checked)
+                    }
+                    onOcrChange={(e) => setEnableOcrPreference(e.target.checked)}
+                  />
+                  <AiParseParseStrategyPanel
+                    parseStrategy={parseStrategy}
+                    parseStrategyGroupId={parseStrategyGroupId}
+                    onSelectStrategy={setParseStrategyPreference}
+                    documentHint={documentHint}
+                  />
+                </>
+              ) : null}
+              {!isProductSurface && isFlashcardParse ? (
+                <AiParseEstimatePanel estimate={parseEstimate} />
+              ) : null}
             </>
           )}
         </>
@@ -2159,6 +2339,7 @@ export const AiParseSection = forwardRef<
         isEmbedded && isProductSurface ? null : (
         <div className="space-y-3">
           {isProductSurface ? (
+            isFlashcardParse ? null : (
             <details className="rounded-lg border border-border bg-muted/20 p-3">
               <summary className="cursor-pointer text-sm font-medium text-foreground">
                 Advanced
@@ -2173,24 +2354,30 @@ export const AiParseSection = forwardRef<
                 <AiParseEstimatePanel estimate={parseEstimate} />
               </div>
             </details>
+            )
           ) : (
             <>
-              <AiParsePreferenceToggles
-                attachCheckboxId={attachCheckboxId}
-                ocrCheckboxId={ocrCheckboxId}
-                attachPageImage={attachPageImage}
-                enableOcr={enableOcr}
-                onAttachChange={(e) =>
-                  setAttachPageImagePreference(e.target.checked)
-                }
-                onOcrChange={(e) => setEnableOcrPreference(e.target.checked)}
-              />
-              <AiParseParseStrategyPanel
-                parseStrategy={parseStrategy}
-                parseStrategyGroupId={parseStrategyGroupId}
-                onSelectStrategy={setParseStrategyPreference}
-                documentHint={documentHint}
-              />
+              {!isFlashcardParse ? (
+                <>
+                  <AiParsePreferenceToggles
+                    attachCheckboxId={attachCheckboxId}
+                    ocrCheckboxId={ocrCheckboxId}
+                    attachPageImage={attachPageImage}
+                    enableOcr={enableOcr}
+                    showAttach={!batchOnlyVisionParse}
+                    onAttachChange={(e) =>
+                      setAttachPageImagePreference(e.target.checked)
+                    }
+                    onOcrChange={(e) => setEnableOcrPreference(e.target.checked)}
+                  />
+                  <AiParseParseStrategyPanel
+                    parseStrategy={parseStrategy}
+                    parseStrategyGroupId={parseStrategyGroupId}
+                    onSelectStrategy={setParseStrategyPreference}
+                    documentHint={documentHint}
+                  />
+                </>
+              ) : null}
               <AiParseEstimatePanel estimate={parseEstimate} />
             </>
           )}
@@ -2221,17 +2408,16 @@ export const AiParseSection = forwardRef<
       {showInlineProgress ? (
         <div className="space-y-2" aria-live="polite">
           <p className="text-sm font-medium text-primary">
+            {/* Quiz and flashcard product lanes never reach ocr/chunk modes (forceSkipOcr). */}
             {visionRendering
               ? "Rendering PDF pages as images…"
-              : parseMode === "ocr"
-                ? isProductSurface
-                  ? `Reading document… ${progress.current} / ${progress.total} pages`
-                  : `OCR text extraction… ${progress.current} / ${progress.total} pages`
-                : parseMode === "chunk"
-                  ? isProductSurface
-                    ? `Analyzing document… ${progress.current} / ${progress.total}`
-                    : `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
-                  : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
+              : isProductSurface || parseOutputMode === "quiz"
+                ? `Parsing with vision… ${progress.current} / ${progress.total} steps`
+                : parseMode === "ocr"
+                  ? `OCR text extraction… ${progress.current} / ${progress.total} pages`
+                  : parseMode === "chunk"
+                    ? `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
+                    : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
           </p>
           {!visionRendering && progress.total > 0 ? (
             <Progress
@@ -2247,17 +2433,16 @@ export const AiParseSection = forwardRef<
       {isEmbedded && isRunning && !suppressEmbeddedRunningProgress ? (
         <div className="space-y-2" aria-live="polite">
           <p className="text-sm font-medium text-primary">
+            {/* Quiz and flashcard product lanes never reach ocr/chunk modes (forceSkipOcr). */}
             {visionRendering
               ? "Rendering PDF pages as images…"
-              : parseMode === "ocr"
-                ? isProductSurface
-                  ? `Reading document… ${progress.current} / ${progress.total} pages`
-                  : `OCR text extraction… ${progress.current} / ${progress.total} pages`
-                : parseMode === "chunk"
-                  ? isProductSurface
-                    ? `Analyzing document… ${progress.current} / ${progress.total}`
-                    : `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
-                  : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
+              : isProductSurface || parseOutputMode === "quiz"
+                ? `Parsing with vision… ${progress.current} / ${progress.total} steps`
+                : parseMode === "ocr"
+                  ? `OCR text extraction… ${progress.current} / ${progress.total} pages`
+                  : parseMode === "chunk"
+                    ? `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
+                    : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
           </p>
           {!visionRendering && progress.total > 0 ? (
             <Progress

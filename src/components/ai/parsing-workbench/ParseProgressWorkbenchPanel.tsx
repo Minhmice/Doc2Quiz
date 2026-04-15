@@ -284,7 +284,7 @@ export function ParseProgressWorkbenchPanel({
         </CardHeader>
       ) : null}
 
-      <CardContent className="relative space-y-8 d2q-technical-grid px-6 py-8">
+      <CardContent className="relative space-y-8 px-6 py-8">
         <div className="mx-auto max-w-2xl space-y-3">
           {indeterminate || pct === null ? (
             <div className="flex h-4 w-full gap-0.5 overflow-hidden rounded-full bg-muted p-1">

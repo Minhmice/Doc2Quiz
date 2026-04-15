@@ -2,7 +2,20 @@
  * Vision-first batch parse: prefers **fewest** OpenAI-compatible chat requests
  * (`min_requests`: up to `VISION_MAX_PAGES_DEFAULT` images, overlap 0) with
  * **legacy 10+overlap2** fallback when a single full-document batch fails.
+ *
+ * Lane contracts (non-negotiable):
+ *   QUIZ LANE (mode === "quiz"):
+ *     - Vision-only: PDF pages are rendered to images and sent to a multimodal model.
+ *     - Question extraction only, strict MCQ schema (QuizVisionItem[]).
+ *     - No flashcards produced; no OCR or text-chunk path.
+ *
+ *   FLASHCARD LANE (mode === "flashcard"):
+ *     - Vision-only: theory/concept extraction, strict flashcard schema (FlashcardVisionItem[]).
+ *     - No MCQ or quiz-style items produced.
+ *
+ * These lanes MUST NOT cross — no coercing flashcard→quiz or quiz→flashcard.
  */
+
 
 import { FatalParseError, isAbortError } from "@/lib/ai/errors";
 import { parseVisionFlashcardResponse } from "@/lib/ai/parseVisionFlashcardResponse";
@@ -38,7 +51,7 @@ import {
 } from "@/lib/ai/visionPrompts";
 import {
   primaryVisionImageUrlForUpstream,
-  stageVisionDataUrlForUpstream,
+  stageVisionDataUrlsBatch,
 } from "@/lib/ai/stageVisionDataUrl";
 import { resolveChatApiUrl, resolveModelId } from "@/lib/ai/parseChunk";
 import {
@@ -52,14 +65,35 @@ import type {
   VisionParseBenchmark,
   VisionParseItem,
 } from "@/types/visionParse";
+import type { FlashcardGenerationConfig } from "@/types/flashcardGeneration";
+import { normalizeFlashcardGenerationConfig } from "@/types/flashcardGeneration";
 export type VisionForwardProvider = "openai" | "custom";
 
-async function primaryImageUrl(
-  dataUrl: string,
-  signal: AbortSignal,
-): Promise<string> {
-  const staged = await stageVisionDataUrlForUpstream(dataUrl, signal);
-  return primaryVisionImageUrlForUpstream(dataUrl, staged);
+function debugLog(
+  runId: string,
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>,
+) {
+  // #region agent log
+  fetch("http://127.0.0.1:7850/ingest/da1eed3c-ea0e-4aa4-8ecd-36a2ee99015c", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "2cfa66",
+    },
+    body: JSON.stringify({
+      sessionId: "2cfa66",
+      runId,
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 }
 
 function readChatCompletionContent(text: string): string {
@@ -132,6 +166,8 @@ async function postVisionBatchCompletion(options: {
       { role: "user", content: userContent },
     ],
     stream: false,
+    /** Cap completion size — reduces runaway generation and long wall times on slow routers. */
+    max_tokens: 16384,
   };
   if (useJsonObjectFormat) {
     body.response_format = { type: "json_object" };
@@ -171,6 +207,8 @@ export type RunVisionBatchSequentialOptions = {
     preset: VisionBatchingPreset;
     reason: "initial" | "legacy_fallback";
   }) => void;
+  /** Flashcard lane only — influences prompts; always paired with strict per-card `sourcePages`. */
+  flashcardGeneration?: FlashcardGenerationConfig;
 };
 
 export type RunVisionBatchSequentialResult = {
@@ -218,7 +256,13 @@ export async function runVisionBatchSequential(
     model,
     onItemsExtracted,
     onBatchPlanResolved,
+    flashcardGeneration: flashcardGenerationInput,
   } = opts;
+
+  const resolvedFlashGen =
+    mode === "flashcard"
+      ? normalizeFlashcardGenerationConfig(flashcardGenerationInput)
+      : undefined;
 
   const totalPagesLabel =
     pages.length === 0 ? 0 : Math.max(...pages.map((p) => p.pageIndex));
@@ -232,7 +276,8 @@ export async function runVisionBatchSequential(
 
   const activePreset = opts.batchingPreset ?? "min_requests";
   let batches = planVisionBatches(pages, activePreset);
-  let strictSourcePages = activePreset === "min_requests";
+  const flashcardLane = mode === "flashcard";
+  let strictSourcePages = flashcardLane || activePreset === "min_requests";
   let didLegacyFallback = false;
 
   onBatchPlanResolved?.({
@@ -269,7 +314,7 @@ export async function runVisionBatchSequential(
   const parseOptsFlashForBatch = (
     batch: PageBatch,
   ): ValidateVisionFlashcardOptions =>
-    strictSourcePages
+    flashcardLane || strictSourcePages
       ? {
           requireSourcePages: true,
           pageBounds: {
@@ -297,7 +342,13 @@ export async function runVisionBatchSequential(
         model: modelId,
       });
 
-      const cacheKey = await hashVisionBatch(batch.pages, mode);
+      const cacheKey = await hashVisionBatch(
+        batch.pages,
+        mode,
+        flashcardLane && resolvedFlashGen
+          ? JSON.stringify(resolvedFlashGen)
+          : undefined,
+      );
       const cached = await getCachedVisionBatchResult(cacheKey);
       const t0 = performance.now();
 
@@ -340,6 +391,7 @@ export async function runVisionBatchSequential(
               endPage: batch.endPage,
               totalPages: totalPagesLabel,
               requirePerItemSourcePages: strictSourcePages,
+              flashcardGeneration: resolvedFlashGen,
             }).length,
             batch.pages.length,
             200,
@@ -352,18 +404,31 @@ export async function runVisionBatchSequential(
       let batchItems: VisionParseItem[] | null = null;
       let lastErr: Error | null = null;
       let responseChars = 0;
+      let lastResponseText = "";
 
       for (let attempt = 0; attempt < MAX_BATCH_ATTEMPTS; attempt++) {
         if (signal.aborted) {
           break;
         }
         try {
+          const debugRunId = `${mode}-${Date.now()}-b${batch.batchIndex}-a${attempt + 1}`;
+          // #region agent log
+          debugLog(debugRunId, "H1", "runVisionBatchSequential.ts:attempt_start", "vision batch attempt start", {
+            mode,
+            batchIndex: batch.batchIndex,
+            attempt: attempt + 1,
+            startPage: batch.startPage,
+            endPage: batch.endPage,
+            pageCount: batch.pages.length,
+          });
+          // #endregion
           const userText = buildVisionUserPrompt({
             mode,
             startPage: batch.startPage,
             endPage: batch.endPage,
             totalPages: totalPagesLabel,
             requirePerItemSourcePages: strictSourcePages,
+            flashcardGeneration: resolvedFlashGen,
           });
 
           visionPipelineEvent({
@@ -373,9 +438,23 @@ export async function runVisionBatchSequential(
             attempt: attempt + 1,
           });
 
-          const imageUrls = await Promise.all(
-            batch.pages.map((p) => primaryImageUrl(p.dataUrl, signal)),
+          const stagedBatch = await stageVisionDataUrlsBatch(
+            batch.pages.map((p) => p.dataUrl),
+            signal,
           );
+          const imageUrls = batch.pages.map((p, i) =>
+            primaryVisionImageUrlForUpstream(p.dataUrl, stagedBatch[i]),
+          );
+
+          if (isPipelineVerbose()) {
+            const stagedCount = stagedBatch.filter((s) => s.staged).length;
+            visionPipelineEvent({
+              stage: "batch_staging_complete",
+              mode,
+              itemCount: stagedCount,
+              message: `Staged ${stagedCount}/${imageUrls.length} images via batch`,
+            });
+          }
 
           let res = await postVisionBatchCompletion({
             forwardProvider,
@@ -389,6 +468,7 @@ export async function runVisionBatchSequential(
             useJsonObjectFormat: true,
           });
           let text = await res.text();
+          lastResponseText = text;
 
           if (res.status === 400) {
             res = await postVisionBatchCompletion({
@@ -403,6 +483,7 @@ export async function runVisionBatchSequential(
               useJsonObjectFormat: false,
             });
             text = await res.text();
+            lastResponseText = text;
           }
 
           if (res.status === 401) {
@@ -421,11 +502,36 @@ export async function runVisionBatchSequential(
             lastErr = new Error(
               proxyMsg ?? describeBadAiResponse(res.status, text),
             );
+            // #region agent log
+            debugLog(`err-${mode}-${batch.batchIndex}-${attempt + 1}-${Date.now()}`, "H1", "runVisionBatchSequential.ts:upstream_not_ok", "upstream returned non-ok", {
+              mode,
+              batchIndex: batch.batchIndex,
+              attempt: attempt + 1,
+              status: res.status,
+              textPreview: text.slice(0, 240),
+              error: lastErr.message,
+            });
+            // #endregion
             continue;
           }
 
           const content = readChatCompletionContent(text);
           responseChars = content.length;
+          
+          // Extract actual token usage from API response (OpenAI format)
+          let actualTokens: number | undefined;
+          try {
+            const json = JSON.parse(text) as {
+              usage?: { total_tokens?: number };
+            };
+            actualTokens = json.usage?.total_tokens;
+          } catch {
+            // ignore parse errors
+          }
+          
+          // QUIZ LANE: parseVisionQuizResponse returns QuizVisionItem[] only.
+          // FLASHCARD LANE: parseVisionFlashcardResponse returns FlashcardVisionItem[] only.
+          // These lanes must not cross — no coercing flashcard→quiz or quiz→flashcard.
           const parsed =
             mode === "flashcard"
               ? parseVisionFlashcardResponse(
@@ -434,12 +540,43 @@ export async function runVisionBatchSequential(
                 )
               : parseVisionQuizResponse(content, parseOptsForBatch(batch));
           batchItems = normalizeParsedBatchItems(parsed, batch, strictSourcePages);
+          
+          // Calculate estimated tokens for this batch
+          const estimatedTokens = estimateBatchTokens(
+            userText.length,
+            batch.pages.length,
+            responseChars,
+          );
+          const tokensPerImage = estimatedTokens / batch.pages.length;
+          
+          // Log actual vs estimated tokens if available
+          if (isPipelineVerbose() && actualTokens) {
+            visionPipelineEvent({
+              stage: "batch_request_done",
+              mode,
+              batchIndex: batch.batchIndex,
+              message: `Actual usage: ${actualTokens} tokens (estimated: ${estimatedTokens})`,
+            });
+          }
+          
           visionPipelineEvent({
             stage: "batch_parse_success",
             mode,
             batchIndex: batch.batchIndex,
             itemCount: batchItems.length,
           });
+          
+          // Warn if token count is suspiciously low
+          if (tokensPerImage < 200) {
+            visionPipelineEvent({
+              stage: "batch_parse_success",
+              mode,
+              batchIndex: batch.batchIndex,
+              itemCount: batchItems.length,
+              message: `⚠️ Low token count: ~${Math.round(tokensPerImage)} tokens/image (expected ~850+). Response may be truncated.`,
+            });
+          }
+          
           break;
         } catch (e) {
           if (e instanceof FatalParseError) {
@@ -449,13 +586,42 @@ export async function runVisionBatchSequential(
             throw e;
           }
           lastErr = e instanceof Error ? e : new Error(String(e));
+          
+          // Include response size hint if available
+          const errorDetail = responseChars > 0
+            ? `${lastErr.message} (response: ${responseChars} chars)`
+            : lastErr.message;
+          
           visionPipelineEvent({
             stage: "batch_parse_error",
             mode,
             batchIndex: batch.batchIndex,
             attempt: attempt + 1,
-            error: lastErr.message,
+            error: errorDetail,
+            message: `Attempt ${attempt + 1}/${MAX_BATCH_ATTEMPTS} failed: ${errorDetail}`,
           });
+          
+          // If it's a parse error and we have response text, log preview
+          if (lastErr.message.includes("Invalid JSON") && lastResponseText && lastResponseText.length > 0) {
+            const preview = lastResponseText.length > 300 
+              ? lastResponseText.slice(0, 300) + "..." 
+              : lastResponseText;
+            visionPipelineEvent({
+              stage: "batch_parse_error",
+              mode,
+              batchIndex: batch.batchIndex,
+              message: `Response preview: ${preview.replace(/\s+/g, " ")}`,
+            });
+            // #region agent log
+            debugLog(`json-${mode}-${batch.batchIndex}-${attempt + 1}-${Date.now()}`, "H2", "runVisionBatchSequential.ts:invalid_json_preview", "invalid json response preview", {
+              mode,
+              batchIndex: batch.batchIndex,
+              attempt: attempt + 1,
+              responseChars: lastResponseText.length,
+              preview: preview.replace(/\s+/g, " "),
+            });
+            // #endregion
+          }
         }
       }
 
@@ -463,6 +629,31 @@ export async function runVisionBatchSequential(
 
       if (!batchItems) {
         failedBatches += 1;
+        
+        // Emit final error to UI so user knows WHY it failed
+        const errorMsg = lastErr 
+          ? lastErr.message 
+          : "Batch failed after all retry attempts";
+        
+        visionPipelineEvent({
+          stage: "batch_parse_error",
+          mode,
+          batchIndex: batch.batchIndex,
+          itemCount: 0,
+          error: errorMsg,
+          message: `⚠️ Batch ${batch.batchIndex} (pages ${batch.startPage}-${batch.endPage}) FAILED: ${errorMsg}`,
+        });
+        // #region agent log
+        debugLog(`final-${mode}-${batch.batchIndex}-${Date.now()}`, "H3", "runVisionBatchSequential.ts:batch_failed_final", "batch failed after retries", {
+          mode,
+          batchIndex: batch.batchIndex,
+          startPage: batch.startPage,
+          endPage: batch.endPage,
+          failedBatches,
+          error: errorMsg,
+        });
+        // #endregion
+        
         acc.recordBatch({
           batchIndex: batch.batchIndex,
           startPage: batch.startPage,
@@ -497,6 +688,7 @@ export async function runVisionBatchSequential(
         endPage: batch.endPage,
         totalPages: totalPagesLabel,
         requirePerItemSourcePages: strictSourcePages,
+        flashcardGeneration: resolvedFlashGen,
       });
       acc.recordBatch({
         batchIndex: batch.batchIndex,
@@ -525,6 +717,7 @@ export async function runVisionBatchSequential(
 
   let systemText = buildVisionSystemPrompt(mode, {
     requirePerItemSourcePages: strictSourcePages,
+    flashcardGeneration: resolvedFlashGen,
   });
   await processBatchWave(batches, systemText);
 
@@ -534,6 +727,7 @@ export async function runVisionBatchSequential(
     planVisionBatches(pages, "min_requests").length === 1;
 
   if (
+    !flashcardLane &&
     minPlanSingleWindow &&
     !didLegacyFallback &&
     allItems.length === 0 &&
@@ -570,10 +764,14 @@ export async function runVisionBatchSequential(
     mode === "flashcard" ? it.kind === "flashcard" : it.kind === "quiz",
   );
   const deduped = dedupeVisionItems(modeFiltered, mode);
+  const removedCount = modeFiltered.length - deduped.length;
   visionPipelineEvent({
     stage: "dedupe_done",
     mode,
     itemCount: deduped.length,
+    message: removedCount > 0 
+      ? `Removed ${removedCount} duplicate${removedCount === 1 ? "" : "s"}, kept ${deduped.length} unique item${deduped.length === 1 ? "" : "s"}`
+      : `No duplicates found, kept all ${deduped.length} item${deduped.length === 1 ? "" : "s"}`,
   });
 
   const totalLatencyMs = performance.now() - tParse0;
@@ -603,7 +801,12 @@ export async function runVisionBatchSequential(
     latencyMs: totalLatencyMs,
     itemCount: deduped.length,
   });
-  visionPipelineEvent({ stage: "parse_done", mode, itemCount: deduped.length });
+  visionPipelineEvent({
+    stage: "parse_done",
+    mode,
+    itemCount: deduped.length,
+    message: `Parse complete: ${deduped.length} ${mode === "flashcard" ? "flashcard" : "question"}${deduped.length === 1 ? "" : "s"}`,
+  });
 
   const benchmarkReportText = formatVisionBenchmarkReport(benchmark);
   if (isPipelineVerbose()) {

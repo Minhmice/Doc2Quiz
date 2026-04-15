@@ -140,16 +140,19 @@ export function CommandPalette() {
             <CommandGroup heading="Current set">
               <CommandItem onSelect={() => go(reviewHref)}>
                 <BookOpenIcon />
-                Edit draft
+                Open editor
               </CommandItem>
-              <CommandItem onSelect={() => go(quizPlay(studySetId))}>
-                <BookOpenIcon />
-                Take quiz
-              </CommandItem>
-              <CommandItem onSelect={() => go(flashcardsPlay(studySetId))}>
-                <LayersIcon />
-                Flashcards
-              </CommandItem>
+              {contentKind === "flashcards" ? (
+                <CommandItem onSelect={() => go(flashcardsPlay(studySetId))}>
+                  <LayersIcon />
+                  Flashcards
+                </CommandItem>
+              ) : contentKind === "quiz" ? (
+                <CommandItem onSelect={() => go(quizPlay(studySetId))}>
+                  <BookOpenIcon />
+                  Take quiz
+                </CommandItem>
+              ) : null}
             </CommandGroup>
           </>
         ) : null}

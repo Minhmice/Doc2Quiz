@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import type { Transition } from "framer-motion";
 import { Button } from "@/components/buttons/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,16 +15,37 @@ import {
   dashboardHeroFirstSetLinkClassName,
   dashboardHeroOutlineCreateLinkClassName,
 } from "@/lib/dashboard/createSetCtaLinks";
+import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { cn } from "@/lib/utils";
 
-const ROTATE_MS = 3000;
+/** Target wall time for intro (stagger ramp + per-glyph tween). */
+const HEADLINE_OPEN_TOTAL_SEC = 2;
+/** Per-glyph intro motion after its stagger delay (tween). */
+const HEADLINE_INTRO_TWEEN_SEC = 0.38;
+/** Stagger ramp budget so last glyph starts at ~(OPEN_TOTAL - TWEEN). */
+const HEADLINE_OPEN_STAGGER_RAMP_SEC =
+  HEADLINE_OPEN_TOTAL_SEC - HEADLINE_INTRO_TWEEN_SEC;
+
+const HEADLINE_HOLD_MS = 1000;
+
+/** Reverse vertical-cut “out” — shorter wall so the next line can appear quickly. */
+const HEADLINE_EXIT_TOTAL_SEC = 0.85;
+const HEADLINE_EXIT_TWEEN_SEC = 0.16;
+const HEADLINE_EXIT_STAGGER_RAMP_SEC =
+  HEADLINE_EXIT_TOTAL_SEC - HEADLINE_EXIT_TWEEN_SEC;
+
+const HEADLINE_INTRO_TRANSITION: Transition = {
+  type: "tween",
+  duration: HEADLINE_INTRO_TWEEN_SEC,
+  ease: [0.22, 1, 0.36, 1],
+};
 
 export type DashboardHeroProps = Readonly<{
   totalSets: number;
-  setsWithDrafts: number;
+  setsNeedingEdits: number;
   setsWithApproved: number;
   resumePlayHref: string | null;
-  reviewDraftHref: string | null;
+  editSetHref: string | null;
   createHref: string;
 }>;
 
@@ -40,42 +62,39 @@ function useRotatingGreetingLine(greetingName: string) {
 
   const [index, setIndex] = useState(0);
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setIndex((current) => {
-        const len = lines.length;
-        if (len <= 1) {
-          return 0;
-        }
-        let next = Math.floor(Math.random() * len);
-        while (next === current) {
-          next = Math.floor(Math.random() * len);
-        }
-        return next;
-      });
-    }, ROTATE_MS);
-    return () => window.clearInterval(id);
+  const rotateToNextLine = useCallback(() => {
+    setIndex((current) => {
+      const len = lines.length;
+      if (len <= 1) {
+        return 0;
+      }
+      let next = Math.floor(Math.random() * len);
+      while (next === current) {
+        next = Math.floor(Math.random() * len);
+      }
+      return next;
+    });
   }, [lines]);
 
-  return { line: lines[index] ?? lines[0] };
+  return { line: lines[index] ?? lines[0], rotateToNextLine };
 }
 
 function DisplayNamePromptRow() {
   const { setDisplayName, dismissPrompt, needsDisplayNamePrompt } =
     useDisplayName();
-  const [draft, setDraft] = useState("");
+  const [nameInput, setNameInput] = useState("");
 
   if (!needsDisplayNamePrompt) {
     return null;
   }
 
   const save = () => {
-    const trimmed = draft.trim().slice(0, DISPLAY_NAME_MAX_LEN);
+    const trimmed = nameInput.trim().slice(0, DISPLAY_NAME_MAX_LEN);
     if (!trimmed) {
       return;
     }
     setDisplayName(trimmed);
-    setDraft("");
+    setNameInput("");
   };
 
   return (
@@ -91,8 +110,8 @@ function DisplayNamePromptRow() {
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Input
           maxLength={DISPLAY_NAME_MAX_LEN}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
           placeholder="Your display name"
           aria-label="Display name"
           className="h-10 max-w-md sm:flex-1"
@@ -107,7 +126,7 @@ function DisplayNamePromptRow() {
           <Button type="button" variant="outline" size="sm" onClick={dismissPrompt}>
             Skip
           </Button>
-          <Button type="button" size="sm" onClick={save} disabled={!draft.trim()}>
+          <Button type="button" size="sm" onClick={save} disabled={!nameInput.trim()}>
             Save
           </Button>
         </div>
@@ -118,22 +137,45 @@ function DisplayNamePromptRow() {
 
 export function DashboardHero({
   totalSets,
-  setsWithDrafts,
+  setsNeedingEdits,
   setsWithApproved,
   resumePlayHref,
-  reviewDraftHref,
+  editSetHref,
   createHref,
 }: DashboardHeroProps) {
   const { displayName } = useDisplayName();
   const greetingName = displayName.trim() || "learner";
-  const { line } = useRotatingGreetingLine(greetingName);
+  const { line, rotateToNextLine } = useRotatingGreetingLine(greetingName);
   const isEmptyLibrary = totalSets === 0;
+
+  const headlineStaggerDuration = useMemo(() => {
+    const n = line.length;
+    if (n <= 1) {
+      return 0.2;
+    }
+    return HEADLINE_OPEN_STAGGER_RAMP_SEC / (n - 1);
+  }, [line]);
 
   return (
     <section className="flex flex-col items-center justify-between gap-8 rounded-lg border border-border/20 bg-card p-8 shadow-sm md:flex-row">
       <div className="max-w-xl text-center md:text-left">
-        <h2 className="mb-2 min-h-10 font-heading text-3xl font-extrabold tracking-tight text-accent-foreground sm:min-h-12 sm:text-4xl">
-          <span className="block">{line}</span>
+        <h2 className="mb-2 min-h-10 sm:min-h-12">
+          <span className="inline-block w-full max-w-full md:block">
+            <VerticalCutReveal
+              key={line}
+              splitBy="characters"
+              staggerDuration={headlineStaggerDuration}
+              transition={HEADLINE_INTRO_TRANSITION}
+              postRevealExitReverse
+              postRevealPolishDelayMs={HEADLINE_HOLD_MS}
+              exitReverseDurationSeconds={HEADLINE_EXIT_TWEEN_SEC}
+              exitReverseStaggerSpreadSeconds={HEADLINE_EXIT_STAGGER_RAMP_SEC}
+              onExitReverseComplete={rotateToNextLine}
+              className="justify-center font-heading text-3xl font-extrabold tracking-tight text-accent-foreground md:justify-start sm:text-4xl"
+            >
+              {line}
+            </VerticalCutReveal>
+          </span>
         </h2>
         <div className="mb-1 flex items-center justify-center gap-2 md:justify-start">
           <span
@@ -146,10 +188,10 @@ export function DashboardHero({
           <p className="text-sm font-medium text-muted-foreground sm:text-base">
             You have{" "}
             <span className="font-bold text-primary">
-              {setsWithDrafts}{" "}
-              {setsWithDrafts === 1 ? "set" : "sets"}
+              {setsNeedingEdits}{" "}
+              {setsNeedingEdits === 1 ? "set" : "sets"}
             </span>{" "}
-            with drafts to review and{" "}
+            with new items ready to edit and{" "}
             <span className="font-bold text-[color:var(--d2q-blue)]">
               {setsWithApproved}{" "}
               {setsWithApproved === 1 ? "set" : "sets"}
@@ -177,12 +219,12 @@ export function DashboardHero({
                 Resume latest
               </Link>
             ) : null}
-            {reviewDraftHref ? (
+            {editSetHref ? (
               <Link
-                href={reviewDraftHref}
+                href={editSetHref}
                 className={dashboardHeroBluePrimaryLinkClassName}
               >
-                Review draft
+                Edit latest set
               </Link>
             ) : null}
             <Link

@@ -8,8 +8,8 @@ import type { FlashcardVisionItem } from "@/types/visionParse";
 
 /**
  * Parse assistant JSON for flashcard mode.
- * Schema: { "cards": [ { "front", "back" } ] } (also accepts `flashcards` array).
- * Never use `questionsFromAssistantContent` here.
+ * Schema: { "cards": [ { "front", "back", "sourcePages" } ] } when strict validation is on
+ * (also accepts `flashcards` array). Never use `questionsFromAssistantContent` here.
  */
 export function parseVisionFlashcardResponse(
   raw: string,

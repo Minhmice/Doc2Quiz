@@ -12,9 +12,9 @@ export type QuestionPreviewCardProps = Readonly<{
   question: Question;
   index: number;
   onSetCorrectIndex?: (questionId: string, index: 0 | 1 | 2 | 3) => void;
-  /** Extra classes on the outer Card (e.g. import draft stream accent). */
+  /** Extra classes on the outer Card (e.g. import stream accent). */
   cardClassName?: string;
-  /** Applies the import-draft shell (review-like header + accent) when true. */
+  /** Applies the import shell (review-like header + accent) when true. */
   variant?: "default" | "import";
 }>;
 
@@ -66,7 +66,7 @@ export function QuestionPreviewCard({
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            Draft
+            Imported
           </Badge>
           <MappingQualityBadge question={q} />
         </div>
@@ -99,7 +99,7 @@ export function QuestionPreviewCard({
       <CardContent className="space-y-2 pt-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            Draft {i + 1}
+            Question {i + 1}
           </Badge>
           <MappingQualityBadge question={q} />
         </div>

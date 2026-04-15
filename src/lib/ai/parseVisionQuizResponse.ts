@@ -19,7 +19,16 @@ function extractQuestionsArray(raw: unknown): unknown[] {
   return [];
 }
 
-/** Parse assistant JSON text into quiz vision items (not `Question` rows). */
+/**
+ * Parse quiz JSON from vision model response.
+ * Strict: only accepts quiz schema (QuizVisionItem[]).
+ * Rejects any flashcard-shaped objects.
+ *
+ * Input: raw JSON string from the vision model (MCQ format).
+ * Output: QuizVisionItem[] — question, options (4 strings), correctIndex (0-3),
+ *         confidence, and optional sourcePages.
+ * Never produces flashcard objects; flashcard-shaped inputs are silently dropped.
+ */
 export function parseVisionQuizResponse(
   raw: string,
   parseOpts?: ValidateVisionQuizOptions,

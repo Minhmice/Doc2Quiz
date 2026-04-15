@@ -10,8 +10,15 @@ import {
 import { ensurePdfWorker } from "@/lib/pdf/pdfWorker";
 
 export const VISION_MAX_PAGES_DEFAULT = 20;
-export const VISION_MAX_WIDTH_DEFAULT = 1024;
-export const VISION_JPEG_QUALITY = 0.78;
+/** Max raster width (CSS px) before JPEG encode — keeps payloads bounded for vision APIs. */
+export const VISION_MAX_WIDTH_DEFAULT = 832;
+/**
+ * Max raster height (CSS px). Pages are only width-capped today; very tall scans
+ * can still produce huge canvases and multimodal timeouts (edge 524 ~125s).
+ */
+export const VISION_MAX_HEIGHT_DEFAULT = 1024;
+/** JPEG quality for vision rasterization — lower = smaller uploads / faster vision steps. */
+export const VISION_JPEG_QUALITY = 0.68;
 
 export type PageImageResult = {
   pageIndex: number;
@@ -27,6 +34,7 @@ export async function renderPdfPagesToImages(
     signal: AbortSignal;
     maxPages?: number;
     maxWidth?: number;
+    maxHeight?: number;
     jpegQuality?: number;
     /** Fires after each page is rasterized (for progress UI / thumbnails). */
     onPageRendered?: (
@@ -41,6 +49,7 @@ export async function renderPdfPagesToImages(
     signal,
     maxPages = VISION_MAX_PAGES_DEFAULT,
     maxWidth = VISION_MAX_WIDTH_DEFAULT,
+    maxHeight = VISION_MAX_HEIGHT_DEFAULT,
     jpegQuality = VISION_JPEG_QUALITY,
     onPageRendered,
   } = options;
@@ -50,6 +59,7 @@ export async function renderPdfPagesToImages(
       ...meta,
       maxPages,
       maxWidth,
+      maxHeight,
       jpegQuality,
     });
   }
@@ -102,8 +112,11 @@ export async function renderPdfPagesToImages(
         }
         const page = await pdf.getPage(i);
         const baseViewport = page.getViewport({ scale: 1 });
-        const scale =
-          baseViewport.width > maxWidth ? maxWidth / baseViewport.width : 1;
+        const scale = Math.min(
+          1,
+          maxWidth / baseViewport.width,
+          maxHeight / baseViewport.height,
+        );
         const viewport = page.getViewport({ scale });
 
         const canvas = document.createElement("canvas");
@@ -158,12 +171,14 @@ export async function renderSinglePdfPageToDataUrl(
   options?: {
     signal?: AbortSignal;
     maxWidth?: number;
+    maxHeight?: number;
     jpegQuality?: number;
   },
 ): Promise<string | null> {
   const meta = fileSummary(file);
   ensurePdfWorker();
   const maxWidth = options?.maxWidth ?? VISION_MAX_WIDTH_DEFAULT;
+  const maxHeight = options?.maxHeight ?? VISION_MAX_HEIGHT_DEFAULT;
   const jpegQuality = options?.jpegQuality ?? VISION_JPEG_QUALITY;
   const signal = options?.signal;
   if (signal?.aborted) {
@@ -189,8 +204,11 @@ export async function renderSinglePdfPageToDataUrl(
       }
       const page = await pdf.getPage(pageIndex);
       const baseViewport = page.getViewport({ scale: 1 });
-      const scale =
-        baseViewport.width > maxWidth ? maxWidth / baseViewport.width : 1;
+      const scale = Math.min(
+        1,
+        maxWidth / baseViewport.width,
+        maxHeight / baseViewport.height,
+      );
       const viewport = page.getViewport({ scale });
 
       const canvas = document.createElement("canvas");

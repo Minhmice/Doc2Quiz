@@ -1,89 +1,81 @@
 # External Integrations
 
-**Analysis Date:** 2026-04-11
+**Analysis Date:** 2026-04-14
 
-## Same-origin AI forward (browser → Next → vendor)
+## APIs & External Services
 
-**Purpose:** Avoid browser CORS for OpenAI-compatible chat, Anthropic Messages, or custom HTTPS gateways. Phase 19 consolidates BYOK into a **forward triple** (base URL, API key, model id) in `localStorage`, with one-time migration from legacy keys — see `src/lib/ai/forwardSettings.ts`, key constants in `src/types/question.ts`, and product notes in `docs/BYOK-forward-only.md`.
+**AI model providers (Bring-your-own-key, browser-owned):**
+- **Same-origin AI forward** — browser → Next Route Handler → vendor
+  - Implementation:
+    - Client: `src/lib/ai/sameOriginForward.ts` (`forwardAiPost`)
+    - Server: `src/app/api/ai/forward/route.ts`
+    - Settings/migration: `src/lib/ai/forwardSettings.ts` (persists a forward triple in `localStorage`)
+  - Supported providers (forward header behavior): `openai`, `anthropic`, `custom` (`src/app/api/ai/forward/route.ts`)
+  - Auth: **request body includes apiKey** (no server-side vendor keys by default)
+  - Target URL policy: `https:` allowed; `http:` allowed only for `localhost`/`127.0.0.1` (`src/app/api/ai/forward/route.ts`)
 
-**Client:** `src/lib/ai/sameOriginForward.ts` — `forwardAiPost()` POSTs JSON to `/api/ai/forward` with `provider` (`openai` | `anthropic` | `custom`), `targetUrl`, `apiKey`, and upstream `body`.
+## Data Storage
 
-**Server:** `src/app/api/ai/forward/route.ts` — validates provider, requires `targetUrl` + `apiKey`, allows `https:` or `http://localhost` / `http://127.0.0.1`, sets vendor headers (`Authorization: Bearer …` for OpenAI/custom; `x-api-key` + `anthropic-version` for Anthropic), `fetch`es upstream, returns upstream status/body.
+**Databases:**
+- **IndexedDB (browser local-first)** — `src/lib/db/studySetDb.ts`
+  - Name/version: `DB_NAME = "doc2quiz"`, `DB_VERSION = 6` (`src/types/studySet.ts`)
+  - Core stores: `meta`, `document`, `draft`, `approved`, `approvedFlashcards`, `media`, `parseProgress`, `ocr`, `quizSessions`, `studyWrongHistory` (`src/lib/db/studySetDb.ts`)
 
-**Downstream usage:** Text and multimodal parse paths (`src/lib/ai/parseChunk.ts`, `src/lib/ai/ocrAdapter.ts`, vision helpers, layout chunk parse) call through this hop. Declarative gating of which surfaces are allowed lives in `src/lib/ai/parseCapabilities.ts` (not a live model probe).
+**File Storage:**
+- **Optional Vercel Blob** (`@vercel/blob`) — vision image staging when `BLOB_READ_WRITE_TOKEN` is set
+  - POST: `src/app/api/ai/vision-staging/route.ts` (uploads with `put`)
+  - GET: `src/app/api/ai/vision-staging/[id]/route.ts` (redirects via `head`)
+  - Path naming: `visionStagingBlobPathname` (`src/lib/ai/visionStagingStore.ts`)
+- **In-memory staging fallback** — local dev / no token (`src/lib/ai/visionStagingStore.ts`)
+  - TTL: ~10 minutes; bounded entries; not multi-instance safe
 
-**Secrets:** Keys and URLs travel in the **request body** from client to Route Handler for forwarding — not loaded from server env for vendor auth (operator-owned BYOK). Do not commit secrets; `.env` files are local only.
+**Caching:**
+- **Client-side vision parse cache** — `src/lib/ai/visionParseCache.ts` (caches batch results keyed by batch hash; used by `src/lib/ai/runVisionBatchSequential.ts`)
 
-## Vision image staging (HTTPS URLs for gateways)
+## Authentication & Identity
 
-**POST:** `src/app/api/ai/vision-staging/route.ts` — accepts `{ dataUrl }`, decodes base64 (`node:buffer`), enforces `VISION_STAGING_MAX_BYTES` from `src/lib/ai/visionStagingStore.ts`, returns `{ url, id }`.
+**Auth Provider:**
+- Not implemented (no accounts). AI credentials are stored per-browser in `localStorage` (`src/lib/ai/forwardSettings.ts`) and sent through `POST /api/ai/forward`.
 
-**Behavior split:**
+## Monitoring & Observability
 
-- When `BLOB_READ_WRITE_TOKEN` is set — uploads bytes with `@vercel/blob` (`put`); returned `url` is provider-hosted HTTPS (multi-instance safe). Path naming via `visionStagingBlobPathname` in `src/lib/ai/visionStagingStore.ts`.
-- When token unset — `putVisionStaging` in-memory map; `url` is same-origin `…/api/ai/vision-staging/[id]` (dev default; not shared across serverless instances).
+**Error Tracking:**
+- Optional Sentry (`@sentry/nextjs`)
+  - Client init: `sentry.client.config.ts` (env: `NEXT_PUBLIC_SENTRY_DSN`)
+  - Server init: `sentry.server.config.ts` + `instrumentation.ts` (env: `SENTRY_DSN`)
 
-**GET:** `src/app/api/ai/vision-staging/[id]/route.ts` — serves staged bytes for in-memory ids.
+**Logs:**
+- Structured pipeline logging to console (`src/lib/logging/pipelineLogger.ts`)
 
-**Limits / ops:** Payload size cap on POST; unauthenticated surface — rate limiting and auth are backlog (see `README.md`). Public Blob objects are not auto-deleted by this app.
+## CI/CD & Deployment
 
-## Static test image route
+**Hosting:**
+- Not enforced in code. Optional Vercel-specific integration exists via `@vercel/blob` for image staging.
 
-**GET:** `src/app/api/ai/vision-test-image/route.ts` — fixed PNG from `src/lib/ai/visionTestImageData.ts` for connection and vision smoke tests.
+**CI Pipeline:**
+- Not detected in this pass (no repo-level CI config referenced here).
 
-## Optional server parse queue (Phase 15 scale mode)
+## Environment Configuration
 
-**Flag:** `src/lib/serverParse/env.ts` — `isServerParseQueueEnabled()` reads **`D2Q_SERVER_PARSE_ENABLED`** (`1` / `true`, case-insensitive). No `NEXT_PUBLIC_` variant; toggling stays a server decision.
+**Required env vars:**
+- None required for local-only usage if the user supplies AI settings in the UI (stored in `localStorage`).
 
-**Routes:**
+**Optional env vars (code-referenced):**
+- `BLOB_READ_WRITE_TOKEN` — enables public HTTPS staging for vision upstream (`src/app/api/ai/vision-staging/*`, `src/lib/ai/stageVisionDataUrl.ts`)
+- `D2Q_SERVER_PARSE_ENABLED` — exposes parse job API stubs (`src/lib/serverParse/env.ts`, `src/app/api/parse-jobs/*`)
+- `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` — enable Sentry (`sentry.*.config.ts`)
 
-- `src/app/api/parse-jobs/route.ts` — **GET** returns `{ enabled: false }` with **404** when flag off; when on, **200** with `{ enabled: true, version: "stub-15-02" }`. **POST** with flag off → **404** `{ enabled: false }`; when on → validates JSON, enforces `Content-Length` cap (`MAX_CONTENT_LENGTH` in file), returns **501** `{ error: "not_implemented", … }` (worker not wired).
-- `src/app/api/parse-jobs/[id]/route.ts` — **GET** with flag off → **404**; when on → **501** `{ error: "not_implemented", id }`.
+**Secrets location:**
+- Browser `localStorage` (AI forward triple), plus optional local `.env*` files for operator configuration. Do not commit secrets.
 
-**Types:** `src/types/parseJob.ts` — `ParseJobStatus`, `ParseJobSummary`, `ParseJobCreateResponse` for future client/worker contract.
+## Webhooks & Callbacks
 
-**Reserved env (not read by current routes):** `D2Q_SERVER_PARSE_MAX_MB` — documented in `docs/SCALE-MODE-parse-queue.md` for a future upload cap.
+**Incoming:**
+- None detected.
 
-## pdf.js worker (same origin, not a remote SaaS API)
-
-**Artifact:** `public/pdf.worker.min.mjs` — copied from `pdfjs-dist` via `scripts/copy-pdf-worker.mjs` on `postinstall`.
-
-**Client wiring:** `src/lib/pdf/pdfWorker.ts` sets `GlobalWorkerOptions.workerSrc` to `/pdf.worker.min.mjs`.
-
-**Library usage:** `src/lib/pdf/extractPdfText.ts`, `src/lib/pdf/renderPagesToImages.ts`, helpers alongside `src/lib/pdf/`.
-
-## Browser-local persistence (no third-party DB)
-
-**IndexedDB:** `src/lib/db/studySetDb.ts` — database name/version from `src/types/studySet.ts` (`DB_NAME`, **`DB_VERSION` 5**). Object stores: `meta`, `document`, `draft`, `approved`, `media`, `parseProgress`, `ocr`, `quizSessions`, `studyWrongHistory`.
-
-**localStorage:** AI settings — `src/lib/ai/storage.ts`, `src/lib/ai/forwardSettings.ts`, `src/lib/ai/parseLocalStorage.ts`; key constants and legacy keys in `src/types/question.ts`. Parse UI toggles referenced from `src/components/ai/AiParseSection.tsx` and related components.
-
-**Canvas:** JPEG data URLs from `src/lib/pdf/renderPagesToImages.ts` for OCR/vision inputs.
-
-## Environment variables (code-referenced, no values)
-
-| Variable | Where | Purpose |
-|----------|--------|---------|
-| `NODE_ENV` | `src/lib/logging/pipelineLogger.ts` | Development-only log branches |
-| `NEXT_PUBLIC_D2Q_PIPELINE_DEBUG` | `src/lib/logging/pipelineLogger.ts` | Verbose browser pipeline logs when `"1"` |
-| `BLOB_READ_WRITE_TOKEN` | `src/app/api/ai/vision-staging/route.ts` | Enables Vercel Blob upload path for staged images |
-| `D2Q_SERVER_PARSE_ENABLED` | `src/lib/serverParse/env.ts` | Exposes parse-job API stubs when truthy |
-| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Sentry SDK + `reportPipelineError` | Optional server/client capture (see `README.md`) |
-
-Repository `.env*` files: local configuration only; never commit secrets.
-
-## Authentication & identity
-
-Not implemented — no accounts or OAuth. API keys are per-browser storage and forwarded per request through `POST /api/ai/forward`.
-
-## Error reporting (optional)
-
-`src/lib/observability/reportPipelineError.ts` — console-first; optional `@sentry/nextjs` when DSN configured. Scrubbing expectations documented in `README.md`.
-
-## Monitoring, CI/CD, webhooks
-
-No required remote monitoring in v1. No incoming webhooks. CI config not detected in workspace snapshot used for this pass.
+**Outgoing:**
+- None detected (no webhook emitters).
 
 ---
 
-*Integration audit: 2026-04-11*
+*Integration audit: 2026-04-14*

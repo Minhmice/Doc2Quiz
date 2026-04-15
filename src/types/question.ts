@@ -8,7 +8,12 @@ export type QuestionPageMappingMethod =
   | "layout_chunk"
   | "unresolved";
 
-/** Optional image attachments stored in IndexedDB `media` store; ids are unique per blob */
+/**
+ * Quiz-lane persistence type (MCQ) used by review and practice.
+ *
+ * Do not use this type for flashcards; flashcards use `FlashcardVisionItem`
+ * and `ApprovedFlashcardBank` in their dedicated lane.
+ */
 export type Question = {
   id: string;
   question: string;
