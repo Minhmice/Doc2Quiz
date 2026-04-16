@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
+status: Executing Phase 25
 stopped_at: Phase 25 context gathered
-last_updated: "2026-04-16T06:32:22.448Z"
+last_updated: "2026-04-16T06:43:38.834Z"
 progress:
   total_phases: 38
   completed_phases: 23
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 24 complete — vision batch `min_requests` (overlap 0 + `sourcePages`) with automatic legacy 10+2 fallback; see `24-01-SUMMARY.md` / `24-02-SUMMARY.md`.
+**Current focus:** Phase 25 — Skip rasterization for born-digital PDFs; extract text layer first
 
 ## Current Status
 
