@@ -61,7 +61,11 @@ import {
   readParseStrategyPreference,
 } from "@/lib/ai/parseLocalStorage";
 import { estimateParseRun } from "@/lib/ai/estimateParseRun";
-import { decideParseRoute, TEXT_LAYER_STRONG } from "@/lib/ai/parseRoutePolicy";
+import {
+  decideParseRoute,
+  TEXT_LAYER_STRONG,
+  TEXT_LAYER_UNCERTAIN_DEFAULT_VISION,
+} from "@/lib/ai/parseRoutePolicy";
 import { parseCapabilityUserMessage } from "@/lib/ai/parseCapabilityMessages";
 import {
   getSurfaceAvailability,
@@ -104,6 +108,10 @@ import {
   type PageImageResult,
   VISION_MAX_PAGES_DEFAULT,
 } from "@/lib/pdf/renderPagesToImages";
+import { sampleTextLayerSignal } from "@/lib/pdf/sampleTextLayerSignal";
+import { extractPdfText } from "@/lib/pdf/extractPdfText";
+import { chunkText } from "@/lib/ai/chunkText";
+import { runSequentialParse } from "@/lib/ai/runSequentialParse";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { OcrRunResult } from "@/types/ocr";
 import type { ApprovedBank, Question } from "@/types/question";
@@ -456,11 +464,9 @@ export const AiParseSection = forwardRef<
   const modelInput = forwardSettings.modelId;
 
   // Strict single-lane contract:
-  // - quiz: vision batch only
   // - flashcard: vision batch only
-  // No sequential attach/hybrid/layout routes for either lane.
   const isQuizParse = parseOutputMode === "quiz";
-  const batchOnlyVisionParse = isFlashcardParse || isQuizParse;
+  const batchOnlyVisionParse = isFlashcardParse;
   const effectiveAttachPageImage = batchOnlyVisionParse ? false : attachPageImage;
 
   const hasKey = keyInput.trim().length > 0;
@@ -2106,6 +2112,13 @@ export const AiParseSection = forwardRef<
         };
       }
 
+      const pushOverlayLog = (line: string) => {
+        setParseOverlay((p) => ({
+          ...p,
+          log: [...p.log, `${formatTimeStamp()} — ${line}`].slice(-16),
+        }));
+      };
+
       let extractedTextCharCount = 0;
       let pageCountForPolicy: number | null = pageCount;
       if (studySetId.trim().length > 0) {
@@ -2123,9 +2136,35 @@ export const AiParseSection = forwardRef<
           });
         }
       }
+
+      const preRouteController = new AbortController();
+      abortRef.current = preRouteController;
+
+      let sampledSignal:
+        | {
+            sampledPages: number;
+            charsPerPage: number;
+            nonEmptyPageRatio: number;
+          }
+        | undefined = undefined;
+
+      if (isQuizParse) {
+        pushOverlayLog("Sampling text layer (first pages)...");
+        const s = await sampleTextLayerSignal(activePdfFile, {
+          signal: preRouteController.signal,
+          samplePages: 5,
+        });
+        sampledSignal = {
+          sampledPages: s.sampledPages,
+          charsPerPage: s.charsPerPage,
+          nonEmptyPageRatio: s.nonEmptyPageRatio,
+        };
+      }
+
       const routeDecision = decideParseRoute({
         pageCount: pageCountForPolicy,
         extractedTextCharCount,
+        textLayerSignal: sampledSignal,
         parseStrategy,
         enableOcr,
       });
@@ -2137,7 +2176,16 @@ export const AiParseSection = forwardRef<
         },
         extractedTextCharCount,
         pageCount: pageCountForPolicy,
+        textLayerSignal: sampledSignal,
       });
+
+      if (isQuizParse) {
+        setDocumentHint(
+          routeDecision.reasonCodes.includes(TEXT_LAYER_STRONG)
+            ? "strong_text_layer"
+            : "none",
+        );
+      }
 
       /*
        * D-28: wall clock for the whole user-triggered parse (after successful onBeforeParse)
@@ -2145,11 +2193,147 @@ export const AiParseSection = forwardRef<
        * when executed inside the same invoked parse for Fast/Hybrid chunk path.
        */
       const runWallT0 = performance.now();
-      // Strict product lanes: quiz + flashcard are vision-batch lanes.
-      // Do not route quiz into hybrid/layout/chunk parse families.
       let routed: ParseRunResult;
-      if (parseOutputMode === "flashcard" || parseOutputMode === "quiz") {
+      if (parseOutputMode === "flashcard") {
         routed = await handleVisionParse();
+      } else if (
+        isQuizParse &&
+        parseStrategy !== "accurate" &&
+        routeDecision.reasonCodes.includes(TEXT_LAYER_STRONG) &&
+        !routeDecision.reasonCodes.includes(TEXT_LAYER_UNCERTAIN_DEFAULT_VISION)
+      ) {
+        // Phase 25 — quiz text-first lane (skip rasterization when text is strong).
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setParseMode("chunk");
+        setVisionRendering(false);
+        setProgress({ current: 0, total: 1, status: "running" });
+        setParseOverlay({
+          extractedCount: 0,
+          log: [],
+          renderPage: 0,
+          renderTot: 0,
+          thumbs: [],
+        });
+        pushOverlayLog(
+          `Using text layer — skipping page images. [${routeDecision.reasonCodes.join(
+            ",",
+          )}]`,
+        );
+
+        try {
+          let fullText = "";
+          if (studySetId.trim().length > 0) {
+            const doc = await getDocument(studySetId.trim());
+            fullText = doc?.extractedText ?? "";
+          }
+          if (!fullText.trim()) {
+            fullText = await extractPdfText(activePdfFile, controller.signal);
+          }
+
+          if (controller.signal.aborted) {
+            return {
+              ok: false,
+              aborted: true,
+              fatalError: null,
+              questions: [],
+            };
+          }
+
+          const chunks = chunkText(fullText);
+          setProgress({
+            current: 0,
+            total: Math.max(1, chunks.length),
+            status: "running",
+          });
+          pushOverlayLog(
+            `Text chunks ready · chunks=${chunks.length} · running sequential parse...`,
+          );
+
+          const result = await runSequentialParse({
+            provider,
+            apiKey: keyInput.trim(),
+            apiUrl: urlInput,
+            model: modelInput,
+            chunks,
+            signal: controller.signal,
+            onProgress: ({ current, total }) => {
+              setProgress({ current, total, status: "running" });
+              setParseOverlay((p) => ({
+                ...p,
+                log: [
+                  ...p.log,
+                  `${formatTimeStamp()} — Text parse ${current}/${total}`,
+                ].slice(-16),
+              }));
+            },
+          });
+
+          if (result.fatalError) {
+            setError(result.fatalError);
+            return {
+              ok: false,
+              aborted: controller.signal.aborted,
+              fatalError: result.fatalError,
+              questions: result.questions,
+              parseOutputMode: "quiz",
+            };
+          }
+
+          const qs = result.questions;
+          setQuestions(qs);
+          if (!controller.signal.aborted) {
+            pushOverlayLog(
+              `Saving ${qs.length} question${qs.length === 1 ? "" : "s"}...`,
+            );
+            await persistQuestions(qs);
+            setSummary(`Text-first: parsed ${qs.length} questions.`);
+          } else {
+            setSummary(`Text-first: parsed ${qs.length} questions. Parsing stopped.`);
+          }
+
+          return {
+            ok: !controller.signal.aborted && qs.length > 0,
+            aborted: controller.signal.aborted,
+            fatalError: null,
+            questions: qs,
+            parseOutputMode: "quiz",
+            usedVisionFallback: false,
+          };
+        } catch (e) {
+          pipelineLog("TEXT", "parse-error", "error", "quiz text-first lane threw", {
+            studySetId: studySetId.trim() || "(empty)",
+            ...fileSummary(activePdfFile),
+            ...normalizeUnknownError(e),
+            raw: e,
+            isAbort: e instanceof DOMException && e.name === "AbortError",
+          });
+          if (e instanceof DOMException && e.name === "AbortError") {
+            setSummary("Text parsing stopped.");
+          } else {
+            setError(
+              e instanceof Error ? e.message : "Text parsing failed. Try vision.",
+            );
+          }
+          return {
+            ok: false,
+            aborted: e instanceof DOMException && e.name === "AbortError",
+            fatalError: null,
+            questions: [],
+            parseOutputMode: "quiz",
+          };
+        } finally {
+          abortRef.current = null;
+          setParseMode(null);
+          setProgress((p) => ({ ...p, status: "idle" }));
+          setParseOverlay({
+            extractedCount: 0,
+            log: [],
+            renderPage: 0,
+            renderTot: 0,
+            thumbs: [],
+          });
+        }
       } else if (parseStrategy === "accurate") {
         routed = await handleVisionParse();
       } else if (parseStrategy === "hybrid") {
@@ -2164,9 +2348,11 @@ export const AiParseSection = forwardRef<
     }, [
       onBeforeParse,
       hasKey,
+      keyInput,
       visionForwardReady,
       visionBlockReasonKey,
       activePdfFile,
+      provider,
       urlInput,
       modelInput,
       hasCustomEndpoint,
@@ -2175,10 +2361,12 @@ export const AiParseSection = forwardRef<
       enableOcr,
       pageCount,
       studySetId,
+      persistQuestions,
       handleVisionParse,
       handleHybridParse,
       handleLayoutAwareParse,
       parseOutputMode,
+      isQuizParse,
     ]);
 
   useImperativeHandle(
