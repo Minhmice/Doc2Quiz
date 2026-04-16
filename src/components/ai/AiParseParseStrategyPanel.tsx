@@ -82,8 +82,8 @@ export function AiParseParseStrategyPanel({
       </div>
       {documentHint === "strong_text_layer" ? (
         <p className="text-xs text-muted-foreground">
-          This PDF&apos;s text layer looks dense — Fast (layout chunks) is usually
-          cheaper on tokens than full-page vision when OCR is on.
+          Strong text layer detected — for Quiz, Fast/Hybrid will try text-first
+          (skipping page images) unless you pick Accurate (vision-first).
         </p>
       ) : null}
     </div>
