@@ -602,7 +602,7 @@ Plans:
 **Goal:** When parsing **Quiz** from a PDF, if the document has a **strong native text layer**, the app should **avoid rasterizing pages to images** and run a **text-first** parse path. Vision rasterization remains the fallback for scanned/weak-text PDFs, and can also be used as an automatic fallback when the text-first output quality is too low. (Document-level only; per-page routing deferred to Phase 29.)
 **Requirements**: PDFOPT-01, PDFOPT-02, PDFOPT-03, PDFOPT-04
 **Depends on:** Phase 24
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] `25-01-PLAN.md` — Add sampled text-layer signal + update route policy reason codes and roadmap requirements.
