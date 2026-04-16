@@ -597,6 +597,147 @@ Plans:
 - [x] `24-01-PLAN.md` — Policy + `planVisionBatches` / `runVisionBatchSequential` (`min_requests` + legacy fallback); strict `sourcePages`; `VISION_BATCH_PROMPT_V` in cache hash.
 - [x] `24-02-PLAN.md` — `AiParseSection` + `onBatchPlanResolved`; overlay copy; `npm run lint` + `npm run build`.
 
+### Phase 25: Skip rasterization for born-digital PDFs; extract text layer first
+
+**Goal:** When parsing **Quiz** from a PDF, if the document has a **strong native text layer**, the app should **avoid rasterizing pages to images** and run a **text-first** parse path. Vision rasterization remains the fallback for scanned/weak-text PDFs, and can also be used as an automatic fallback when the text-first output quality is too low. (Document-level only; per-page routing deferred to Phase 29.)
+**Requirements**: PDFOPT-01, PDFOPT-02, PDFOPT-03, PDFOPT-04
+**Depends on:** Phase 24
+**Plans:** 2 plans
+
+Plans:
+- [ ] `25-01-PLAN.md` — Add sampled text-layer signal + update route policy reason codes and roadmap requirements.
+- [ ] `25-02-PLAN.md` — Wire quiz text-first lane in `AiParseSection` with quality-gated automatic vision fallback + short UX messaging.
+
+### Phase 26: Direct multipart/resumable upload to object storage
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 25
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 26 to break down)
+
+### Phase 27: Preview-first parsing while full upload continues
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 26
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 27 to break down)
+
+### Phase 28: Move image preprocessing into Web Workers
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 27
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 28 to break down)
+
+### Phase 29: Route by page type: text page vs bitmap page vs rich layout page
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 28
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 29 to break down)
+
+### Phase 30: Replace page-level chunking with layout-aware chunking
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 29
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 30 to break down)
+
+### Phase 31: Cache prompt prefixes, embeddings, and content hashes
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 30
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 31 to break down)
+
+### Phase 32: Use draft-pass generation plus validator-pass rewrite
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 31
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 32 to break down)
+
+### Phase 33: Adopt a vector store matched to your scale
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 32
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 33 to break down)
+
+### Phase 34: Add async workers / task queue for full indexing
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 33
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 34 to break down)
+
+### Phase 35: Tune OCR preprocessing: thresholding, downsample huge pages, 300-DPI target
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 34
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 35 to break down)
+
+### Phase 36: Queue-based fallback to high-accuracy pipeline only on uncertain docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 35
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 36 to break down)
+
+### Phase 37: Global transfer acceleration / edge ingress
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 36
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 37 to break down)
+
+### Phase 38: Full fine-tuning or distillation for quiz style
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 37
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 38 to break down)
+
 ---
 
 *Roadmap created: 2026-04-05*

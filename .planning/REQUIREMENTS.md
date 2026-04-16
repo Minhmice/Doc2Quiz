@@ -12,6 +12,13 @@
 - [x] **PDF-03**: System displays extracted text in scrollable viewer
 - [x] **PDF-04**: System shows clear error for scanned/empty PDFs ("This PDF may be scanned. Text extraction failed.")
 
+### v1+ Enhancements (Optimizations)
+
+- [ ] **PDFOPT-01**: System computes a document-level **native text-layer signal** using sampling (chars/page + non-empty page ratio) to detect born-digital PDFs.
+- [ ] **PDFOPT-02**: When strong text is detected, quiz parsing auto-routes to **text-first** and **skips page rasterization**; Accurate remains vision-first.
+- [ ] **PDFOPT-03**: Text-first parsing uses a deterministic **quality gate** and can automatically fallback to vision when results are weak (e.g. <5 questions and/or low validity summary).
+- [ ] **PDFOPT-04**: Routing + fallback emit stable **reason codes** and short user-visible messages (overlay log + light toast on fallback).
+
 ### AI Question Parsing
 
 - [x] **AI-01**: User can enter and save their AI API key (stored in localStorage; forwarded per request via same-origin route, not stored server-side)
