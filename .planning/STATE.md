@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Phase 24 executed (vision fewer round-trips — min_requests + legacy fallback)
-last_updated: "2026-04-13T14:30:00.000Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-04-16T06:26:12.925Z"
 progress:
-  total_phases: 24
-  completed_phases: 22
+  total_phases: 38
+  completed_phases: 23
   total_plans: 49
   completed_plans: 49
   percent: 100
@@ -39,9 +39,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Phase 24 executed (`min_requests` vision batches + UI plan callback)
+**Stopped at:** Phase 25 context gathered
 **Date:** 2026-04-13
-**Resume file:** (none)
+**Resume file:** .planning/phases/25-skip-rasterization-for-born-digital-pdfs-extract-text-layer-/25-CONTEXT.md
 
 ## Accumulated Context
 
@@ -49,6 +49,20 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 - Phase 24 execute (`/gsd-execute-phase 24`, 2026-04-13): shipped `planVisionBatches` + `runVisionBatchSequential` defaults + legacy fallback + strict `sourcePages` + `AiParseSection` `onBatchPlanResolved`; `npm run lint` + `npm run build` green; roadmap Phase 24 → **Complete**; `24-01-SUMMARY.md`, `24-02-SUMMARY.md`.
 - Phase 24 added + planned (`/gsd-add-phase`, 2026-04-13): **Vision parse: fewer round-trips — single request or max-window batches when within provider limits**; dir `.planning/phases/24-vision-parse-fewer-round-trips-single-request-or-max-window-/`; artifacts `24-CONTEXT.md`, `24-01-PLAN.md`, `24-02-PLAN.md`; roadmap Phase 24 → **Planned**; depends Phase 21.
+- Phase 25 added: Skip rasterization for born-digital PDFs; extract text layer first
+- Phase 26 added: Direct multipart/resumable upload to object storage
+- Phase 27 added: Preview-first parsing while full upload continues
+- Phase 28 added: Move image preprocessing into Web Workers
+- Phase 29 added: Route by page type: text page vs bitmap page vs rich layout page
+- Phase 30 added: Replace page-level chunking with layout-aware chunking
+- Phase 31 added: Cache prompt prefixes, embeddings, and content hashes
+- Phase 32 added: Use draft-pass generation plus validator-pass rewrite
+- Phase 33 added: Adopt a vector store matched to your scale
+- Phase 34 added: Add async workers / task queue for full indexing
+- Phase 35 added: Tune OCR preprocessing: thresholding, downsample huge pages, 300-DPI target
+- Phase 36 added: Queue-based fallback to high-accuracy pipeline only on uncertain docs
+- Phase 37 added: Global transfer acceleration / edge ingress
+- Phase 38 added: Full fine-tuning or distillation for quiz style
 - Phase 23 execute (`/gsd-execute-phase 23`, 2026-04-12): shipped wave 1+2 per plans; `npm run lint` + `npm run build` green; roadmap Phase 23 + coverage → **Complete**.
 - Phase 23 plan (`/gsd-plan-phase 23`, 2026-04-12): `23-UI-SPEC.md`, `23-01-PLAN.md` (wave 1 `/develop` + Sheet + mock API + Command Palette dev), `23-02-PLAN.md` (wave 2 inventory + play outer chrome); research skipped (config); Nyquist/VALIDATION skipped (no RESEARCH); roadmap Phase 23 → **Planned**; `state planned-phase` (2 plans); user addendum: shadcn chrome + wrap `example/` for bugfix workflow.
 - Phase 23 added (`/gsd-add-phase`): **Replace entire app layout with code ported from `example/`** (full layout parity vs incremental Mint tweaks); English description for tooling; user intent: *replace toàn bộ layout với code từ example*; dir `.planning/phases/23-replace-entire-app-layout-with-code-ported-from-example-full/`.
