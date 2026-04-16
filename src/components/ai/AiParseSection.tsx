@@ -2651,12 +2651,12 @@ export const AiParseSection = forwardRef<
             {/* Quiz and flashcard product lanes never reach ocr/chunk modes (forceSkipOcr). */}
             {visionRendering
               ? "Rendering PDF pages as images…"
-              : isProductSurface || parseOutputMode === "quiz"
-                ? `Parsing with vision… ${progress.current} / ${progress.total} steps`
+              : parseMode === "chunk"
+                ? `Parsing text… ${progress.current} / ${progress.total}`
                 : parseMode === "ocr"
                   ? `OCR text extraction… ${progress.current} / ${progress.total} pages`
-                  : parseMode === "chunk"
-                    ? `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
+                  : isProductSurface || parseOutputMode === "quiz"
+                    ? `Parsing with vision… ${progress.current} / ${progress.total} steps`
                     : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
           </p>
           {!visionRendering && progress.total > 0 ? (
@@ -2676,12 +2676,12 @@ export const AiParseSection = forwardRef<
             {/* Quiz and flashcard product lanes never reach ocr/chunk modes (forceSkipOcr). */}
             {visionRendering
               ? "Rendering PDF pages as images…"
-              : isProductSurface || parseOutputMode === "quiz"
-                ? `Parsing with vision… ${progress.current} / ${progress.total} steps`
+              : parseMode === "chunk"
+                ? `Parsing text… ${progress.current} / ${progress.total}`
                 : parseMode === "ocr"
                   ? `OCR text extraction… ${progress.current} / ${progress.total} pages`
-                  : parseMode === "chunk"
-                    ? `Layout-aware chunk parse… ${progress.current} / ${progress.total}`
+                  : isProductSurface || parseOutputMode === "quiz"
+                    ? `Parsing with vision… ${progress.current} / ${progress.total} steps`
                     : `Parsing with vision… ${progress.current} / ${progress.total} steps${attachEffectiveForUi ? " · linking page images" : ""}`}
           </p>
           {!visionRendering && progress.total > 0 ? (
