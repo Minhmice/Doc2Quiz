@@ -464,9 +464,10 @@ export const AiParseSection = forwardRef<
   const modelInput = forwardSettings.modelId;
 
   // Strict single-lane contract:
+  // - quiz: vision batch only (when using vision)
   // - flashcard: vision batch only
   const isQuizParse = parseOutputMode === "quiz";
-  const batchOnlyVisionParse = isFlashcardParse;
+  const batchOnlyVisionParse = isFlashcardParse || isQuizParse;
   const effectiveAttachPageImage = batchOnlyVisionParse ? false : attachPageImage;
 
   const hasKey = keyInput.trim().length > 0;
@@ -1366,7 +1367,9 @@ export const AiParseSection = forwardRef<
     [persistQuestions],
   );
 
-  const handleVisionParse = useCallback(async (): Promise<ParseRunResult> => {
+  const handleVisionParse = useCallback(async (options?: {
+    overlayPrefixLine?: string;
+  }): Promise<ParseRunResult> => {
     if (!activePdfFile || visionDisabled) {
       return {
         ok: false,
@@ -1413,7 +1416,12 @@ export const AiParseSection = forwardRef<
     setProgress({ current: 0, total: 1, status: "running" });
     setParseOverlay({
       extractedCount: 0,
-      log: [`${timeStamp()} — Preparing document for vision…`],
+      log: [
+        ...(options?.overlayPrefixLine
+          ? [`${timeStamp()} — ${options.overlayPrefixLine}`]
+          : []),
+        `${timeStamp()} — Preparing document for vision…`,
+      ],
       renderPage: 0,
       renderTot: 0,
       thumbs: [],
@@ -2282,15 +2290,59 @@ export const AiParseSection = forwardRef<
 
           const qs = result.questions;
           setQuestions(qs);
-          if (!controller.signal.aborted) {
-            pushOverlayLog(
-              `Saving ${qs.length} question${qs.length === 1 ? "" : "s"}...`,
-            );
-            await persistQuestions(qs);
-            setSummary(`Text-first: parsed ${qs.length} questions.`);
-          } else {
+          if (controller.signal.aborted) {
             setSummary(`Text-first: parsed ${qs.length} questions. Parsing stopped.`);
+            return {
+              ok: false,
+              aborted: true,
+              fatalError: null,
+              questions: qs,
+              parseOutputMode: "quiz",
+              usedVisionFallback: false,
+            };
           }
+
+          // Phase 25 — deterministic quality gate (no external calls).
+          const questionCount = qs.length;
+          const validMcqCount = qs.reduce(
+            (n, q) => n + (isMcqComplete(q) ? 1 : 0),
+            0,
+          );
+          const validRatio =
+            questionCount > 0 ? validMcqCount / questionCount : 0;
+          const gateFailed =
+            questionCount < 5 || (questionCount > 0 && validRatio < 0.6);
+
+          pipelineLog("VISION", "quality-gate", "info", "quiz text-first quality gate", {
+            studySetId: studySetId.trim() || "(empty)",
+            questionCount,
+            validMcqCount,
+            validRatio,
+          });
+
+          if (gateFailed) {
+            toast("Text parse looked weak — retrying with vision.");
+            const overlayLine = `Text parse looked weak — retrying with vision. [quality_gate_failed q=${questionCount} validRatio=${validRatio.toFixed(
+              2,
+            )}] [${routeDecision.reasonCodes.join(",")}]`;
+            pipelineLog("VISION", "quality-gate", "warn", "text-first gate failed; vision fallback", {
+              studySetId: studySetId.trim() || "(empty)",
+              questionCount,
+              validMcqCount,
+              validRatio,
+              reasonCodes: [...routeDecision.reasonCodes],
+            });
+            const visionResult = await handleVisionParse({
+              overlayPrefixLine: overlayLine,
+            });
+            return { ...visionResult, usedVisionFallback: true };
+          }
+
+          pushOverlayLog(
+            `Saving ${qs.length} question${qs.length === 1 ? "" : "s"}...`,
+          );
+          await persistQuestions(qs);
+          setSummary(`Text-first: parsed ${qs.length} questions.`);
 
           return {
             ok: !controller.signal.aborted && qs.length > 0,
@@ -2301,7 +2353,7 @@ export const AiParseSection = forwardRef<
             usedVisionFallback: false,
           };
         } catch (e) {
-          pipelineLog("TEXT", "parse-error", "error", "quiz text-first lane threw", {
+          pipelineLog("VISION", "parse-error", "error", "quiz text-first lane threw", {
             studySetId: studySetId.trim() || "(empty)",
             ...fileSummary(activePdfFile),
             ...normalizeUnknownError(e),
