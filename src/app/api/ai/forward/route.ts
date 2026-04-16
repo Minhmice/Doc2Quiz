@@ -9,33 +9,6 @@ type Body = {
   method?: unknown;
 };
 
-function debugLog(
-  runId: string,
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-) {
-  // #region agent log
-  fetch("http://127.0.0.1:7850/ingest/da1eed3c-ea0e-4aa4-8ecd-36a2ee99015c", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "2cfa66",
-    },
-    body: JSON.stringify({
-      sessionId: "2cfa66",
-      runId,
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-}
-
 const DEFAULT_OPENAI_CHAT_MAX_TOKENS = 16384;
 
 /**
@@ -145,41 +118,12 @@ export async function POST(req: Request) {
   }
 
   const method = parsed.method === "GET" ? "GET" : "POST";
-  const forwardRunId = `forward-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const headers: Record<string, string> = {};
   const upstreamPost =
     method === "POST"
       ? serializeUpstreamPostBody(targetUrl, parsed.body)
       : null;
 
-  // #region agent log
-  debugLog(forwardRunId, "H4", "forward/route.ts:request_start", "forward request start", {
-    provider,
-    method,
-    targetHost: (() => {
-      try {
-        return new URL(targetUrl).host;
-      } catch {
-        return "invalid-url";
-      }
-    })(),
-    targetPath: (() => {
-      try {
-        return new URL(targetUrl).pathname;
-      } catch {
-        return "invalid-url";
-      }
-    })(),
-    bodyKeys: upstreamPost?.bodyKeys ?? [],
-    maxTokensInjected:
-      upstreamPost &&
-      parsed.body &&
-      typeof parsed.body === "object" &&
-      !Array.isArray(parsed.body) &&
-      !("max_tokens" in (parsed.body as Record<string, unknown>)) &&
-      upstreamPost.bodyKeys.includes("max_tokens"),
-  });
-  // #endregion
   if (method === "POST") {
     headers["Content-Type"] = "application/json";
   } else {
@@ -193,7 +137,6 @@ export async function POST(req: Request) {
   }
 
   let upstream: Response;
-  const t0 = Date.now();
   try {
     upstream = await fetch(
       targetUrl,
@@ -207,29 +150,10 @@ export async function POST(req: Request) {
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upstream request failed";
-    // #region agent log
-    debugLog(forwardRunId, "H5", "forward/route.ts:fetch_throw", "upstream fetch threw", {
-      provider,
-      method,
-      targetUrl,
-      latencyMs: Date.now() - t0,
-      error: message,
-    });
-    // #endregion
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
   const text = await upstream.text();
-  // #region agent log
-  debugLog(forwardRunId, "H4", "forward/route.ts:upstream_response", "upstream response received", {
-    provider,
-    method,
-    targetUrl,
-    status: upstream.status,
-    latencyMs: Date.now() - t0,
-    textPreview: text.slice(0, 240),
-  });
-  // #endregion
   const contentType =
     upstream.headers.get("content-type") ?? "application/json";
   return new NextResponse(text, {

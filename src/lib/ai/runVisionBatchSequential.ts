@@ -69,33 +69,6 @@ import type { FlashcardGenerationConfig } from "@/types/flashcardGeneration";
 import { normalizeFlashcardGenerationConfig } from "@/types/flashcardGeneration";
 export type VisionForwardProvider = "openai" | "custom";
 
-function debugLog(
-  runId: string,
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-) {
-  // #region agent log
-  fetch("http://127.0.0.1:7850/ingest/da1eed3c-ea0e-4aa4-8ecd-36a2ee99015c", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "2cfa66",
-    },
-    body: JSON.stringify({
-      sessionId: "2cfa66",
-      runId,
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-}
-
 function readChatCompletionContent(text: string): string {
   let data: {
     choices?: Array<{ message?: { content?: string | unknown } }>;
@@ -411,17 +384,6 @@ export async function runVisionBatchSequential(
           break;
         }
         try {
-          const debugRunId = `${mode}-${Date.now()}-b${batch.batchIndex}-a${attempt + 1}`;
-          // #region agent log
-          debugLog(debugRunId, "H1", "runVisionBatchSequential.ts:attempt_start", "vision batch attempt start", {
-            mode,
-            batchIndex: batch.batchIndex,
-            attempt: attempt + 1,
-            startPage: batch.startPage,
-            endPage: batch.endPage,
-            pageCount: batch.pages.length,
-          });
-          // #endregion
           const userText = buildVisionUserPrompt({
             mode,
             startPage: batch.startPage,
@@ -502,16 +464,6 @@ export async function runVisionBatchSequential(
             lastErr = new Error(
               proxyMsg ?? describeBadAiResponse(res.status, text),
             );
-            // #region agent log
-            debugLog(`err-${mode}-${batch.batchIndex}-${attempt + 1}-${Date.now()}`, "H1", "runVisionBatchSequential.ts:upstream_not_ok", "upstream returned non-ok", {
-              mode,
-              batchIndex: batch.batchIndex,
-              attempt: attempt + 1,
-              status: res.status,
-              textPreview: text.slice(0, 240),
-              error: lastErr.message,
-            });
-            // #endregion
             continue;
           }
 
@@ -612,15 +564,6 @@ export async function runVisionBatchSequential(
               batchIndex: batch.batchIndex,
               message: `Response preview: ${preview.replace(/\s+/g, " ")}`,
             });
-            // #region agent log
-            debugLog(`json-${mode}-${batch.batchIndex}-${attempt + 1}-${Date.now()}`, "H2", "runVisionBatchSequential.ts:invalid_json_preview", "invalid json response preview", {
-              mode,
-              batchIndex: batch.batchIndex,
-              attempt: attempt + 1,
-              responseChars: lastResponseText.length,
-              preview: preview.replace(/\s+/g, " "),
-            });
-            // #endregion
           }
         }
       }
@@ -643,16 +586,6 @@ export async function runVisionBatchSequential(
           error: errorMsg,
           message: `⚠️ Batch ${batch.batchIndex} (pages ${batch.startPage}-${batch.endPage}) FAILED: ${errorMsg}`,
         });
-        // #region agent log
-        debugLog(`final-${mode}-${batch.batchIndex}-${Date.now()}`, "H3", "runVisionBatchSequential.ts:batch_failed_final", "batch failed after retries", {
-          mode,
-          batchIndex: batch.batchIndex,
-          startPage: batch.startPage,
-          endPage: batch.endPage,
-          failedBatches,
-          error: errorMsg,
-        });
-        // #endregion
         
         acc.recordBatch({
           batchIndex: batch.batchIndex,
