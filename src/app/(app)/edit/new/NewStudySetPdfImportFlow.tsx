@@ -9,6 +9,7 @@ import {
   type ParseRunResult,
 } from "@/components/ai/AiParseSection";
 import { useParseProgress } from "@/components/ai/ParseProgressContext";
+import { ParseProgressStrip } from "@/components/layout/ParseProgressStrip";
 import { ImportQuizLivePanel } from "@/components/edit/new/import/ImportQuizLivePanel";
 import { NewImportPdfViewer } from "@/components/edit/new/import/NewImportPdfViewer";
 import { UnifiedImportStatusCard } from "@/components/edit/new/import/UnifiedImportStatusCard";
@@ -44,6 +45,7 @@ import {
 } from "@/types/flashcardGeneration";
 import { parseOutputModeFromContentKind } from "@/types/visionParse";
 import { FlashcardsGenerationControls } from "@/components/edit/new/flashcards/FlashcardsGenerationControls";
+import { runBackgroundStudySetPdfUpload } from "@/lib/uploads/runBackgroundStudySetPdfUpload";
 import { ChevronDown } from "lucide-react";
 
 function provisionalTitleFromPdfFileName(name: string): string {
@@ -114,7 +116,7 @@ export function NewStudySetPdfImportFlow({
   titlePrefix,
 }: NewStudySetPdfImportFlowProps) {
   const router = useRouter();
-  const { live, clearParse } = useParseProgress();
+  const { live, clearParse, reportUpload, clearUpload } = useParseProgress();
   const importStepCtx = useStudySetNewImportStepOptional();
   const setImportHeaderStep = importStepCtx?.setStep;
   const reduceMotion = useReducedMotion();
@@ -122,6 +124,7 @@ export function NewStudySetPdfImportFlow({
   const parseRef = useRef<AiParseSectionHandle>(null);
   const parseContextRef = useRef<ParseContextState | null>(null);
   const parseKickGen = useRef(0);
+  const uploadAbortRef = useRef<AbortController | null>(null);
 
   const [ingestBusy, setIngestBusy] = useState(false);
   const [importPhase, setImportPhase] = useState<NewStudySetPdfImportPhase>("idb");
@@ -150,6 +153,8 @@ export function NewStudySetPdfImportFlow({
 
   const resetAfterInlineParse = useCallback(async () => {
     parseKickGen.current += 1;
+    uploadAbortRef.current?.abort();
+    uploadAbortRef.current = null;
     parseRef.current?.cancel();
     const id = parseContextRef.current?.studySetId;
     if (id) {
@@ -163,8 +168,10 @@ export function NewStudySetPdfImportFlow({
         });
       }
       clearParse(id);
+      clearUpload(id);
     } else {
       clearParse();
+      clearUpload();
     }
     setParseContext(null);
     parseContextRef.current = null;
@@ -174,7 +181,7 @@ export function NewStudySetPdfImportFlow({
     setIngestPreviewFile(null);
     setIngestPageCount(null);
     setFlashcardGenerationConfig(DEFAULT_FLASHCARD_GENERATION_CONFIG);
-  }, [clearParse]);
+  }, [clearParse, clearUpload]);
 
   const handleParseFinished = useCallback(
     (r: ParseRunResult) => {
@@ -357,6 +364,62 @@ export function NewStudySetPdfImportFlow({
     })();
   }, [handleParseFinished]);
 
+  useEffect(() => {
+    if (!parseContext?.studySetId || !runAiParseOnNewPage) {
+      return;
+    }
+    const studySetId = parseContext.studySetId;
+    const file = parseContext.file;
+    const kickAtStart = parseKickGen.current;
+    const ac = new AbortController();
+    uploadAbortRef.current = ac;
+
+    void (async () => {
+      const result = await runBackgroundStudySetPdfUpload({
+        file,
+        signal: ac.signal,
+        onProgress: (p) => {
+          if (parseKickGen.current !== kickAtStart) {
+            return;
+          }
+          if (p.capability.mode !== "direct-upload") {
+            return;
+          }
+          reportUpload({
+            studySetId,
+            uploadedBytes: p.uploadedBytes,
+            totalBytes: p.totalBytes,
+            running: true,
+            capabilityMode: "direct-upload",
+          });
+        },
+      });
+
+      if (parseKickGen.current !== kickAtStart) {
+        return;
+      }
+      uploadAbortRef.current = null;
+      clearUpload(studySetId);
+
+      if (result.kind === "error") {
+        pipelineLog("STUDY_SET", "new-import", "warn", "background pdf upload failed", {
+          studySetId,
+          message: result.message,
+        });
+      }
+    })();
+
+    return () => {
+      ac.abort();
+    };
+  }, [
+    parseContext?.studySetId,
+    parseContext?.file,
+    runAiParseOnNewPage,
+    reportUpload,
+    clearUpload,
+  ]);
+
   const showUploadChrome = !ingestBusy && !parseContext;
   const showImportLayout = ingestBusy || parseContext !== null;
   const previewFile = parseContext?.file ?? ingestPreviewFile;
@@ -367,7 +430,11 @@ export function NewStudySetPdfImportFlow({
     !parseError &&
     (ingestBusy || parsing);
   return (
-    <div className="mx-auto flex w-full max-w-6xl shrink-0 flex-col items-center px-4 py-4 sm:px-6 sm:py-6 lg:max-w-7xl lg:px-8">
+    <>
+      <div className="w-full shrink-0 self-stretch">
+        <ParseProgressStrip />
+      </div>
+      <div className="mx-auto flex w-full max-w-6xl shrink-0 flex-col items-center px-4 py-4 sm:px-6 sm:py-6 lg:max-w-7xl lg:px-8">
       {showUploadChrome ? (
         <header className="w-full max-w-3xl shrink-0 text-center lg:max-w-4xl">
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -550,5 +617,6 @@ export function NewStudySetPdfImportFlow({
         ) : null}
       </div>
     </div>
+    </>
   );
 }

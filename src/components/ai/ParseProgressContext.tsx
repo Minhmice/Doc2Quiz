@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { ParseProgressPhase } from "@/types/studySet";
+import type { PdfUploadCapabilityMode } from "@/types/uploads";
 
 export type LivePageThumb = {
   pageIndex: number;
@@ -33,10 +34,22 @@ export type LiveParseReport = {
   pageThumbnails?: readonly LivePageThumb[];
 };
 
+/** Background PDF bytes upload (direct-upload only); omitted in local-only mode. */
+export type LiveUploadProgress = {
+  studySetId: string;
+  uploadedBytes: number;
+  totalBytes: number;
+  running: boolean;
+  capabilityMode: PdfUploadCapabilityMode;
+};
+
 type ParseProgressContextValue = {
   live: LiveParseReport | null;
+  upload: LiveUploadProgress | null;
   reportParse: (r: LiveParseReport) => void;
+  reportUpload: (u: LiveUploadProgress | null) => void;
   clearParse: (studySetId?: string) => void;
+  clearUpload: (studySetId?: string) => void;
 };
 
 const ParseProgressContext = createContext<ParseProgressContextValue | null>(
@@ -49,9 +62,14 @@ export function ParseProgressProvider({
   children: React.ReactNode;
 }) {
   const [live, setLive] = useState<LiveParseReport | null>(null);
+  const [upload, setUpload] = useState<LiveUploadProgress | null>(null);
 
   const reportParse = useCallback((r: LiveParseReport) => {
     setLive(r);
+  }, []);
+
+  const reportUpload = useCallback((u: LiveUploadProgress | null) => {
+    setUpload(u);
   }, []);
 
   const clearParse = useCallback((studySetId?: string) => {
@@ -66,9 +84,28 @@ export function ParseProgressProvider({
     });
   }, []);
 
+  const clearUpload = useCallback((studySetId?: string) => {
+    setUpload((prev) => {
+      if (!prev) {
+        return null;
+      }
+      if (studySetId !== undefined && prev.studySetId !== studySetId) {
+        return prev;
+      }
+      return null;
+    });
+  }, []);
+
   const value = useMemo(
-    () => ({ live, reportParse, clearParse }),
-    [live, reportParse, clearParse],
+    () => ({
+      live,
+      upload,
+      reportParse,
+      reportUpload,
+      clearParse,
+      clearUpload,
+    }),
+    [live, upload, reportParse, reportUpload, clearParse, clearUpload],
   );
 
   return (
