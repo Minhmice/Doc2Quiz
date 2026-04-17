@@ -469,7 +469,7 @@ export function NewStudySetPdfImportFlow({
         });
         if (!isStubObjectStorageFinalizeMessage(result.message)) {
           toast.error("Transfer did not finish. Starting over.");
-          void resetAfterInlineParse();
+          await resetAfterInlineParse();
         }
       }
     })();
