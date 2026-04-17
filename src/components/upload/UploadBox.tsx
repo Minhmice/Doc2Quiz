@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CloudUpload } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { fileSummary, pipelineLog } from "@/lib/logging/pipelineLogger";
@@ -8,6 +8,19 @@ import {
   validatePdfFile,
   type PdfValidationError,
 } from "@/lib/pdf/validatePdfFile";
+import { isPdfUploadLocalOnlyCapability } from "@/lib/uploads/pdfUploadClient";
+import {
+  runPdfUploadSession,
+  type PdfUploadRunnerState,
+} from "@/lib/uploads/runPdfUploadSession";
+import { PdfUploadProgressRow } from "@/components/upload/PdfUploadProgressRow";
+
+function isStubObjectStorageFinalizeMessage(message: string | undefined): boolean {
+  return (
+    typeof message === "string" &&
+    /not available yet for this deployment/i.test(message)
+  );
+}
 
 const BORDER_BREATHE_SOFT =
   "color-mix(in srgb, var(--d2q-border-strong) 40%, transparent)";
@@ -29,6 +42,15 @@ type UploadBoxProps = {
   onFileSelected: (file: File) => void;
   onValidationError: (error: PdfValidationError) => void;
   /**
+   * When true, after validation runs `runPdfUploadSession` in parallel (non-blocking)
+   * and shows `PdfUploadProgressRow` below the drop zone. Use only while this component
+   * stays mounted for the whole upload (e.g. standalone upload surfaces). Flows that
+   * navigate away or unmount this box should run upload from a parent instead
+   * (see `NewStudySetPdfImportFlow`).
+   * @default false
+   */
+  enableBackgroundPdfUpload?: boolean;
+  /**
    * Large drop zone: most of the viewport height with generous outer margins
    * (quiz/flashcards import flows).
    */
@@ -47,6 +69,7 @@ export function UploadBox({
   hasExtractedContent = false,
   onFileSelected,
   onValidationError,
+  enableBackgroundPdfUpload = false,
   tall = false,
 }: UploadBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +79,114 @@ export function UploadBox({
     name: string;
     size: number;
   } | null>(null);
+  const [pdfUploadUi, setPdfUploadUi] = useState<{
+    runnerState: PdfUploadRunnerState;
+    percent: number;
+    uploadedBytes: number;
+    totalBytes: number;
+    errorMessage?: string;
+  } | null>(null);
+  const uploadCancelRef = useRef<(() => void) | null>(null);
+  const reuploadFileRef = useRef<File | null>(null);
+  const uploadGenRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      uploadCancelRef.current?.();
+      uploadCancelRef.current = null;
+    },
+    [],
+  );
+
+  const startBackgroundPdfUpload = useCallback((file: File) => {
+    uploadCancelRef.current?.();
+    uploadCancelRef.current = null;
+    reuploadFileRef.current = file;
+    const gen = (uploadGenRef.current += 1);
+
+    setPdfUploadUi({
+      runnerState: "init",
+      percent: 0,
+      uploadedBytes: 0,
+      totalBytes: file.size,
+    });
+
+    const { promise, cancel } = runPdfUploadSession({
+      file,
+      suggestedSuffix: "document",
+      onStatus: ({ state }) => {
+        if (uploadGenRef.current !== gen) return;
+        if (state === "local_only") {
+          setPdfUploadUi(null);
+          return;
+        }
+        setPdfUploadUi((prev) => ({
+          runnerState: state,
+          percent: prev?.percent ?? 0,
+          uploadedBytes: prev?.uploadedBytes ?? 0,
+          totalBytes: prev?.totalBytes ?? file.size,
+        }));
+      },
+      onProgress: (p) => {
+        if (uploadGenRef.current !== gen) return;
+        if (p.capability.mode !== "direct-upload") return;
+        const pct =
+          p.totalBytes > 0
+            ? Math.min(100, Math.round((100 * p.uploadedBytes) / p.totalBytes))
+            : 0;
+        setPdfUploadUi((prev) => ({
+          runnerState: prev?.runnerState ?? "uploading",
+          percent: pct,
+          uploadedBytes: p.uploadedBytes,
+          totalBytes: p.totalBytes,
+        }));
+      },
+    });
+    uploadCancelRef.current = cancel;
+
+    void promise.then((out) => {
+      if (uploadGenRef.current !== gen) return;
+      uploadCancelRef.current = null;
+      if (out.ok) {
+        setPdfUploadUi(null);
+        pipelineLog("PDF", "upload-box", "info", "background pdf upload done", {});
+        return;
+      }
+      const cap = out.uploadCapability;
+      if (
+        !cap.configured ||
+        !cap.providerReady ||
+        isPdfUploadLocalOnlyCapability(cap)
+      ) {
+        setPdfUploadUi(null);
+        return;
+      }
+      const msg = out.message?.trim() ?? "";
+      if (/cancel/i.test(msg)) {
+        setPdfUploadUi(null);
+        return;
+      }
+      if (isStubObjectStorageFinalizeMessage(out.message)) {
+        setPdfUploadUi({
+          runnerState: "failed",
+          percent: 0,
+          uploadedBytes: 0,
+          totalBytes: file.size,
+          errorMessage:
+            out.message ??
+            "Object storage finalize is not available yet for this deployment.",
+        });
+        return;
+      }
+      setPdfUploadUi({
+        runnerState: "failed",
+        percent: 0,
+        uploadedBytes: 0,
+        totalBytes: file.size,
+        errorMessage: msg.length > 0 ? msg : "Upload failed.",
+      });
+    });
+  }, []);
 
   const processFile = useCallback(
     (file: File, pickSource: "input" | "drop") => {
@@ -66,14 +197,29 @@ export function UploadBox({
       const result = validatePdfFile(file);
       if (!result.ok) {
         setPickedMeta(null);
+        setPdfUploadUi(null);
         onValidationError(result.error);
         return;
       }
       setPickedMeta({ name: file.name, size: file.size });
       onFileSelected(file);
+      if (enableBackgroundPdfUpload) {
+        startBackgroundPdfUpload(file);
+      }
     },
-    [onFileSelected, onValidationError],
+    [enableBackgroundPdfUpload, onFileSelected, onValidationError, startBackgroundPdfUpload],
   );
+
+  const handlePdfUploadCancel = useCallback(() => {
+    uploadCancelRef.current?.();
+  }, []);
+
+  const handlePdfUploadReupload = useCallback(() => {
+    const f = reuploadFileRef.current;
+    if (f) {
+      startBackgroundPdfUpload(f);
+    }
+  }, [startBackgroundPdfUpload]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -244,6 +390,23 @@ export function UploadBox({
           <span className="font-medium">{pickedMeta.name}</span>
           <span className="text-[var(--d2q-muted)]"> · {formatBytes(pickedMeta.size)}</span>
         </motion.p>
+      ) : null}
+      {enableBackgroundPdfUpload && pdfUploadUi ? (
+        <PdfUploadProgressRow
+          className="mt-3 w-full text-left"
+          runnerState={pdfUploadUi.runnerState}
+          percent={pdfUploadUi.percent}
+          uploadedBytes={pdfUploadUi.uploadedBytes}
+          totalBytes={pdfUploadUi.totalBytes}
+          errorMessage={pdfUploadUi.errorMessage}
+          onCancel={handlePdfUploadCancel}
+          onReupload={
+            pdfUploadUi.errorMessage &&
+            isStubObjectStorageFinalizeMessage(pdfUploadUi.errorMessage)
+              ? handlePdfUploadReupload
+              : undefined
+          }
+        />
       ) : null}
       {error ? (
         <p className="mt-2 text-sm text-red-400" role="alert">

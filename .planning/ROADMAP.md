@@ -612,13 +612,15 @@ Plans:
 
 **Goal:** Add an **optional (env-gated)** direct-to-object-storage upload path for the **original PDF bytes** with a stable init → part/chunk → complete → finalize contract, while keeping the app **local-first by default**.
 
+**Status:** Complete — `26-01-SUMMARY.md`, `26-02-SUMMARY.md`
+
 **Requirements**: UPLOAD-01, UPLOAD-02, UPLOAD-03, UPLOAD-04, UPLOAD-05, UPLOAD-06
 **Depends on:** Phase 25
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete — `26-01-SUMMARY.md`, `26-02-SUMMARY.md`
 
 Plans:
 - [x] `26-01-PLAN.md` — Define requirements + ship provider-agnostic upload contracts, client helper, and env-gated API route stubs with finalize validations.
-- [ ] `26-02-PLAN.md` — Wire optional upload into `NewStudySetPdfImportFlow` + `UploadBox` with bytes-based progress, cancel, and same-session retry/resume (local-only default preserved).
+- [x] `26-02-PLAN.md` — Wire optional upload into `NewStudySetPdfImportFlow` + `UploadBox` with bytes-based progress, cancel, and same-session retry/resume (local-only default preserved).
 
 ### Phase 27: Preview-first parsing while full upload continues
 

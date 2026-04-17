@@ -1,5 +1,4 @@
 import { generateStudySetTitle } from "@/lib/ai/generateStudySetTitle";
-import { withRetries } from "@/lib/ai/pipelineStageRetry";
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
   fileSummary,
@@ -7,445 +6,245 @@ import {
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
 import { extractPdfText } from "@/lib/pdf/extractPdfText";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ApprovedBank, Question } from "@/types/question";
-import type { FlashcardGenerationConfig } from "@/types/flashcardGeneration";
-import { normalizeFlashcardGenerationConfig } from "@/types/flashcardGeneration";
 import type {
   ApprovedFlashcardBank,
   FlashcardVisionItem,
 } from "@/types/visionParse";
-import {
-  DB_NAME,
-  DB_VERSION,
-  type ParseProgressRecord,
-  type StudyContentKind,
-  type StudySetDocumentRecord,
-  type StudySetMeta,
+import type {
+  ParseProgressRecord,
+  StudyContentKind,
+  StudySetDocumentRecord,
+  StudySetMeta,
 } from "@/types/studySet";
 
-type MediaRecord = {
+const STORAGE_BUCKET = "doc2quiz";
+
+type StudySetRow = {
   id: string;
-  studySetId: string;
-  buffer: ArrayBuffer;
-  mimeType: string;
+  user_id: string;
+  title: string;
+  subtitle: string | null;
+  status: StudySetMeta["status"];
+  content_kind: StudyContentKind | null;
+  source_file_name: string | null;
+  page_count: number | null;
+  ocr_provider: string | null;
+  ocr_status: string | null;
+  created_at: string;
+  updated_at: string;
+  parse_progress?: unknown | null;
 };
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-let initPromise: Promise<void> | null = null;
+const STUDY_SET_META_SELECT_WITH_PARSE_PROGRESS =
+  "id,user_id,title,subtitle,status,content_kind,source_file_name,page_count,ocr_provider,ocr_status,created_at,updated_at,parse_progress";
 
-function openDb(): Promise<IDBDatabase> {
-  if (typeof indexedDB === "undefined") {
-    pipelineLog("IDB", "open", "error", "indexedDB API missing (private mode / unsupported)", {
-      dbName: DB_NAME,
-      dbVersion: DB_VERSION,
-    });
-    return Promise.reject(new Error("IndexedDB is not available"));
-  }
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onerror = () => {
-        const err = req.error;
-        pipelineLog("IDB", "open", "error", "indexedDB.open request failed", {
-          dbName: DB_NAME,
-          dbVersion: DB_VERSION,
-          ...normalizeUnknownError(err ?? new Error("IDB open failed")),
-          raw: err,
-        });
-        reject(err ?? new Error("IDB open failed"));
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onupgradeneeded = (ev) => {
-        const db = (ev.target as IDBOpenDBRequest).result;
-        const from = ev.oldVersion;
-        if (!db.objectStoreNames.contains("meta")) {
-          db.createObjectStore("meta", { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("document")) {
-          db.createObjectStore("document", { keyPath: "studySetId" });
-        }
-        if (!db.objectStoreNames.contains("draft")) {
-          db.createObjectStore("draft", { keyPath: "studySetId" });
-        }
-        if (!db.objectStoreNames.contains("approved")) {
-          db.createObjectStore("approved", { keyPath: "studySetId" });
-        }
-        if (!db.objectStoreNames.contains("media")) {
-          const m = db.createObjectStore("media", { keyPath: "id" });
-          m.createIndex("byStudySetId", "studySetId", { unique: false });
-        }
-        if (!db.objectStoreNames.contains("parseProgress")) {
-          db.createObjectStore("parseProgress", { keyPath: "studySetId" });
-        }
-        if (!db.objectStoreNames.contains("ocr")) {
-          db.createObjectStore("ocr", { keyPath: "studySetId" });
-        }
-        if (from < 3) {
-          if (!db.objectStoreNames.contains("quizSessions")) {
-            const qs = db.createObjectStore("quizSessions", { keyPath: "id" });
-            qs.createIndex("byStudySetId", "studySetId", { unique: false });
-          }
-          if (!db.objectStoreNames.contains("studyWrongHistory")) {
-            db.createObjectStore("studyWrongHistory", {
-              keyPath: "studySetId",
-            });
-          }
-        }
-        if (from < 6) {
-          if (!db.objectStoreNames.contains("approvedFlashcards")) {
-            db.createObjectStore("approvedFlashcards", { keyPath: "studySetId" });
-          }
-        }
-      };
-    });
-  }
-  return dbPromise;
+const STUDY_SET_META_SELECT_WITHOUT_PARSE_PROGRESS =
+  "id,user_id,title,subtitle,status,content_kind,source_file_name,page_count,ocr_provider,ocr_status,created_at,updated_at";
+
+function isMissingParseProgressColumnError(error: unknown): boolean {
+  const msg = String((error as { message?: string })?.message ?? error ?? "").toLowerCase();
+  return (
+    msg.includes("parse_progress") &&
+    (msg.includes("does not exist") ||
+      msg.includes("could not find") ||
+      msg.includes("schema cache"))
+  );
 }
 
-export async function ensureStudySetDb(): Promise<IDBDatabase> {
-  const db = await openDb();
-  if (!initPromise) {
-    initPromise = import("./migrateLegacyLocalStorage").then((m) =>
-      m.migrateLegacyLocalStorage(db),
-    );
-  }
-  await initPromise;
-  return db;
-}
-
-function txDone(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error ?? new Error("IDB transaction failed"));
-    tx.onabort = () => reject(tx.error ?? new Error("IDB transaction aborted"));
-  });
-}
-
-export async function listStudySetMetas(): Promise<StudySetMeta[]> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("meta", "readonly");
-    const store = tx.objectStore("meta");
-    const req = store.getAll();
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const rows = (req.result as StudySetMeta[]) ?? [];
-      rows.sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
-      resolve(rows);
-    };
-  });
-}
-
-export async function getStudySetMeta(
-  id: string,
-): Promise<StudySetMeta | undefined> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("meta", "readonly");
-    const req = tx.objectStore("meta").get(id);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => resolve(req.result as StudySetMeta | undefined);
-  });
-}
-
-export async function putStudySetMeta(meta: StudySetMeta): Promise<void> {
-  const db = await ensureStudySetDb();
-  const tx = db.transaction("meta", "readwrite");
-  tx.objectStore("meta").put(meta);
-  await txDone(tx);
-}
-
-/** Clear OCR provider/status on meta after replacing the PDF or resetting OCR. */
-export async function clearOcrMetaFields(id: string): Promise<void> {
-  const existing = await getStudySetMeta(id);
-  if (!existing) {
-    return;
-  }
-  const next = { ...existing, updatedAt: new Date().toISOString() };
-  delete (next as Record<string, unknown>).ocrProvider;
-  delete (next as Record<string, unknown>).ocrStatus;
-  await putStudySetMeta(next as StudySetMeta);
-}
-
-export async function deleteStudySet(id: string): Promise<void> {
-  const db = await ensureStudySetDb();
-  const storeNames: string[] = [
-    "meta",
-    "document",
-    "draft",
-    "approved",
-    "media",
-    "parseProgress",
-    "ocr",
-  ];
-  if (db.objectStoreNames.contains("approvedFlashcards")) {
-    storeNames.splice(4, 0, "approvedFlashcards");
-  }
-  if (db.objectStoreNames.contains("quizSessions")) {
-    storeNames.push("quizSessions");
-  }
-  if (db.objectStoreNames.contains("studyWrongHistory")) {
-    storeNames.push("studyWrongHistory");
-  }
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(storeNames, "readwrite");
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error ?? new Error("deleteStudySet failed"));
-    tx.onabort = () =>
-      reject(tx.error ?? new Error("deleteStudySet aborted"));
-    tx.objectStore("meta").delete(id);
-    tx.objectStore("document").delete(id);
-    tx.objectStore("draft").delete(id);
-    tx.objectStore("approved").delete(id);
-    if (db.objectStoreNames.contains("approvedFlashcards")) {
-      tx.objectStore("approvedFlashcards").delete(id);
-    }
-    tx.objectStore("parseProgress").delete(id);
-    tx.objectStore("ocr").delete(id);
-    if (db.objectStoreNames.contains("studyWrongHistory")) {
-      tx.objectStore("studyWrongHistory").delete(id);
-    }
-    if (db.objectStoreNames.contains("quizSessions")) {
-      const qsStore = tx.objectStore("quizSessions");
-      if (qsStore.indexNames.contains("byStudySetId")) {
-        const idx = qsStore.index("byStudySetId");
-        const qReq = idx.openCursor(IDBKeyRange.only(id));
-        qReq.onerror = () => reject(qReq.error);
-        qReq.onsuccess = () => {
-          const cursor = qReq.result;
-          if (cursor) {
-            cursor.delete();
-            cursor.continue();
-          }
-        };
-      }
-    }
-    const mediaStore = tx.objectStore("media");
-    const idx = mediaStore.index("byStudySetId");
-    const req = idx.openCursor(IDBKeyRange.only(id));
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const cursor = req.result;
-      if (cursor) {
-        cursor.delete();
-        cursor.continue();
-      }
-    };
-  });
-}
-
-export async function getDocument(
-  studySetId: string,
-): Promise<StudySetDocumentRecord | undefined> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("document", "readonly");
-    const req = tx.objectStore("document").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () =>
-      resolve(req.result as StudySetDocumentRecord | undefined);
-  });
-}
-
-export async function putDocument(
-  doc: StudySetDocumentRecord,
-): Promise<void> {
-  pipelineLog("IDB", "document-put", "info", "putDocument start", {
-    studySetId: doc.studySetId,
-    pdfFileName: doc.pdfFileName,
-    hasPdfBuffer: Boolean(doc.pdfArrayBuffer),
-    pdfBufferByteLength: doc.pdfArrayBuffer?.byteLength,
-    extractedTextChars: doc.extractedText.length,
-  });
-  try {
-    const db = await ensureStudySetDb();
-    const tx = db.transaction("document", "readwrite");
-    tx.objectStore("document").put(doc);
-    await txDone(tx);
-    pipelineLog("IDB", "document-put", "info", "putDocument success", {
-      studySetId: doc.studySetId,
-    });
-  } catch (raw) {
-    pipelineLog("IDB", "document-put", "error", "putDocument failed", {
-      studySetId: doc.studySetId,
-      ...normalizeUnknownError(raw),
-      raw,
-    });
-    throw raw;
-  }
-}
-
-export async function getParseProgressRecord(
-  studySetId: string,
-): Promise<ParseProgressRecord | undefined> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("parseProgress")) {
-    return undefined;
-  }
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("parseProgress", "readonly");
-    const req = tx.objectStore("parseProgress").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () =>
-      resolve(req.result as ParseProgressRecord | undefined);
-  });
-}
-
-export async function putParseProgressRecord(
-  record: ParseProgressRecord,
-): Promise<void> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("parseProgress")) {
-    return;
-  }
-  const tx = db.transaction("parseProgress", "readwrite");
-  tx.objectStore("parseProgress").put(record);
-  await txDone(tx);
-}
-
-type DraftRow = {
-  studySetId: string;
-  savedAt?: string;
-  questions?: Question[];
-  /** Phase 21 — flashcard vision pipeline (separate from MCQ `questions`). */
-  flashcardVisionItems?: FlashcardVisionItem[];
-  /** Last-used flashcard generation controls (optional; survives flashcard draft writes). */
-  flashcardGenerationConfig?: FlashcardGenerationConfig;
+type StudySetInsertRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  subtitle: string | null;
+  status: StudySetMeta["status"];
+  content_kind: StudyContentKind | null;
+  source_file_name: string | null;
+  page_count: number | null;
+  created_at: string;
+  updated_at: string;
 };
 
-export async function getDraftQuestions(
-  studySetId: string,
-): Promise<Question[]> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("draft", "readonly");
-    const req = tx.objectStore("draft").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const row = req.result as DraftRow | undefined;
-      resolve(Array.isArray(row?.questions) ? row.questions : []);
-    };
-  });
-}
-
-export async function getDraftFlashcardGenerationConfig(
-  studySetId: string,
-): Promise<FlashcardGenerationConfig | undefined> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("draft", "readonly");
-    const req = tx.objectStore("draft").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const row = req.result as DraftRow | undefined;
-      const cfg = row?.flashcardGenerationConfig;
-      resolve(cfg ? normalizeFlashcardGenerationConfig(cfg) : undefined);
-    };
-  });
-}
-
-export async function getDraftFlashcardVisionItems(
-  studySetId: string,
-): Promise<FlashcardVisionItem[]> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("draft", "readonly");
-    const req = tx.objectStore("draft").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const row = req.result as DraftRow | undefined;
-      resolve(
-        Array.isArray(row?.flashcardVisionItems) ? row.flashcardVisionItems : [],
-      );
-    };
-  });
-}
-
-export async function putDraftFlashcardVisionItems(
-  studySetId: string,
-  items: FlashcardVisionItem[],
-  generationConfig?: FlashcardGenerationConfig,
+async function insertStudySetRowAllowLegacyDb(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  row: StudySetInsertRow,
 ): Promise<void> {
-  const db = await ensureStudySetDb();
-  await withRetries("idb_put", undefined, async () => {
-    const row = await new Promise<DraftRow | undefined>((resolve, reject) => {
-      const tx = db.transaction("draft", "readonly");
-      const r = tx.objectStore("draft").get(studySetId);
-      r.onerror = () => reject(r.error);
-      r.onsuccess = () => resolve(r.result as DraftRow | undefined);
-    });
-    const withIds = items.map((it) =>
-      it.id ? it : { ...it, id: createRandomUuid() },
-    );
-    const normalizedGen =
-      generationConfig !== undefined
-        ? normalizeFlashcardGenerationConfig(generationConfig)
-        : row?.flashcardGenerationConfig !== undefined
-          ? normalizeFlashcardGenerationConfig(row.flashcardGenerationConfig)
-          : undefined;
-    const tx = db.transaction("draft", "readwrite");
-    tx.objectStore("draft").put({
-      ...row,
-      studySetId,
-      savedAt: new Date().toISOString(),
-      questions: [],
-      flashcardVisionItems: withIds,
-      ...(normalizedGen !== undefined
-        ? { flashcardGenerationConfig: normalizedGen }
-        : {}),
-    });
-    await txDone(tx);
+  let { error } = await supabase.from("study_sets").insert({
+    ...row,
+    parse_progress: {},
   });
+  if (error && isMissingParseProgressColumnError(error)) {
+    const retry = await supabase.from("study_sets").insert(row);
+    error = retry.error;
+  }
+  assertNoError(error, "study_sets insert failed");
 }
 
-export async function putDraftQuestions(
-  studySetId: string,
-  questions: Question[],
-): Promise<void> {
-  pipelineLog("IDB", "draft-put", "info", "putDraftQuestions start", {
-    studySetId,
-    questionCount: questions.length,
+type StudySetDocumentRow = {
+  id: string;
+  user_id: string;
+  study_set_id: string;
+  extracted_text: string;
+  page_count: number | null;
+  source_file_name: string | null;
+  source_pdf_asset_id: string | null;
+  extracted_at: string | null;
+  updated_at: string;
+};
+
+type MediaAssetRow = {
+  id: string;
+  user_id: string;
+  study_set_id: string;
+  document_id: string | null;
+  kind: "page_image" | "attachment";
+  bucket: string;
+  object_path: string;
+  mime_type: string | null;
+  byte_size: number | null;
+  page_number: number | null;
+};
+
+const pdfBufferCache = new Map<string, ArrayBuffer>();
+
+function assertNoError(err: unknown, message: string): void {
+  if (!err) {
+    return;
+  }
+  const e = err as { message?: string };
+  throw new Error(e.message ?? message);
+}
+
+async function requireUserId(): Promise<string> {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  assertNoError(error, "auth.getUser failed");
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+  return user.id;
+}
+
+function metaFromRow(row: StudySetRow): StudySetMeta {
+  const meta: StudySetMeta = {
+    id: row.id,
+    title: row.title,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    status: row.status,
+  };
+  if (row.subtitle) {
+    meta.subtitle = row.subtitle;
+  }
+  if (row.source_file_name) {
+    meta.sourceFileName = row.source_file_name;
+  }
+  if (row.page_count !== null && row.page_count !== undefined) {
+    meta.pageCount = row.page_count;
+  }
+  if (row.content_kind) {
+    meta.contentKind = row.content_kind;
+  }
+  if (row.ocr_provider) {
+    meta.ocrProvider = row.ocr_provider;
+  }
+  if (row.ocr_status) {
+    meta.ocrStatus = row.ocr_status as StudySetMeta["ocrStatus"];
+  }
+  return meta;
+}
+
+async function downloadStorageObject(
+  bucket: string,
+  objectPath: string,
+): Promise<ArrayBuffer> {
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .download(objectPath);
+  assertNoError(error, "storage.download failed");
+  if (!data) {
+    throw new Error("storage.download returned empty body");
+  }
+  return await data.arrayBuffer();
+}
+
+async function uploadStorageObject(params: {
+  bucket: string;
+  objectPath: string;
+  bytes: Uint8Array;
+  contentType: string;
+}): Promise<void> {
+  const supabase = createSupabaseBrowserClient();
+  const { error } = await supabase.storage.from(params.bucket).upload(params.objectPath, params.bytes, {
+    upsert: true,
+    contentType: params.contentType,
   });
-  try {
-    await withRetries("idb_put", undefined, async () => {
-      const db = await ensureStudySetDb();
-      const row = await new Promise<DraftRow | undefined>((resolve, reject) => {
-        const rtx = db.transaction("draft", "readonly");
-        const r = rtx.objectStore("draft").get(studySetId);
-        r.onerror = () => reject(r.error);
-        r.onsuccess = () => resolve(r.result as DraftRow | undefined);
-      });
-      const tx = db.transaction("draft", "readwrite");
-      tx.objectStore("draft").put({
-        ...row,
-        studySetId,
-        savedAt: new Date().toISOString(),
-        questions,
-        flashcardVisionItems: undefined,
-      });
-      await txDone(tx);
+  assertNoError(error, "storage.upload failed");
+}
+
+async function deleteStorageObject(bucket: string, objectPath: string): Promise<void> {
+  const supabase = createSupabaseBrowserClient();
+  const { error } = await supabase.storage.from(bucket).remove([objectPath]);
+  if (error) {
+    pipelineLog("STUDY_SET", "storage-delete", "warn", "storage.remove failed", {
+      bucket,
+      objectPath,
+      ...normalizeUnknownError(error),
+      raw: error,
     });
-    pipelineLog("IDB", "draft-put", "info", "putDraftQuestions success", {
-      studySetId,
-    });
-  } catch (raw) {
-    pipelineLog("IDB", "draft-put", "error", "putDraftQuestions failed", {
-      studySetId,
-      ...normalizeUnknownError(raw),
-      raw,
-    });
-    throw raw;
   }
 }
 
-type ApprovedRow = ApprovedBank & { studySetId: string };
+async function listMediaAssetsForStudySet(studySetId: string): Promise<MediaAssetRow[]> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("media_assets")
+    .select(
+      "id,user_id,study_set_id,document_id,kind,bucket,object_path,mime_type,byte_size,page_number",
+    )
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId);
+  assertNoError(error, "media_assets list failed");
+  return (data ?? []) as MediaAssetRow[];
+}
 
-type ApprovedFlashcardRow = ApprovedFlashcardBank & { studySetId: string };
+function questionToRow(q: Question): Record<string, unknown> {
+  return {
+    prompt: q.question,
+    choices: q.options as unknown as string[],
+    correct_index: q.correctIndex,
+    explanation: null,
+    tags: [],
+    source: q as unknown as Record<string, unknown>,
+  };
+}
 
-/** Legacy encoding: flashcards were stored as fake MCQs (back in options[0], placeholders). */
+function rowToQuestion(row: {
+  id: string;
+  prompt: string;
+  choices: string[];
+  correct_index: number;
+  source: unknown;
+}): Question {
+  const fromSource =
+    row.source && typeof row.source === "object"
+      ? (row.source as Partial<Question>)
+      : {};
+  const base: Question = {
+    id: row.id,
+    question: row.prompt,
+    options: row.choices as Question["options"],
+    correctIndex: row.correct_index as Question["correctIndex"],
+  };
+  return { ...base, ...fromSource, id: row.id, question: row.prompt, options: base.options, correctIndex: base.correctIndex };
+}
+
 function isLegacyFlashcardCarrierQuestion(q: Question): boolean {
   return (
     q.correctIndex === 0 &&
@@ -455,37 +254,24 @@ function isLegacyFlashcardCarrierQuestion(q: Question): boolean {
   );
 }
 
-async function readApprovedFlashcardRowRaw(
-  db: IDBDatabase,
-  studySetId: string,
-): Promise<ApprovedFlashcardRow | undefined> {
-  if (!db.objectStoreNames.contains("approvedFlashcards")) {
-    return undefined;
-  }
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("approvedFlashcards", "readonly");
-    const req = tx.objectStore("approvedFlashcards").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () =>
-      resolve(req.result as ApprovedFlashcardRow | undefined);
-  });
-}
-
-/**
- * One-time migration from `approved.questions` carrier rows → `approvedFlashcards`.
- * Clears quiz `approved` row for that study set after success.
- */
 async function migrateLegacyFlashcardCarrierToApprovedFlashcards(
   studySetId: string,
 ): Promise<void> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("approvedFlashcards")) {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const metaRes = await supabase
+    .from("study_sets")
+    .select("content_kind")
+    .eq("user_id", userId)
+    .eq("id", studySetId)
+    .maybeSingle();
+  assertNoError(metaRes.error, "study_sets select failed");
+  const contentKind = (metaRes.data as { content_kind: StudyContentKind | null } | null)
+    ?.content_kind;
+  if (contentKind !== "flashcards") {
     return;
   }
-  const meta = await getStudySetMeta(studySetId);
-  if (meta?.contentKind !== "flashcards") {
-    return;
-  }
+
   const bank = await getApprovedBank(studySetId);
   if (!bank || bank.questions.length === 0) {
     return;
@@ -493,14 +279,14 @@ async function migrateLegacyFlashcardCarrierToApprovedFlashcards(
   if (!bank.questions.every(isLegacyFlashcardCarrierQuestion)) {
     return;
   }
+
   const items: FlashcardVisionItem[] = bank.questions
     .map((q) => ({
       kind: "flashcard" as const,
       id: q.id,
       front: q.question.trim(),
       back: (q.options[q.correctIndex] ?? "").trim(),
-      confidence:
-        typeof q.parseConfidence === "number" ? q.parseConfidence : 0.5,
+      confidence: typeof q.parseConfidence === "number" ? q.parseConfidence : 0.5,
       sourcePages:
         q.sourcePageIndex !== undefined && q.sourcePageIndex >= 1
           ? [q.sourcePageIndex]
@@ -515,161 +301,599 @@ async function migrateLegacyFlashcardCarrierToApprovedFlashcards(
   });
 }
 
+export async function ensureStudySetDb(): Promise<void> {
+  await requireUserId();
+}
+
+export async function listStudySetMetas(): Promise<StudySetMeta[]> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  let { data, error } = await supabase
+    .from("study_sets")
+    .select(STUDY_SET_META_SELECT_WITH_PARSE_PROGRESS)
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+  if (error && isMissingParseProgressColumnError(error)) {
+    const retry = await supabase
+      .from("study_sets")
+      .select(STUDY_SET_META_SELECT_WITHOUT_PARSE_PROGRESS)
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false });
+    data = retry.data as typeof data;
+    error = retry.error;
+  }
+  assertNoError(error, "listStudySetMetas failed");
+  return ((data ?? []) as StudySetRow[]).map(metaFromRow);
+}
+
+export async function getStudySetMeta(id: string): Promise<StudySetMeta | undefined> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  let { data, error } = await supabase
+    .from("study_sets")
+    .select(STUDY_SET_META_SELECT_WITH_PARSE_PROGRESS)
+    .eq("user_id", userId)
+      .eq("id", id)
+      .maybeSingle();
+    if (error && isMissingParseProgressColumnError(error)) {
+      const retry = await supabase
+        .from("study_sets")
+        .select(STUDY_SET_META_SELECT_WITHOUT_PARSE_PROGRESS)
+        .eq("user_id", userId)
+        .eq("id", id)
+        .maybeSingle();
+      data = retry.data as typeof data;
+    error = retry.error;
+  }
+  assertNoError(error, "getStudySetMeta failed");
+  if (!data) {
+    return undefined;
+  }
+  return metaFromRow(data as StudySetRow);
+}
+
+export async function putStudySetMeta(meta: StudySetMeta): Promise<void> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { error } = await supabase
+    .from("study_sets")
+    .update({
+      title: meta.title,
+      subtitle: meta.subtitle ?? null,
+      status: meta.status,
+      content_kind: meta.contentKind ?? null,
+      source_file_name: meta.sourceFileName ?? null,
+      page_count: meta.pageCount ?? null,
+      ocr_provider: meta.ocrProvider ?? null,
+      ocr_status: meta.ocrStatus ?? null,
+      updated_at: meta.updatedAt,
+    })
+    .eq("user_id", userId)
+    .eq("id", meta.id);
+  assertNoError(error, "putStudySetMeta failed");
+}
+
+export async function clearOcrMetaFields(id: string): Promise<void> {
+  const existing = await getStudySetMeta(id);
+  if (!existing) {
+    return;
+  }
+  const next: StudySetMeta = {
+    ...existing,
+    updatedAt: new Date().toISOString(),
+  };
+  delete (next as Record<string, unknown>).ocrProvider;
+  delete (next as Record<string, unknown>).ocrStatus;
+  await putStudySetMeta(next);
+}
+
+export async function deleteStudySet(id: string): Promise<void> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+
+  const assets = await listMediaAssetsForStudySet(id);
+  for (const a of assets) {
+    await deleteStorageObject(a.bucket, a.object_path);
+  }
+
+  const { error } = await supabase.from("study_sets").delete().eq("user_id", userId).eq("id", id);
+  assertNoError(error, "deleteStudySet failed");
+  pdfBufferCache.delete(id);
+}
+
+export async function getDocument(
+  studySetId: string,
+): Promise<StudySetDocumentRecord | undefined> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("study_set_documents")
+    .select(
+      "id,user_id,study_set_id,extracted_text,page_count,source_file_name,source_pdf_asset_id,extracted_at,updated_at",
+    )
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId)
+    .maybeSingle();
+  assertNoError(error, "getDocument failed");
+  if (!data) {
+    return undefined;
+  }
+  const row = data as StudySetDocumentRow;
+  const doc: StudySetDocumentRecord = {
+    studySetId: row.study_set_id,
+    extractedText: row.extracted_text,
+    pdfFileName: row.source_file_name ?? undefined,
+  };
+
+  if (row.source_pdf_asset_id) {
+    const { data: asset, error: aErr } = await supabase
+      .from("media_assets")
+      .select("bucket,object_path")
+      .eq("user_id", userId)
+      .eq("id", row.source_pdf_asset_id)
+      .maybeSingle();
+    assertNoError(aErr, "media_assets lookup failed");
+    if (asset) {
+      const cached = pdfBufferCache.get(studySetId);
+      if (cached) {
+        doc.pdfArrayBuffer = cached;
+      } else {
+        const buf = await downloadStorageObject(
+          (asset as { bucket: string; object_path: string }).bucket,
+          (asset as { bucket: string; object_path: string }).object_path,
+        );
+        pdfBufferCache.set(studySetId, buf);
+        doc.pdfArrayBuffer = buf;
+      }
+    }
+  }
+
+  return doc;
+}
+
+export async function putDocument(doc: StudySetDocumentRecord): Promise<void> {
+  pipelineLog("STUDY_SET", "document-put", "info", "putDocument start", {
+    studySetId: doc.studySetId,
+    pdfFileName: doc.pdfFileName,
+    hasPdfBuffer: Boolean(doc.pdfArrayBuffer),
+    pdfBufferByteLength: doc.pdfArrayBuffer?.byteLength,
+    extractedTextChars: doc.extractedText.length,
+  });
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const userId = await requireUserId();
+
+    const { data: existing, error: exErr } = await supabase
+      .from("study_set_documents")
+      .select(
+        "id,user_id,study_set_id,extracted_text,page_count,source_file_name,source_pdf_asset_id,extracted_at,updated_at",
+      )
+      .eq("user_id", userId)
+      .eq("study_set_id", doc.studySetId)
+      .maybeSingle();
+    assertNoError(exErr, "study_set_documents lookup failed");
+    const existingRow = existing as StudySetDocumentRow | null;
+
+    let documentId = existingRow?.id;
+    let pdfAssetId = existingRow?.source_pdf_asset_id ?? null;
+
+    if (doc.pdfArrayBuffer && doc.pdfArrayBuffer.byteLength > 0) {
+      pdfBufferCache.set(doc.studySetId, doc.pdfArrayBuffer);
+      const bytes = new Uint8Array(doc.pdfArrayBuffer);
+      const objectPath = `${userId}/${doc.studySetId}/source.pdf`;
+
+      if (!pdfAssetId) {
+        pdfAssetId = createRandomUuid();
+        const { error: insA } = await supabase.from("media_assets").insert({
+          id: pdfAssetId,
+          user_id: userId,
+          study_set_id: doc.studySetId,
+          document_id: documentId ?? null,
+          kind: "attachment",
+          bucket: STORAGE_BUCKET,
+          object_path: objectPath,
+          mime_type: "application/pdf",
+          byte_size: bytes.byteLength,
+          page_number: null,
+          metadata: {},
+        });
+        assertNoError(insA, "media_assets insert (pdf) failed");
+      } else {
+        const { error: updA } = await supabase
+          .from("media_assets")
+          .update({
+            mime_type: "application/pdf",
+            byte_size: bytes.byteLength,
+            object_path: objectPath,
+            bucket: STORAGE_BUCKET,
+          })
+          .eq("user_id", userId)
+          .eq("id", pdfAssetId);
+        assertNoError(updA, "media_assets update (pdf) failed");
+      }
+
+      await uploadStorageObject({
+        bucket: STORAGE_BUCKET,
+        objectPath,
+        bytes,
+        contentType: "application/pdf",
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    if (!documentId) {
+      documentId = createRandomUuid();
+      const { error: insD } = await supabase.from("study_set_documents").insert({
+        id: documentId,
+        user_id: userId,
+        study_set_id: doc.studySetId,
+        extracted_text: doc.extractedText,
+        page_count: null,
+        source_file_name: doc.pdfFileName ?? null,
+        source_pdf_asset_id: pdfAssetId,
+        extracted_at: nowIso,
+      });
+      assertNoError(insD, "study_set_documents insert failed");
+
+      if (pdfAssetId) {
+        const { error: linkErr } = await supabase
+          .from("media_assets")
+          .update({ document_id: documentId })
+          .eq("user_id", userId)
+          .eq("id", pdfAssetId);
+        assertNoError(linkErr, "media_assets link document_id failed");
+      }
+    } else {
+      const { error: updD } = await supabase
+        .from("study_set_documents")
+        .update({
+          extracted_text: doc.extractedText,
+          source_file_name: doc.pdfFileName ?? null,
+          source_pdf_asset_id: pdfAssetId,
+          extracted_at: nowIso,
+        })
+        .eq("user_id", userId)
+        .eq("id", documentId);
+      assertNoError(updD, "study_set_documents update failed");
+    }
+
+    pipelineLog("STUDY_SET", "document-put", "info", "putDocument success", {
+      studySetId: doc.studySetId,
+    });
+  } catch (raw) {
+    pipelineLog("STUDY_SET", "document-put", "error", "putDocument failed", {
+      studySetId: doc.studySetId,
+      ...normalizeUnknownError(raw),
+      raw,
+    });
+    throw raw;
+  }
+}
+
+export async function getParseProgressRecord(
+  studySetId: string,
+): Promise<ParseProgressRecord | undefined> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("study_sets")
+    .select("parse_progress")
+    .eq("user_id", userId)
+    .eq("id", studySetId)
+    .maybeSingle();
+  if (error && isMissingParseProgressColumnError(error)) {
+    return undefined;
+  }
+  assertNoError(error, "getParseProgressRecord failed");
+  if (!data) {
+    return undefined;
+  }
+  const raw = (data as { parse_progress: unknown }).parse_progress;
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const p = raw as Partial<ParseProgressRecord>;
+  if (
+    p.studySetId !== studySetId ||
+    typeof p.updatedAt !== "string" ||
+    typeof p.running !== "boolean" ||
+    typeof p.phase !== "string" ||
+    typeof p.current !== "number" ||
+    typeof p.total !== "number"
+  ) {
+    return undefined;
+  }
+  return p as ParseProgressRecord;
+}
+
+export async function putParseProgressRecord(record: ParseProgressRecord): Promise<void> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { error } = await supabase
+    .from("study_sets")
+    .update({ parse_progress: record })
+    .eq("user_id", userId)
+    .eq("id", record.studySetId);
+  if (error && isMissingParseProgressColumnError(error)) {
+    return;
+  }
+  assertNoError(error, "putParseProgressRecord failed");
+}
+
 export async function getApprovedFlashcardBank(
   studySetId: string,
 ): Promise<ApprovedFlashcardBank | null> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("approvedFlashcards")) {
+  await migrateLegacyFlashcardCarrierToApprovedFlashcards(studySetId);
+
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("approved_flashcards")
+    .select("id,front,back,tags,source,updated_at")
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId)
+    .order("updated_at", { ascending: true });
+  assertNoError(error, "getApprovedFlashcardBank failed");
+  const rows = data ?? [];
+  if (rows.length === 0) {
     return null;
   }
-  let row = await readApprovedFlashcardRowRaw(db, studySetId);
-  if (!row) {
-    await migrateLegacyFlashcardCarrierToApprovedFlashcards(studySetId);
-    row = await readApprovedFlashcardRowRaw(db, studySetId);
-  }
-  if (!row) {
-    return null;
-  }
-  return {
-    version: row.version,
-    savedAt: row.savedAt,
-    items: Array.isArray(row.items) ? row.items : [],
-  };
+  const items: FlashcardVisionItem[] = (rows as {
+    id: string;
+    front: string;
+    back: string;
+    source: unknown;
+  }[]).map((r) => {
+    const fromSource =
+      r.source && typeof r.source === "object"
+        ? (r.source as Partial<FlashcardVisionItem>)
+        : {};
+    const base: FlashcardVisionItem = {
+      kind: "flashcard",
+      id: r.id,
+      front: r.front,
+      back: r.back,
+      confidence: 0.5,
+    };
+    const merged = { ...base, ...fromSource, kind: "flashcard" as const, id: r.id, front: r.front, back: r.back };
+    return merged;
+  });
+  const savedAt = new Date().toISOString();
+  return { version: 1, savedAt, items };
 }
 
-/**
- * Persists an approved flashcard deck and clears the MCQ `approved` row for the
- * same study set (flashcard lane must not leave quiz-shaped carriers behind).
- */
 export async function putApprovedFlashcardBankForStudySet(
   studySetId: string,
   bank: ApprovedFlashcardBank,
 ): Promise<void> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("approvedFlashcards")) {
-    pipelineLog("IDB", "approved-flashcards", "warn", "store missing", {
-      studySetId,
-    });
-    return;
-  }
-  const tx = db.transaction(["approvedFlashcards", "approved"], "readwrite");
-  tx.objectStore("approvedFlashcards").put({
-    studySetId,
-    version: bank.version,
-    savedAt: bank.savedAt,
-    items: bank.items,
-  });
-  tx.objectStore("approved").put({
-    studySetId,
-    version: 1,
-    savedAt: bank.savedAt,
-    questions: [],
-  });
-  await txDone(tx);
-}
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
 
-export async function getApprovedBank(
-  studySetId: string,
-): Promise<ApprovedBank | null> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("approved", "readonly");
-    const req = tx.objectStore("approved").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const row = req.result as ApprovedRow | undefined;
-      if (!row) {
-        resolve(null);
-        return;
-      }
-      resolve({
-        version: row.version,
-        savedAt: row.savedAt,
-        questions: row.questions,
-      });
+  const { data: existingRows, error: exErr } = await supabase
+    .from("approved_flashcards")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId);
+  assertNoError(exErr, "approved_flashcards list failed");
+  const existingIds = new Set((existingRows ?? []).map((r) => (r as { id: string }).id));
+
+  const upserts = bank.items.map((it) => {
+    const id =
+      it.id && it.id.trim().length > 0 ? it.id : createRandomUuid();
+    const source = it as unknown as Record<string, unknown>;
+    return {
+      id,
+      user_id: userId,
+      study_set_id: studySetId,
+      front: it.front,
+      back: it.back,
+      tags: [],
+      source,
+      updated_at: bank.savedAt,
     };
   });
+
+  if (upserts.length > 0) {
+    const { error: upErr } = await supabase.from("approved_flashcards").upsert(upserts, {
+      onConflict: "id",
+    });
+    assertNoError(upErr, "approved_flashcards upsert failed");
+  } else {
+    const { error: delAll } = await supabase
+      .from("approved_flashcards")
+      .delete()
+      .eq("user_id", userId)
+      .eq("study_set_id", studySetId);
+    assertNoError(delAll, "approved_flashcards delete-all failed");
+  }
+
+  const keep = new Set(upserts.map((u) => u.id));
+  const toDelete = [...existingIds].filter((id) => !keep.has(id));
+  if (toDelete.length > 0) {
+    const { error: delErr } = await supabase
+      .from("approved_flashcards")
+      .delete()
+      .eq("user_id", userId)
+      .eq("study_set_id", studySetId)
+      .in("id", toDelete);
+    assertNoError(delErr, "approved_flashcards delete failed");
+  }
+
+  // Flashcard lane should not leave quiz rows behind.
+  const { error: delQ } = await supabase
+    .from("approved_questions")
+    .delete()
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId);
+  assertNoError(delQ, "approved_questions delete (flashcards) failed");
+}
+
+export async function getApprovedBank(studySetId: string): Promise<ApprovedBank | null> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("approved_questions")
+    .select("id,prompt,choices,correct_index,source,updated_at")
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId)
+    .order("updated_at", { ascending: true });
+  assertNoError(error, "getApprovedBank failed");
+  const rows = data ?? [];
+  if (rows.length === 0) {
+    return null;
+  }
+  const questions = (rows as {
+    id: string;
+    prompt: string;
+    choices: string[];
+    correct_index: number;
+    source: unknown;
+  }[]).map(rowToQuestion);
+  const savedAt = new Date().toISOString();
+  return { version: 1, savedAt, questions };
 }
 
 export async function putApprovedBankForStudySet(
   studySetId: string,
   bank: ApprovedBank,
 ): Promise<void> {
-  const db = await ensureStudySetDb();
-  const storeNames =
-    db.objectStoreNames.contains("approvedFlashcards") &&
-    bank.questions.length > 0
-      ? (["approved", "approvedFlashcards"] as const)
-      : (["approved"] as const);
-  const tx = db.transaction(storeNames, "readwrite");
-  tx.objectStore("approved").put({
-    studySetId,
-    version: bank.version,
-    savedAt: bank.savedAt,
-    questions: bank.questions,
-  });
-  if (
-    db.objectStoreNames.contains("approvedFlashcards") &&
-    bank.questions.length > 0
-  ) {
-    tx.objectStore("approvedFlashcards").delete(studySetId);
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+
+  const { data: existingRows, error: exErr } = await supabase
+    .from("approved_questions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId);
+  assertNoError(exErr, "approved_questions list failed");
+  const existingIds = new Set((existingRows ?? []).map((r) => (r as { id: string }).id));
+
+  const upserts = bank.questions.map((q) => ({
+    id: q.id,
+    user_id: userId,
+    study_set_id: studySetId,
+    ...questionToRow(q),
+    updated_at: bank.savedAt,
+  }));
+
+  if (upserts.length > 0) {
+    const { error: upErr } = await supabase.from("approved_questions").upsert(upserts, {
+      onConflict: "id",
+    });
+    assertNoError(upErr, "approved_questions upsert failed");
+  } else {
+    const { error: delAll } = await supabase
+      .from("approved_questions")
+      .delete()
+      .eq("user_id", userId)
+      .eq("study_set_id", studySetId);
+    assertNoError(delAll, "approved_questions delete-all failed");
   }
-  await txDone(tx);
+
+  const keep = new Set(upserts.map((u) => u.id));
+  const toDelete = [...existingIds].filter((id) => !keep.has(id));
+  if (toDelete.length > 0) {
+    const { error: delErr } = await supabase
+      .from("approved_questions")
+      .delete()
+      .eq("user_id", userId)
+      .eq("study_set_id", studySetId)
+      .in("id", toDelete);
+    assertNoError(delErr, "approved_questions delete failed");
+  }
+
+  if (bank.questions.length > 0) {
+    const { error: delFc } = await supabase
+      .from("approved_flashcards")
+      .delete()
+      .eq("user_id", userId)
+      .eq("study_set_id", studySetId);
+    assertNoError(delFc, "approved_flashcards delete (quiz) failed");
+  }
 }
 
-export async function putMediaBlob(
-  studySetId: string,
-  blob: Blob,
-): Promise<string> {
-  const db = await ensureStudySetDb();
+export async function putMediaBlob(studySetId: string, blob: Blob): Promise<string> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
   const id = createRandomUuid();
-  const buffer = await blob.arrayBuffer();
-  const tx = db.transaction("media", "readwrite");
-  const rec: MediaRecord = {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const objectPath = `${userId}/${studySetId}/media/${id}`;
+
+  const { data: docRow, error: docErr } = await supabase
+    .from("study_set_documents")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId)
+    .maybeSingle();
+  assertNoError(docErr, "study_set_documents lookup failed");
+  const documentId = (docRow as { id: string } | null)?.id ?? null;
+
+  const { error: insA } = await supabase.from("media_assets").insert({
     id,
-    studySetId,
-    buffer,
-    mimeType: blob.type || "application/octet-stream",
-  };
-  tx.objectStore("media").put(rec);
-  await txDone(tx);
+    user_id: userId,
+    study_set_id: studySetId,
+    document_id: documentId,
+    kind: "page_image",
+    bucket: STORAGE_BUCKET,
+    object_path: objectPath,
+    mime_type: blob.type || "application/octet-stream",
+    byte_size: bytes.byteLength,
+    page_number: null,
+    metadata: {},
+  });
+  assertNoError(insA, "media_assets insert failed");
+
+  await uploadStorageObject({
+    bucket: STORAGE_BUCKET,
+    objectPath,
+    bytes,
+    contentType: blob.type || "application/octet-stream",
+  });
+
   return id;
 }
 
-export async function getMediaBlob(
-  mediaId: string,
-): Promise<Blob | null> {
-  const db = await ensureStudySetDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("media", "readonly");
-    const req = tx.objectStore("media").get(mediaId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const row = req.result as MediaRecord | undefined;
-      if (!row) {
-        resolve(null);
-        return;
-      }
-      resolve(new Blob([row.buffer], { type: row.mimeType }));
-    };
-  });
+export async function getMediaBlob(mediaId: string): Promise<Blob | null> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("media_assets")
+    .select("bucket,object_path,mime_type")
+    .eq("user_id", userId)
+    .eq("id", mediaId)
+    .maybeSingle();
+  assertNoError(error, "media_assets get failed");
+  if (!data) {
+    return null;
+  }
+  const row = data as { bucket: string; object_path: string; mime_type: string | null };
+  const buf = await downloadStorageObject(row.bucket, row.object_path);
+  return new Blob([buf], { type: row.mime_type ?? "application/octet-stream" });
 }
 
 export async function deleteMedia(mediaId: string): Promise<void> {
-  const db = await ensureStudySetDb();
-  const tx = db.transaction("media", "readwrite");
-  tx.objectStore("media").delete(mediaId);
-  await txDone(tx);
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("media_assets")
+    .select("bucket,object_path")
+    .eq("user_id", userId)
+    .eq("id", mediaId)
+    .maybeSingle();
+  assertNoError(error, "media_assets select failed");
+  if (!data) {
+    return;
+  }
+  const row = data as { bucket: string; object_path: string };
+  await deleteStorageObject(row.bucket, row.object_path);
+  const { error: delErr } = await supabase.from("media_assets").delete().eq("user_id", userId).eq("id", mediaId);
+  assertNoError(delErr, "media_assets delete failed");
 }
 
 export function newStudySetId(): string {
   return createRandomUuid();
 }
 
-/**
- * Persist meta + empty draft + document row (no PDF bytes) immediately so inline parse can start
- * without waiting for full extract, title model, or arrayBuffer persistence (Phase 27 D-09).
- */
 export async function createStudySetEarlyMeta(input: {
   title: string;
   subtitle?: string;
@@ -678,24 +902,39 @@ export async function createStudySetEarlyMeta(input: {
   extractedText?: string;
   contentKind?: StudyContentKind;
 }): Promise<string> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
   const id = newStudySetId();
   const now = new Date().toISOString();
-  const meta: StudySetMeta = {
+
+  const { error: metaErr } = await supabase.from("study_sets").insert({
     id,
+    user_id: userId,
     title: input.title,
-    subtitle: input.subtitle,
-    createdAt: now,
-    updatedAt: now,
-    sourceFileName: input.sourceFileName,
-    pageCount: input.pageCount ?? undefined,
+    subtitle: input.subtitle ?? null,
     status: "draft",
-    ...(input.contentKind !== undefined ? { contentKind: input.contentKind } : {}),
-  };
-  const doc: StudySetDocumentRecord = {
-    studySetId: id,
-    extractedText: input.extractedText ?? "",
-    pdfFileName: input.sourceFileName,
-  };
+    content_kind: input.contentKind ?? null,
+    source_file_name: input.sourceFileName ?? null,
+    page_count: input.pageCount ?? null,
+    parse_progress: {},
+    created_at: now,
+    updated_at: now,
+  });
+  assertNoError(metaErr, "createStudySetEarlyMeta: study_sets insert failed");
+
+  const docId = newStudySetId();
+  const { error: docErr } = await supabase.from("study_set_documents").insert({
+    id: docId,
+    user_id: userId,
+    study_set_id: id,
+    extracted_text: input.extractedText ?? "",
+    page_count: input.pageCount ?? null,
+    source_file_name: input.sourceFileName ?? null,
+    source_pdf_asset_id: null,
+    extracted_at: now,
+  });
+  assertNoError(docErr, "createStudySetEarlyMeta: study_set_documents insert failed");
+
   pipelineLog("STUDY_SET", "create", "info", "createStudySetEarlyMeta", {
     studySetId: id,
     title: input.title,
@@ -703,22 +942,10 @@ export async function createStudySetEarlyMeta(input: {
     sourceFileName: input.sourceFileName,
     contentKind: input.contentKind,
   });
-  const db = await ensureStudySetDb();
-  const tx = db.transaction(["meta", "document", "draft"], "readwrite");
-  tx.objectStore("meta").put(meta);
-  tx.objectStore("document").put(doc);
-  tx.objectStore("draft").put({
-    studySetId: id,
-    savedAt: now,
-    questions: [],
-  });
-  await txDone(tx);
+
   return id;
 }
 
-/**
- * Background: full text extract, optional AI title, and PDF bytes into IDB. Safe if user cancelled (no meta).
- */
 export async function enrichStudySetDocumentFromLocalPdf(input: {
   studySetId: string;
   file: File;
@@ -811,20 +1038,7 @@ export async function createStudySet(input: {
       ...fileSummary(input.pdfFile ?? undefined),
       reusedExtractedText: input.extractedText.trim().length > 0,
     });
-    const meta: StudySetMeta = {
-      id,
-      title: input.title,
-      subtitle: input.subtitle,
-      createdAt: now,
-      updatedAt: now,
-      sourceFileName: input.sourceFileName,
-      pageCount: input.pageCount ?? undefined,
-      status: "draft",
-      ...(input.contentKind !== undefined
-        ? { contentKind: input.contentKind }
-        : {}),
-    };
-    /** If `pdfFile` is set and `extractedText` is already non-empty, callers skip a second extract. */
+
     let extractedTextForDoc = input.extractedText;
     if (input.pdfFile && input.pdfFile.size > 0) {
       if (input.extractedText.trim().length > 0) {
@@ -837,38 +1051,64 @@ export async function createStudySet(input: {
         extractedTextForDoc = await extractPdfText(input.pdfFile);
       }
     }
+
     let pdfArrayBuffer: ArrayBuffer | undefined;
     if (input.pdfFile && input.pdfFile.size > 0) {
-      pipelineLog("PDF", "array-buffer", "info", "createStudySet: reading pdf arrayBuffer for IDB", {
+      pipelineLog("PDF", "array-buffer", "info", "createStudySet: reading pdf arrayBuffer", {
         studySetId: id,
         ...fileSummary(input.pdfFile),
       });
       pdfArrayBuffer = await input.pdfFile.arrayBuffer();
-      pipelineLog("PDF", "array-buffer", "info", "createStudySet: pdf buffer ready", {
-        studySetId: id,
-        byteLength: pdfArrayBuffer.byteLength,
-      });
     }
-    const doc: StudySetDocumentRecord = {
-      studySetId: id,
-      extractedText: extractedTextForDoc,
-      pdfArrayBuffer,
-      pdfFileName: input.pdfFile?.name,
-    };
-    pipelineLog("IDB", "transaction", "info", "createStudySet: meta + document + draft transaction", {
-      studySetId: id,
-      extractedTextChars: extractedTextForDoc.length,
+
+    const supabase = createSupabaseBrowserClient();
+    const userId = await requireUserId();
+
+    await insertStudySetRowAllowLegacyDb(supabase, {
+      id,
+      user_id: userId,
+      title: input.title,
+      subtitle: input.subtitle ?? null,
+      status: "draft",
+      content_kind: input.contentKind ?? null,
+      source_file_name: input.sourceFileName ?? null,
+      page_count: input.pageCount ?? null,
+      created_at: now,
+      updated_at: now,
     });
-    const db = await ensureStudySetDb();
-    const tx = db.transaction(["meta", "document", "draft"], "readwrite");
-    tx.objectStore("meta").put(meta);
-    tx.objectStore("document").put(doc);
-    tx.objectStore("draft").put({
-      studySetId: id,
-      savedAt: now,
-      questions: [],
+
+    const docId = newStudySetId();
+    const { error: docErr } = await supabase.from("study_set_documents").insert({
+      id: docId,
+      user_id: userId,
+      study_set_id: id,
+      extracted_text: "",
+      page_count: input.pageCount ?? null,
+      source_file_name: input.pdfFile?.name ?? input.sourceFileName ?? null,
+      source_pdf_asset_id: null,
+      extracted_at: now,
     });
-    await txDone(tx);
+    assertNoError(docErr, "createStudySet: study_set_documents insert failed");
+
+    if (pdfArrayBuffer && pdfArrayBuffer.byteLength > 0 && input.pdfFile) {
+      await putDocument({
+        studySetId: id,
+        extractedText: extractedTextForDoc,
+        pdfArrayBuffer,
+        pdfFileName: input.pdfFile.name,
+      });
+    } else {
+      const { error: txtErr } = await supabase
+        .from("study_set_documents")
+        .update({
+          extracted_text: extractedTextForDoc,
+          extracted_at: now,
+        })
+        .eq("user_id", userId)
+        .eq("id", docId);
+      assertNoError(txtErr, "createStudySet: study_set_documents text update failed");
+    }
+
     pipelineLog("STUDY_SET", "create", "info", "createStudySet success", {
       studySetId: id,
     });

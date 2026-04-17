@@ -1,10 +1,11 @@
 import {
-  abortPdfUpload,
-  completePdfUpload,
-  getPdfUploadPartUrl,
-  initPdfUpload,
   isPdfUploadLocalOnlyCapability,
 } from "@/lib/uploads/pdfUploadClient";
+import {
+  runPdfUploadSession,
+  type RunPdfUploadSessionOutcome,
+  type PdfUploadRunnerState,
+} from "@/lib/uploads/runPdfUploadSession";
 import type {
   PdfUploadCapability,
   PdfUploadSessionDescriptor,
@@ -28,153 +29,61 @@ export type RunBackgroundStudySetPdfUploadArgs = {
   /** Invoked when a direct-upload session is created or cleared (best-effort cleanup). */
   onSession?: (session: PdfUploadSessionDescriptor | null) => void;
   onProgress: (p: BackgroundPdfUploadProgress) => void;
+  /** Optional: wire to upload progress UI (Phase 26-02). */
+  onRunnerStatus?: (s: PdfUploadRunnerState) => void;
 };
 
-function stripEtag(h: string | null): string | undefined {
-  if (!h) {
-    return undefined;
+function mapPdfUploadSessionOutcome(
+  out: RunPdfUploadSessionOutcome,
+): RunBackgroundStudySetPdfUploadResult {
+  if (out.ok) {
+    return { kind: "completed" };
   }
-  const t = h.trim();
-  if (t.length === 0) {
-    return undefined;
+  const { uploadCapability: cap, message } = out;
+  if (
+    !cap.configured ||
+    !cap.providerReady ||
+    isPdfUploadLocalOnlyCapability(cap)
+  ) {
+    return { kind: "skipped" };
   }
-  return t.replace(/^W\//i, "").replace(/^"([\s\S]*)"$/, "$1");
+  const msg = message?.trim() ?? "";
+  if (/cancel/i.test(msg)) {
+    return { kind: "aborted" };
+  }
+  if (msg.length === 0) {
+    return { kind: "error", message: "Upload failed." };
+  }
+  return { kind: "error", message: msg };
 }
 
 /**
  * Best-effort multipart upload of the original PDF when the deployment reports
  * `direct-upload` capability. No-ops (returns `skipped`) for local-only mode.
+ * Delegates to `runPdfUploadSession` (Phase 26-02).
  */
 export async function runBackgroundStudySetPdfUpload(
   args: RunBackgroundStudySetPdfUploadArgs,
 ): Promise<RunBackgroundStudySetPdfUploadResult> {
-  const { file, signal, onProgress, onSession } = args;
-  let session: PdfUploadSessionDescriptor | null = null;
+  const { file, signal, onProgress, onSession, onRunnerStatus } = args;
 
-  try {
-    const suggested =
-      file.name.replace(/\.pdf$/i, "").trim().slice(0, 64) || "pdf";
-    const init = await initPdfUpload({ file, suggestedSuffix: suggested });
-
-    if (isPdfUploadLocalOnlyCapability(init.uploadCapability)) {
-      onSession?.(null);
-      return { kind: "skipped" };
-    }
-
-    if (
-      !init.session ||
-      !init.finalizeToken ||
-      !init.multipart ||
-      init.uploadCapability.mode !== "direct-upload"
-    ) {
-      onSession?.(null);
-      return { kind: "skipped" };
-    }
-
-    session = init.session;
-    onSession?.(session);
-
-    const { partSizeBytes, totalParts } = init.multipart;
-    const totalBytes = session.sizeBytes;
-    onProgress({
-      uploadedBytes: 0,
-      totalBytes,
-      capability: init.uploadCapability,
-    });
-
-    const buf = await file.arrayBuffer();
-    const completedParts: { partNumber: number; etag?: string }[] = [];
-
-    for (let partNumber = 1; partNumber <= totalParts; partNumber += 1) {
-      if (signal.aborted) {
-        return { kind: "aborted" };
-      }
-      const byteStart = (partNumber - 1) * partSizeBytes;
-      const byteEndInclusive = Math.min(
-        byteStart + partSizeBytes - 1,
-        totalBytes - 1,
-      );
-
-      const partRes = await getPdfUploadPartUrl({
-        session,
-        partNumber,
-        byteStart,
-        byteEndInclusive,
-      });
-
-      if (!partRes.uploadUrl?.trim()) {
-        return {
-          kind: "error",
-          message:
-            partRes.error?.trim() ||
-            "Upload could not start for this deployment.",
-        };
-      }
-
-      const slice = buf.slice(byteStart, byteEndInclusive + 1);
-      const put = await fetch(partRes.uploadUrl, {
-        method: "PUT",
-        body: slice,
-        signal,
-      });
-      if (!put.ok) {
-        return {
-          kind: "error",
-          message: `Upload failed (${put.status}).`,
-        };
-      }
-
-      const etag = stripEtag(put.headers.get("etag"));
-      completedParts.push({
-        partNumber,
-        ...(etag !== undefined ? { etag } : {}),
-      });
-
+  const { promise } = runPdfUploadSession({
+    file,
+    suggestedSuffix: "document",
+    signal,
+    onSessionDescriptor: onSession,
+    onProgress: (p) => {
       onProgress({
-        uploadedBytes: byteEndInclusive + 1,
-        totalBytes,
-        capability: partRes.uploadCapability,
+        uploadedBytes: p.uploadedBytes,
+        totalBytes: p.totalBytes,
+        capability: p.capability,
       });
-    }
+    },
+    onStatus: (s) => {
+      onRunnerStatus?.(s.state);
+    },
+  });
 
-    if (signal.aborted) {
-      return { kind: "aborted" };
-    }
-
-    const done = await completePdfUpload({
-      session,
-      parts: completedParts,
-      finalizeToken: init.finalizeToken,
-    });
-
-    if (!done.finalized) {
-      return {
-        kind: "error",
-        message:
-          done.userMessage?.trim() ||
-          done.error?.trim() ||
-          "Upload could not be finalized.",
-      };
-    }
-
-    return { kind: "completed" };
-  } catch (raw) {
-    if (signal.aborted) {
-      return { kind: "aborted" };
-    }
-    const msg =
-      raw instanceof Error && raw.message.trim().length > 0
-        ? raw.message
-        : "Upload failed.";
-    return { kind: "error", message: msg };
-  } finally {
-    if (signal.aborted && session) {
-      try {
-        await abortPdfUpload({ session });
-      } catch {
-        /* best-effort */
-      }
-    }
-    onSession?.(null);
-  }
+  const outcome = await promise;
+  return mapPdfUploadSessionOutcome(outcome);
 }

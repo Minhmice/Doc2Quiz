@@ -22,6 +22,7 @@ import { useStudySetNewImportStepOptional } from "@/components/edit/new/import/S
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/buttons/button";
 import { UploadBox } from "@/components/upload/UploadBox";
+import { PdfUploadProgressRow } from "@/components/upload/PdfUploadProgressRow";
 import {
   createStudySetEarlyMeta,
   deleteStudySet,
@@ -49,6 +50,7 @@ import {
   runBackgroundStudySetPdfUpload,
   type RunBackgroundStudySetPdfUploadResult,
 } from "@/lib/uploads/runBackgroundStudySetPdfUpload";
+import type { PdfUploadRunnerState } from "@/lib/uploads/runPdfUploadSession";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -170,6 +172,16 @@ export function NewStudySetPdfImportFlow({
   const [flashcardGenerationConfig, setFlashcardGenerationConfig] =
     useState<FlashcardGenerationConfig>(DEFAULT_FLASHCARD_GENERATION_CONFIG);
 
+  /** Phase 26-02: bytes upload row (direct-upload only; hidden for local-only). */
+  const [pdfUploadUi, setPdfUploadUi] = useState<{
+    runnerState: PdfUploadRunnerState;
+    percent: number;
+    uploadedBytes: number;
+    totalBytes: number;
+    errorMessage?: string;
+  } | null>(null);
+  const [uploadRetryTrigger, setUploadRetryTrigger] = useState(0);
+
   useEffect(() => {
     parseContextRef.current = parseContext;
   }, [parseContext]);
@@ -213,6 +225,7 @@ export function NewStudySetPdfImportFlow({
     setIngestPreviewFile(null);
     setIngestPageCount(null);
     setFlashcardGenerationConfig(DEFAULT_FLASHCARD_GENERATION_CONFIG);
+    setPdfUploadUi(null);
   }, [clearParse, clearUpload]);
 
   const handleParseFinished = useCallback(
@@ -425,6 +438,7 @@ export function NewStudySetPdfImportFlow({
     if (!parseContext?.studySetId || !runAiParseOnNewPage) {
       uploadEffectPromiseRef.current = Promise.resolve();
       uploadEffectResultRef.current = null;
+      setPdfUploadUi(null);
       return;
     }
     const studySetId = parseContext.studySetId;
@@ -433,11 +447,33 @@ export function NewStudySetPdfImportFlow({
     const ac = new AbortController();
     uploadAbortRef.current = ac;
 
+    setPdfUploadUi({
+      runnerState: "init",
+      percent: 0,
+      uploadedBytes: 0,
+      totalBytes: file.size,
+    });
+
     const p = (async () => {
       uploadEffectResultRef.current = null;
       const result = await runBackgroundStudySetPdfUpload({
         file,
         signal: ac.signal,
+        onRunnerStatus: (state) => {
+          if (parseKickGen.current !== kickAtStart) {
+            return;
+          }
+          if (state === "local_only") {
+            setPdfUploadUi(null);
+            return;
+          }
+          setPdfUploadUi((prev) => ({
+            runnerState: state,
+            percent: prev?.percent ?? 0,
+            uploadedBytes: prev?.uploadedBytes ?? 0,
+            totalBytes: prev?.totalBytes ?? file.size,
+          }));
+        },
         onProgress: (p) => {
           if (parseKickGen.current !== kickAtStart) {
             return;
@@ -445,6 +481,19 @@ export function NewStudySetPdfImportFlow({
           if (p.capability.mode !== "direct-upload") {
             return;
           }
+          const pct =
+            p.totalBytes > 0
+              ? Math.min(
+                  100,
+                  Math.round((100 * p.uploadedBytes) / p.totalBytes),
+                )
+              : 0;
+          setPdfUploadUi((prev) => ({
+            runnerState: prev?.runnerState ?? "uploading",
+            percent: pct,
+            uploadedBytes: p.uploadedBytes,
+            totalBytes: p.totalBytes,
+          }));
           reportUpload({
             studySetId,
             uploadedBytes: p.uploadedBytes,
@@ -463,14 +512,30 @@ export function NewStudySetPdfImportFlow({
       clearUpload(studySetId);
 
       if (result.kind === "completed") {
+        setPdfUploadUi(null);
         toast.success("Upload complete", { duration: 3200 });
+      } else if (result.kind === "skipped") {
+        setPdfUploadUi(null);
+      } else if (result.kind === "aborted") {
+        setPdfUploadUi(null);
       } else if (result.kind === "error") {
         pipelineLog("STUDY_SET", "new-import", "warn", "background pdf upload failed", {
           studySetId,
           message: result.message,
         });
-        if (!isStubObjectStorageFinalizeMessage(result.message)) {
+        if (isStubObjectStorageFinalizeMessage(result.message)) {
+          setPdfUploadUi({
+            runnerState: "failed",
+            percent: 0,
+            uploadedBytes: 0,
+            totalBytes: file.size,
+            errorMessage:
+              result.message ??
+              "Object storage finalize is not available yet for this deployment.",
+          });
+        } else {
           toast.error("Transfer did not finish. Starting over.");
+          setPdfUploadUi(null);
           await resetAfterInlineParse();
         }
       }
@@ -488,7 +553,17 @@ export function NewStudySetPdfImportFlow({
     reportUpload,
     clearUpload,
     resetAfterInlineParse,
+    uploadRetryTrigger,
   ]);
+
+  const handlePdfUploadCancel = useCallback(() => {
+    uploadAbortRef.current?.abort();
+  }, []);
+
+  const handlePdfUploadReupload = useCallback(() => {
+    setPdfUploadUi(null);
+    setUploadRetryTrigger((n) => n + 1);
+  }, []);
 
   const showUploadChrome = !ingestBusy && !parseContext;
   const showImportLayout = ingestBusy || parseContext !== null;
@@ -604,6 +679,23 @@ export function NewStudySetPdfImportFlow({
               </div>
 
               <div className="flex min-w-0 flex-col gap-4">
+                {parseContext && pdfUploadUi ? (
+                  <PdfUploadProgressRow
+                    className="w-full"
+                    runnerState={pdfUploadUi.runnerState}
+                    percent={pdfUploadUi.percent}
+                    uploadedBytes={pdfUploadUi.uploadedBytes}
+                    totalBytes={pdfUploadUi.totalBytes}
+                    errorMessage={pdfUploadUi.errorMessage}
+                    onCancel={handlePdfUploadCancel}
+                    onReupload={
+                      pdfUploadUi.errorMessage &&
+                      isStubObjectStorageFinalizeMessage(pdfUploadUi.errorMessage)
+                        ? handlePdfUploadReupload
+                        : undefined
+                    }
+                  />
+                ) : null}
                 <UnifiedImportStatusCard
                   contentKind={contentKind}
                   fileName={
