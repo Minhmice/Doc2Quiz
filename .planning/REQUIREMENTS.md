@@ -160,8 +160,8 @@
 | PREVIEW-12 | Phase 27 | Planned |
 | PREVIEW-13 | Phase 27 | Planned |
 | PREVIEW-14 | Phase 27 | Planned |
-| PERF-28-01 | Phase 28 | Planned |
-| PERF-28-02 | Phase 28 | Planned |
+| PERF-28-01 | Phase 28 | Completed |
+| PERF-28-02 | Phase 28 | Completed |
 
 **Coverage:**
 - v1 requirements: 23 total

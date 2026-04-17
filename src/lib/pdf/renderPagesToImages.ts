@@ -171,11 +171,23 @@ export async function renderPdfPagesToImages(
               throw err;
             }
             workerOk = false;
+            if (isPipelineVerbose()) {
+              pipelineLog(
+                "PDF",
+                "render-page",
+                "warn",
+                "worker JPEG encode failed; falling back to canvas.toDataURL for remaining pages",
+                { ...meta, pageIndex: i },
+              );
+            }
             dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
           }
         } else {
           dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
         }
+        // Reduce peak memory pressure from large canvas backing stores.
+        canvas.width = 0;
+        canvas.height = 0;
         const pageResult = { pageIndex: i, dataUrl };
         out.push(pageResult);
         onPageRendered?.(pageResult, { totalPages: limit });

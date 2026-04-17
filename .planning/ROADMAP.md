@@ -640,8 +640,10 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [x] `28-01-PLAN.md` — Single sequential resize+JPEG encode worker + client helper; Phase 28 requirements + roadmap entries. (completed 2026-04-17)
-- [ ] `28-02-PLAN.md` — Integrate worker helper into the vision raster pipeline (auto-detect + safe fallback; no UI surface).
+- [x] `28-01-PLAN.md` — Single sequential resize+JPEG encode worker + client helper; Phase 28 requirements + roadmap entries.
+ (completed 2026-04-17)
+- [x] `28-02-PLAN.md` — Integrate worker helper into the vision raster pipeline (auto-detect + safe fallback; no UI surface).
+ (completed 2026-04-17)
 
 ### Phase 29: Route by page type: text page vs bitmap page vs rich layout page
 

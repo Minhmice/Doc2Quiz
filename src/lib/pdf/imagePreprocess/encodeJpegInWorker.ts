@@ -62,6 +62,18 @@ export function canUseImagePreprocessWorker(): boolean {
 let singletonWorker: Worker | null = null;
 let workerBroken = false;
 
+function markWorkerBroken(reason?: unknown): void {
+  workerBroken = true;
+  try {
+    singletonWorker?.terminate();
+  } catch {
+    // ignore
+  } finally {
+    singletonWorker = null;
+  }
+  void reason;
+}
+
 function getOrCreateWorker(): Worker {
   if (workerBroken) {
     throw new Error("Image preprocess worker is unavailable");
@@ -77,14 +89,14 @@ function getOrCreateWorker(): Worker {
       type: "module",
     });
     singletonWorker.addEventListener("error", () => {
-      workerBroken = true;
+      markWorkerBroken();
     });
     singletonWorker.addEventListener("messageerror", () => {
-      workerBroken = true;
+      markWorkerBroken();
     });
     return singletonWorker;
   } catch (err) {
-    workerBroken = true;
+    markWorkerBroken(err);
     throw err instanceof Error ? err : new Error(String(err));
   }
 }
@@ -154,7 +166,15 @@ function drainQueue(): void {
       }
 
       const worker = getOrCreateWorker();
+      let cleanupWorkerListeners: (() => void) | null = null;
       const onAbort = () => {
+        try {
+          cleanupWorkerListeners?.();
+        } catch {
+          // ignore
+        } finally {
+          cleanupWorkerListeners = null;
+        }
         settleReject(createAbortError());
       };
       signal.addEventListener("abort", onAbort, { once: true });
@@ -170,7 +190,7 @@ function drainQueue(): void {
         };
         const onError = () => {
           cleanup();
-          workerBroken = true;
+          markWorkerBroken();
           reject(new Error("Image preprocess worker error"));
         };
         const cleanup = () => {
@@ -178,6 +198,7 @@ function drainQueue(): void {
           worker.removeEventListener("error", onError);
           worker.removeEventListener("messageerror", onError);
         };
+        cleanupWorkerListeners = cleanup;
 
         worker.addEventListener("message", onMessage);
         worker.addEventListener("error", onError);
