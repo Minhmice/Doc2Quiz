@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 31
-current_plan: 3
+current_plan: 1
 status: Complete — Phase 31 executed (31-01..31-03)
-stopped_at: Phase 31 parse cache (IDB + vision L1/L2 + text lanes); SUMMARYs + ROADMAP/REQUIREMENTS updated
-last_updated: "2026-04-18T18:00:00.000Z"
+stopped_at: Phase 32 context gathered
+last_updated: "2026-04-17T22:10:25.043Z"
 progress:
   total_phases: 38
-  completed_phases: 29
-  total_plans: 64
-  completed_plans: 64
+  completed_phases: 30
+  total_plans: 67
+  completed_plans: 67
   percent: 100
 ---
 
@@ -48,9 +48,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Completed Phase 31 (`31-01`..`31-03`) — shared `parseCacheDb`, vision L1+L2 cache, text-lane caching + `logParseCacheSummary`
+**Stopped at:** Phase 32 context gathered
 **Date:** 2026-04-18
-**Resume file:** None
+**Resume file:** .planning/phases/32-use-draft-pass-generation-plus-validator-pass-rewrite/32-CONTEXT.md
 
 ## Accumulated Context
 
