@@ -102,6 +102,13 @@
 - [x] **PERF-28-01**: JPEG resize + encode happens in a Web Worker when available; single sequential worker; keep `dataUrl: string` output contract (`data:image/jpeg;base64,...`).
 - [x] **PERF-28-02**: Auto-fallback to existing main-thread preprocessing when worker/image APIs are unavailable or worker fails; no new UI controls; AbortSignal cancellation remains correct.
 
+### Route by page type (Phase 29)
+
+- [ ] **ROUTE-29-01**: Compute per-page **text-layer signals** (numeric-only) using pdf.js text content sampling/scan.
+- [ ] **ROUTE-29-02**: Classify pages as **text vs bitmap** using deterministic thresholds derived from existing text-layer signals (chars/page + non-empty ratio), without requiring OCR in product create flows.
+- [ ] **ROUTE-29-03**: Build a serializable **page routing plan** that preserves existing caps: preview-first 3–5 pages; vision max pages default 20; routing must not increase vision workload beyond these caps.
+- [ ] **ROUTE-29-04**: Routing emits stable **reason codes** to pipeline logs; no new UI controls.
+
 ## Out of Scope
 
 | Feature | Reason |

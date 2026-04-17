@@ -647,13 +647,15 @@ Plans:
 
 ### Phase 29: Route by page type: text page vs bitmap page vs rich layout page
 
-**Goal:** TBD
-**Requirements**: TBD
+**Goal:** Add **per-page routing** for mixed PDFs so text-heavy pages can be parsed via text-first lanes **without rasterizing** them, while bitmap/scanned pages continue through the existing vision lane — preserving current caps and preview-first behavior.
+**Requirements**: ROUTE-29-01, ROUTE-29-02, ROUTE-29-03, ROUTE-29-04
 **Depends on:** Phase 28
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 29 to break down)
+- [ ] `29-01-PLAN.md` — Define Phase 29 goal/req IDs; add per-page classification + routing-plan data structures (no UI wiring).
+- [ ] `29-02-PLAN.md` — Integrate per-page routing into `AiParseSection` **before rasterization**; route text pages to text-first, bitmap pages to vision (no new UI controls).
+- [ ] `29-03-PLAN.md` — Observability + safety: reason-code logging, bounded work + abort handling, and cap enforcement so routing never increases vision workload.
 
 ### Phase 30: Replace page-level chunking with layout-aware chunking
 
