@@ -118,3 +118,16 @@ export function visionPipelineEvent(event: VisionPipelineEvent): void {
   }
   pipelineLog("VISION", stage, "info", message ?? stage, payload);
 }
+
+/** Phase 31 — text-lane parse cache summary (verbose only). */
+export function logParseCacheSummary(
+  scope: string,
+  stats: { hits: number; misses: number },
+): void {
+  if (!isPipelineVerbose()) {
+    return;
+  }
+  pipelineLog("IDB", "parse-cache", "info", scope, {
+    ...stats,
+  });
+}

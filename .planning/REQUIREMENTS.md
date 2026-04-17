@@ -118,14 +118,14 @@
 
 ### Parse cache: content hashes + prompt/model/provider keys (Phase 31)
 
-- [ ] **CACHE-31-01**: Parse caches are **browser-local only** (IndexedDB and optional in-memory fallback); no server-side or cross-user shared cache. (D-01)
-- [ ] **CACHE-31-02**: Cache keys include **content fingerprint** (SHA-256 via `crypto.subtle` when available, else deterministic fallback), **resolved model id**, **`openai` vs `custom` forward provider**, and **prompt identity** so incompatible configurations never share entries. (D-02, D-03, D-07)
-- [ ] **CACHE-31-03**: **Same cache contract** (lane enum, value shape, key derivation) for **vision batch**, **sequential multi-MCQ text** (`parseChunkOnce`), and **single-MCQ layout/OCR text** (`parseChunkSingleMcqOnce`). (D-08)
-- [ ] **CACHE-31-04**: **Unified prompt versioning:** `mcq-extraction.prompts.json` **`version`** is the bundle revision; keys include identity derived from **hash of the exact system prompt string** used for that call (vision: API `systemText`; text: `MCQ_*` constants). `VISION_BATCH_PROMPT_V` is not the sole authority. (D-03)
-- [ ] **CACHE-31-05**: Vision batch cache is **durable** in IndexedDB with **in-memory fallback** when IDB is unavailable; **no cross-configuration false hits** (prompt/model/provider/content). (D-04, D-06)
-- [ ] **CACHE-31-06**: `runSequentialParse` and layout-driven parsing benefit via **`parseChunk*`** cache integration without breaking progress/abort contracts. (D-08)
-- [ ] **CACHE-31-07**: **Bounded caches:** per-store **max 400 entries** and **~15 MiB** estimated payload budget; **LRU by `lastAccessedAt`** on read/write. (D-06)
-- [ ] **CACHE-31-08**: **No embedding storage** and **no RAG product UI** in Phase 31 (deferred to Phase 33+). (D-05)
+- [x] **CACHE-31-01**: Parse caches are **browser-local only** (IndexedDB and optional in-memory fallback); no server-side or cross-user shared cache. (D-01)
+- [x] **CACHE-31-02**: Cache keys include **content fingerprint** (SHA-256 via `crypto.subtle` when available, else deterministic fallback), **resolved model id**, **`openai` vs `custom` forward provider**, and **prompt identity** so incompatible configurations never share entries. (D-02, D-03, D-07)
+- [x] **CACHE-31-03**: **Same cache contract** (lane enum, value shape, key derivation) for **vision batch**, **sequential multi-MCQ text** (`parseChunkOnce`), and **single-MCQ layout/OCR text** (`parseChunkSingleMcqOnce`). (D-08)
+- [x] **CACHE-31-04**: **Unified prompt versioning:** `mcq-extraction.prompts.json` **`version`** is the bundle revision; keys include identity derived from **hash of the exact system prompt string** used for that call (vision: API `systemText`; text: `MCQ_*` constants). `VISION_BATCH_PROMPT_V` is not the sole authority. (D-03)
+- [x] **CACHE-31-05**: Vision batch cache is **durable** in IndexedDB with **in-memory fallback** when IDB is unavailable; **no cross-configuration false hits** (prompt/model/provider/content). (D-04, D-06)
+- [x] **CACHE-31-06**: `runSequentialParse` and layout-driven parsing benefit via **`parseChunk*`** cache integration without breaking progress/abort contracts. (D-08)
+- [x] **CACHE-31-07**: **Bounded caches:** per-store **max 400 entries** and **~15 MiB** estimated payload budget; **LRU by `lastAccessedAt`** on read/write. (D-06)
+- [x] **CACHE-31-08**: **No embedding storage** and **no RAG product UI** in Phase 31 (deferred to Phase 33+). (D-05)
 
 ## Out of Scope
 
@@ -187,14 +187,14 @@
 | PREVIEW-14 | Phase 27 | Planned |
 | PERF-28-01 | Phase 28 | Completed |
 | PERF-28-02 | Phase 28 | Completed |
-| CACHE-31-01 | Phase 31 | Planned |
-| CACHE-31-02 | Phase 31 | Planned |
-| CACHE-31-03 | Phase 31 | Planned |
-| CACHE-31-04 | Phase 31 | Planned |
-| CACHE-31-05 | Phase 31 | Planned |
-| CACHE-31-06 | Phase 31 | Planned |
-| CACHE-31-07 | Phase 31 | Planned |
-| CACHE-31-08 | Phase 31 | Planned |
+| CACHE-31-01 | Phase 31 | Complete |
+| CACHE-31-02 | Phase 31 | Complete |
+| CACHE-31-03 | Phase 31 | Complete |
+| CACHE-31-04 | Phase 31 | Complete |
+| CACHE-31-05 | Phase 31 | Complete |
+| CACHE-31-06 | Phase 31 | Complete |
+| CACHE-31-07 | Phase 31 | Complete |
+| CACHE-31-08 | Phase 31 | Complete |
 
 **Coverage:**
 - v1 requirements: 23 total

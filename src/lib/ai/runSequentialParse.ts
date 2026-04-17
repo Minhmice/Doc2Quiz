@@ -6,6 +6,7 @@ import type { AiProvider, Question } from "@/types/question";
 import { dedupeQuestionsByStem } from "@/lib/ai/dedupeQuestions";
 import { FatalParseError, isAbortError } from "@/lib/ai/errors";
 import { parseChunkOnce } from "@/lib/ai/parseChunk";
+import { logParseCacheSummary } from "@/lib/logging/pipelineLogger";
 
 export type ParseProgress = {
   current: number;
@@ -23,17 +24,21 @@ export async function runSequentialParse(options: {
   chunks: string[];
   signal: AbortSignal;
   onProgress?: (p: { current: number; total: number }) => void;
+  /** Optional; parse-cache metadata only (not part of cache keys). */
+  studySetId?: string;
 }): Promise<{
   questions: Question[];
   failedChunks: number;
   /** Set when a chunk hit 401/429 etc. — earlier chunks remain in `questions`. */
   fatalError?: string;
 }> {
-  const { provider, apiKey, apiUrl, model, chunks, signal, onProgress } =
+  const { provider, apiKey, apiUrl, model, chunks, signal, onProgress, studySetId } =
     options;
   const questions: Question[] = [];
   let failedChunks = 0;
   const total = chunks.length;
+  let cacheHits = 0;
+  let cacheMisses = 0;
 
   for (let i = 0; i < chunks.length; i++) {
     if (signal.aborted) {
@@ -48,20 +53,30 @@ export async function runSequentialParse(options: {
       }
 
       try {
-        const qs = await parseChunkOnce({
+        const { questions: qs, cacheHit } = await parseChunkOnce({
           provider,
           apiKey,
           apiUrl,
           model,
           chunkText: chunks[i]!,
           signal,
+          studySetId,
         });
+        if (cacheHit) {
+          cacheHits += 1;
+        } else {
+          cacheMisses += 1;
+        }
         questions.push(...qs);
         chunkSucceeded = true;
         break;
       } catch (e) {
         if (e instanceof FatalParseError) {
           onProgress?.({ current: i + 1, total });
+          logParseCacheSummary("runSequentialParse", {
+            hits: cacheHits,
+            misses: cacheMisses,
+          });
           return {
             questions: dedupeQuestionsByStem(questions),
             failedChunks,
@@ -85,5 +100,9 @@ export async function runSequentialParse(options: {
     onProgress?.({ current: i + 1, total });
   }
 
+  logParseCacheSummary("runSequentialParse", {
+    hits: cacheHits,
+    misses: cacheMisses,
+  });
   return { questions: dedupeQuestionsByStem(questions), failedChunks };
 }

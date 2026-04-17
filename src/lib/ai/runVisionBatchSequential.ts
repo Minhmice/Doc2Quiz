@@ -41,10 +41,11 @@ import {
 } from "@/lib/ai/visionBenchmark";
 import { dedupeVisionItems } from "@/lib/ai/visionDedupe";
 import {
+  buildVisionBatchCacheKeyParts,
   getCachedVisionBatchResult,
-  hashVisionBatch,
   setCachedVisionBatchResult,
 } from "@/lib/ai/visionParseCache";
+import { canonicalParseCacheKey } from "@/lib/db/parseCacheDb";
 import {
   buildVisionSystemPrompt,
   buildVisionUserPrompt,
@@ -315,12 +316,18 @@ export async function runVisionBatchSequential(
         model: modelId,
       });
 
-      const cacheKey = await hashVisionBatch(
-        batch.pages,
-        mode,
-        flashcardLane && resolvedFlashGen
-          ? JSON.stringify(resolvedFlashGen)
-          : undefined,
+      const cacheKey = await canonicalParseCacheKey(
+        await buildVisionBatchCacheKeyParts({
+          pages: batch.pages,
+          mode,
+          extraFingerprint:
+            flashcardLane && resolvedFlashGen
+              ? JSON.stringify(resolvedFlashGen)
+              : undefined,
+          model: modelId,
+          forwardProvider,
+          systemText,
+        }),
       );
       const cached = await getCachedVisionBatchResult(cacheKey);
       const t0 = performance.now();

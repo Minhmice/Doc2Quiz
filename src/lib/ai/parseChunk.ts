@@ -18,10 +18,19 @@ import {
 } from "@/lib/ai/upstreamErrors";
 import { normalizeOpenAiChatCompletionsUrl } from "@/lib/ai/openAiEndpoint";
 import {
+  formatPromptKeyComponent,
+  hashPromptIdentity,
   MCQ_EXTRACTION_SYSTEM_PROMPT,
   MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+  PROMPTS_BUNDLE_VERSION,
 } from "@/lib/ai/prompts/mcqExtractionPrompts";
 import { validateQuestionsFromJson } from "@/lib/ai/validateQuestions";
+import {
+  canonicalParseCacheKey,
+  parseCacheGetTextChunk,
+  parseCacheSetTextChunk,
+  sha256Utf8Hex,
+} from "@/lib/db/parseCacheDb";
 import type { AiProvider, Question } from "@/types/question";
 
 export { MCQ_EXTRACTION_SYSTEM_PROMPT, MCQ_SINGLE_CHUNK_SYSTEM_PROMPT };
@@ -70,6 +79,17 @@ export type ParseChunkOnceParams = {
   signal: AbortSignal;
   /** Session / debug only — never persisted to IDB. */
   onRawAssistantText?: (text: string) => void;
+  /** Optional; recorded in parse-cache metadata only (not part of the key). */
+  studySetId?: string;
+};
+
+function cloneQuestions(qs: Question[]): Question[] {
+  return JSON.parse(JSON.stringify(qs)) as Question[];
+}
+
+export type ParseChunkOnceResult = {
+  questions: Question[];
+  cacheHit: boolean;
 };
 
 export function resolveChatApiUrl(
@@ -238,11 +258,48 @@ function resolveOpenAiCompatEndpointAndModel(
 
 export async function parseChunkOnce(
   params: ParseChunkOnceParams,
-): Promise<Question[]> {
-  const { apiKey, apiUrl, model, chunkText, signal } = params;
+): Promise<ParseChunkOnceResult> {
+  const { apiKey, apiUrl, model, chunkText, signal, onRawAssistantText, studySetId } =
+    params;
   const { endpoint, modelId, forwardProvider } =
     resolveOpenAiCompatEndpointAndModel(apiUrl, model);
-  return withRetries("llm_chunk", signal, async () =>
+
+  if (onRawAssistantText) {
+    const questions = await withRetries("llm_chunk", signal, async () =>
+      parseOpenAI(
+        apiKey,
+        endpoint,
+        modelId,
+        chunkText,
+        signal,
+        forwardProvider,
+        MCQ_EXTRACTION_SYSTEM_PROMPT,
+        undefined,
+        onRawAssistantText,
+      ),
+    );
+    return { questions, cacheHit: false };
+  }
+
+  const contentFingerprint = await sha256Utf8Hex(chunkText);
+  const promptIdentity = formatPromptKeyComponent(
+    PROMPTS_BUNDLE_VERSION,
+    await hashPromptIdentity(MCQ_EXTRACTION_SYSTEM_PROMPT),
+  );
+  const cacheKey = await canonicalParseCacheKey({
+    lane: "text_multi_mcq",
+    contentFingerprint,
+    promptIdentity,
+    model: modelId,
+    forwardProvider,
+  });
+
+  const cached = await parseCacheGetTextChunk(cacheKey);
+  if (cached) {
+    return { questions: cloneQuestions(cached), cacheHit: true };
+  }
+
+  const questions = await withRetries("llm_chunk", signal, async () =>
     parseOpenAI(
       apiKey,
       endpoint,
@@ -253,6 +310,8 @@ export async function parseChunkOnce(
       MCQ_EXTRACTION_SYSTEM_PROMPT,
     ),
   );
+  await parseCacheSetTextChunk(cacheKey, questions, studySetId);
+  return { questions, cacheHit: false };
 }
 
 /**
@@ -264,25 +323,62 @@ export async function parseChunkOnce(
 export async function parseChunkSingleMcqOnce(
   params: ParseChunkOnceParams,
 ): Promise<Question | null> {
-  const { apiKey, apiUrl, model, chunkText, signal, onRawAssistantText } =
-    params;
+  const {
+    apiKey,
+    apiUrl,
+    model,
+    chunkText,
+    signal,
+    onRawAssistantText,
+    studySetId,
+  } = params;
   const { endpoint, modelId, forwardProvider } =
     resolveOpenAiCompatEndpointAndModel(apiUrl, model);
-  return withRetries("llm_chunk", signal, async () => {
-    const qs = await parseOpenAI(
-      apiKey,
-      endpoint,
-      modelId,
-      chunkText,
-      signal,
-      forwardProvider,
-      MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
-      singleMcqQuestionsFromAssistantContent,
-      onRawAssistantText,
-    );
-    if (qs.length === 0) {
-      return null;
-    }
-    return qs[0] ?? null;
+
+  const runForward = () =>
+    withRetries("llm_chunk", signal, async () => {
+      const qs = await parseOpenAI(
+        apiKey,
+        endpoint,
+        modelId,
+        chunkText,
+        signal,
+        forwardProvider,
+        MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
+        singleMcqQuestionsFromAssistantContent,
+        onRawAssistantText,
+      );
+      if (qs.length === 0) {
+        return null;
+      }
+      return qs[0] ?? null;
+    });
+
+  if (onRawAssistantText) {
+    return runForward();
+  }
+
+  const contentFingerprint = await sha256Utf8Hex(chunkText);
+  const promptIdentity = formatPromptKeyComponent(
+    PROMPTS_BUNDLE_VERSION,
+    await hashPromptIdentity(MCQ_SINGLE_CHUNK_SYSTEM_PROMPT),
+  );
+  const cacheKey = await canonicalParseCacheKey({
+    lane: "text_single_mcq",
+    contentFingerprint,
+    promptIdentity,
+    model: modelId,
+    forwardProvider,
   });
+
+  const cached = await parseCacheGetTextChunk(cacheKey);
+  if (cached !== null && cached.length > 0) {
+    return cloneQuestions(cached)[0] ?? null;
+  }
+
+  const q = await runForward();
+  if (q) {
+    await parseCacheSetTextChunk(cacheKey, [q], studySetId);
+  }
+  return q;
 }

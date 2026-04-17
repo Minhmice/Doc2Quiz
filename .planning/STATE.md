@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 31
-current_plan: 1
-status: Planned — ready for execute
-stopped_at: Planned 31-01..31-03 + VALIDATION.md (plan-checker fixes)
-last_updated: "2026-04-18T12:00:00.000Z"
+current_plan: 3
+status: Complete — Phase 31 executed (31-01..31-03)
+stopped_at: Phase 31 parse cache (IDB + vision L1/L2 + text lanes); SUMMARYs + ROADMAP/REQUIREMENTS updated
+last_updated: "2026-04-18T18:00:00.000Z"
 progress:
   total_phases: 38
-  completed_phases: 28
+  completed_phases: 29
   total_plans: 64
-  completed_plans: 63
-  percent: 98
+  completed_plans: 64
+  percent: 100
 ---
 
 # Doc2Quiz — State
@@ -48,8 +48,8 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Completed 30-03-PLAN.md
-**Date:** 2026-04-17
+**Stopped at:** Completed Phase 31 (`31-01`..`31-03`) — shared `parseCacheDb`, vision L1+L2 cache, text-lane caching + `logParseCacheSummary`
+**Date:** 2026-04-18
 **Resume file:** None
 
 ## Accumulated Context

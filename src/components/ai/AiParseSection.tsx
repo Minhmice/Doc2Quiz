@@ -1236,6 +1236,7 @@ export const AiParseSection = forwardRef<
             model: modelInput,
             chunkText: userContent,
             signal,
+            studySetId: studySetId.trim() || undefined,
             onRawAssistantText: meta
               ? (text) => {
                   chunkRawByIdRef.current[meta.layoutChunkId] = text;
@@ -1822,6 +1823,7 @@ export const AiParseSection = forwardRef<
             model: modelInput,
             chunks,
             signal: controller.signal,
+            studySetId: studySetId.trim() || undefined,
             onProgress: ({ current, total }) => {
               setProgress({ current, total, status: "running" });
               setParseOverlay((p) => ({
@@ -2858,6 +2860,7 @@ export const AiParseSection = forwardRef<
                 model: modelInput,
                 chunks,
                 signal: controller.signal,
+                studySetId: studySetId.trim() || undefined,
                 onProgress: ({ current }) => {
                   setProgress({
                     current: chunkOffset + current,
@@ -2927,6 +2930,7 @@ export const AiParseSection = forwardRef<
               model: modelInput,
               chunks,
               signal: controller.signal,
+              studySetId: studySetId.trim() || undefined,
               onProgress: ({ current, total }) => {
                 setProgress({ current, total, status: "running" });
                 setParseOverlay((p) => ({
