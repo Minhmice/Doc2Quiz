@@ -671,14 +671,20 @@ Plans:
 ### Phase 30: Replace page-level chunking with layout-aware chunking
 
 **Goal:** Replace quiz text-lane page-level chunking with layout-aware chunking built from **pdf.js text layer + geometry**; apply only to Phase 29 `text` pages; keep preview-first 3–5 pages; per-page fallback to vision; no new UI controls.
+
+**Status:** Complete — `30-01-SUMMARY.md`, `30-02-SUMMARY.md`, `30-03-SUMMARY.md`
+
 **Requirements**: LAYOUT-30-01, LAYOUT-30-02, LAYOUT-30-03, LAYOUT-30-04
 **Depends on:** Phase 29
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] `30-01-PLAN.md` — requirements + layout block builder utilities
-- [ ] `30-02-PLAN.md` — wire into quiz text lane (Phase 29 text pages) + preview-first + per-page vision fallback
-- [ ] `30-03-PLAN.md` — add exactly-one summary pipelineLog + hardening
+- [x] `30-01-PLAN.md` — requirements + layout block builder utilities
+ (completed 2026-04-18)
+- [x] `30-02-PLAN.md` — wire into quiz text lane (Phase 29 text pages) + preview-first + per-page vision fallback
+ (completed 2026-04-18)
+- [x] `30-03-PLAN.md` — add exactly-one summary pipelineLog + hardening
+ (completed 2026-04-18)
 
 ### Phase 31: Cache prompt prefixes, embeddings, and content hashes
 
