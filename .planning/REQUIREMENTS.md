@@ -136,6 +136,17 @@
 - [x] **DRAFT-32-05**: **User-visible toast** when the validator pass runs (short copy; may throttle across chunks) (D-05).
 - [x] **DRAFT-32-06**: **Cache compatibility:** validator LLM calls use **distinct prompt identity** in Phase 31 cache keys (separate system prompt / lane metadata) so draft hits never mask validator misses (extends CACHE-31-03..04).
 
+### Local RAG + vector index (Phase 33)
+
+- [ ] **RAG-33-01**: **Browser-local vector index** only (IndexedDB or equivalent); **per-study-set** scoping or filterable metadata; **no** cloud vector DB or cross-user index. (D-02)
+- [ ] **RAG-33-02**: **Embedding API** calls use **same-origin** route handler(s) mirroring `/api/ai/forward` trust model (**API key in request body**, not server-stored). (D-03)
+- [ ] **RAG-33-03**: **Index invalidation identity:** stored vectors record **embedding model id**, **dimensions**, and an **index/schema version** so model or dim changes do not produce silent wrong retrieval. (D-04)
+- [ ] **RAG-33-04**: **Bounded index:** caps documented in code (e.g. max vectors per study set + approximate byte budget); **eviction** policy when over cap (LRU or rebuild-on-overflow — executor documents). (gray_areas scale)
+- [ ] **RAG-33-05**: **User-visible semantic search:** query string → **ranked list of retrievable chunks** (text + metadata: page/source id) in the UI. (D-01)
+- [ ] **RAG-33-06**: **Context injection:** user can apply retrieved chunk(s) so **parse / text generation** receives additional grounded text (minimum: **text sequential parse** path — `runSequentialParse` / `parseChunkOnce` — via explicit prefix or adjunct field; vision optional defer). (D-01)
+- [ ] **RAG-33-07**: **Safe display:** chunk text in RAG UI is treated as **untrusted** — **no** `dangerouslySetInnerHTML` from model/store strings; plain text / existing sanitization patterns. (D-05)
+- [ ] **RAG-33-08**: **Review gate unchanged:** RAG does **not** auto-approve questions; assists only. (D-06)
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -210,13 +221,22 @@
 | DRAFT-32-04 | Phase 32 | Complete |
 | DRAFT-32-05 | Phase 32 | Complete |
 | DRAFT-32-06 | Phase 32 | Complete |
+| RAG-33-01 | Phase 33 | Planned |
+| RAG-33-02 | Phase 33 | Planned |
+| RAG-33-03 | Phase 33 | Planned |
+| RAG-33-04 | Phase 33 | Planned |
+| RAG-33-05 | Phase 33 | Planned |
+| RAG-33-06 | Phase 33 | Planned |
+| RAG-33-07 | Phase 33 | Planned |
+| RAG-33-08 | Phase 33 | Planned |
 
 **Coverage:**
 - v1 requirements: 23 total
 - Mapped to phases: 23
 - Unmapped: 0 ✓
 - Phase 32 (draft+validator): 6 requirements (`DRAFT-32-01`..`06`); status Complete
+- Phase 33 (local RAG): 8 requirements (`RAG-33-01`..`08`); status Planned
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-18 — Phase 32 draft+validator complete (DRAFT-32-01..06); Phase 31 parse-cache (CACHE-31-01..08)*
+*Last updated: 2026-04-18 — Phase 33 local RAG IDs (RAG-33-01..08); Phase 32 draft+validator; Phase 31 parse-cache*

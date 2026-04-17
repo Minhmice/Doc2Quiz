@@ -716,13 +716,17 @@ Plans:
 
 ### Phase 33: Adopt a vector store matched to your scale
 
-**Goal:** TBD
-**Requirements**: TBD
+**Status:** Planned
+
+**Goal:** **Browser-local** semantic index (IndexedDB) with **embeddings via same-origin forward**, **bounded storage**, and a **user-visible RAG surface**: **chunk search** plus **inject retrieved context** into the **text parse** path (minimum); safe rendering; **review-before-bank** unchanged.
+**Requirements**: RAG-33-01, RAG-33-02, RAG-33-03, RAG-33-04, RAG-33-05, RAG-33-06, RAG-33-07, RAG-33-08
 **Depends on:** Phase 32
-**Plans:** 0 plans
+**Plans:** 0/3 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 33 to break down)
+- [ ] `33-01-PLAN.md` — IDs + ROADMAP reconcile; `embeddingIndexDb` (or equivalent) schema; `POST /api/ai/embed` (or forward extension); types; caps constants; cosine similarity helper (RAG-33-01..04)
+- [ ] `33-02-PLAN.md` — Indexing jobs: chunk text → embed → store; study-set scope; invalidation on model/dim change; pipelineLog (RAG-33-03, RAG-33-04)
+- [ ] `33-03-PLAN.md` — UI: semantic search panel + inject toggle / apply to `parseChunkOnce` / `runSequentialParse`; untrusted text UI; `npm run lint` + `npm run build` (RAG-33-05..08)
 
 ### Phase 34: Add async workers / task queue for full indexing
 
