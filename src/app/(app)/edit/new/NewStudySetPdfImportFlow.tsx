@@ -34,6 +34,7 @@ import {
 } from "@/lib/logging/pipelineLogger";
 import { cn } from "@/lib/utils";
 import { getPdfPageCount } from "@/lib/pdf/getPdfPageCount";
+import { PREVIEW_FIRST_PAGE_BUDGET } from "@/lib/pdf/extractText";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
 import type { StudyContentKind } from "@/types/studySet";
@@ -503,6 +504,7 @@ export function NewStudySetPdfImportFlow({
                       autoStartWhenBankEmpty
                       autoStartResetKey={parseContext.studySetId}
                       onEmbeddedParseFinished={handleParseFinished}
+                      previewFirstPageBudget={PREVIEW_FIRST_PAGE_BUDGET}
                       suppressEmbeddedRunningProgress={parsing}
                     />
                     {parseError ? (

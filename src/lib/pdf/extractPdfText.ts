@@ -110,3 +110,62 @@ export async function extractPdfText(
     return "";
   }
 }
+
+/**
+ * Extract plain text for a 1-based inclusive page range (text layer only).
+ * Clamps to the document page count; returns "" on abort or failure.
+ */
+export async function extractPdfTextForPageRange(
+  file: File,
+  firstPage: number,
+  lastPageInclusive: number,
+  signal?: AbortSignal,
+): Promise<string> {
+  const meta = fileSummary(file);
+  const lo = Math.max(1, Math.min(firstPage, lastPageInclusive));
+  const hi = Math.max(lo, lastPageInclusive);
+  try {
+    ensurePdfWorker();
+    if (signal?.aborted) {
+      pipelineLog("PDF", "extract-text", "warn", "aborted before start (range)", meta);
+      return "";
+    }
+    const data = await file.arrayBuffer();
+    if (signal?.aborted) {
+      return "";
+    }
+    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    try {
+      const numPages = pdf.numPages;
+      const start = Math.min(lo, numPages);
+      const end = Math.min(hi, numPages);
+      const pageTexts: string[] = [];
+      for (let i = start; i <= end; i++) {
+        if (signal?.aborted) {
+          pipelineLog("PDF", "extract-text", "warn", "aborted mid extract (range)", {
+            ...meta,
+            stoppedAtPage: i,
+          });
+          return "";
+        }
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageStr = textContentToPageString(textContent);
+        if (pageStr.length > 0) {
+          pageTexts.push(pageStr);
+        }
+      }
+      return pageTexts.join("\n\n");
+    } finally {
+      await pdf.destroy();
+    }
+  } catch (raw) {
+    const norm = normalizeUnknownError(raw);
+    pipelineLog("PDF", "extract-text", "error", "range text extraction failed (returning empty)", {
+      ...meta,
+      ...norm,
+      raw,
+    });
+    return "";
+  }
+}

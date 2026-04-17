@@ -41,6 +41,12 @@ export async function renderPdfPagesToImages(
       page: PageImageResult,
       meta: { totalPages: number },
     ) => void;
+    /**
+     * After the first min(budget, pagesToRender) pages rasterize, invoke once so
+     * vision parse can start while the rest of the pages render.
+     */
+    previewPageBudget?: number;
+    onPreviewPagesAvailable?: (pages: PageImageResult[]) => void;
   },
 ): Promise<PageImageResult[]> {
   const meta = fileSummary(file);
@@ -52,6 +58,8 @@ export async function renderPdfPagesToImages(
     maxHeight = VISION_MAX_HEIGHT_DEFAULT,
     jpegQuality = VISION_JPEG_QUALITY,
     onPageRendered,
+    previewPageBudget,
+    onPreviewPagesAvailable,
   } = options;
 
   if (isPipelineVerbose()) {
@@ -97,6 +105,11 @@ export async function renderPdfPagesToImages(
       pagesToRender: limit,
     });
     const out: PageImageResult[] = [];
+    const previewFireAt =
+      typeof previewPageBudget === "number" && previewPageBudget > 0
+        ? Math.min(previewPageBudget, limit)
+        : 0;
+    let previewFired = false;
 
     for (let i = 1; i <= limit; i++) {
       if (signal.aborted) {
@@ -132,6 +145,15 @@ export async function renderPdfPagesToImages(
         const pageResult = { pageIndex: i, dataUrl };
         out.push(pageResult);
         onPageRendered?.(pageResult, { totalPages: limit });
+        if (
+          previewFireAt > 0 &&
+          !previewFired &&
+          i === previewFireAt &&
+          onPreviewPagesAvailable
+        ) {
+          previewFired = true;
+          onPreviewPagesAvailable(out.slice());
+        }
         if (isPipelineVerbose()) {
           pipelineLog("PDF", "render-page", "info", "render page success", {
             ...meta,

@@ -48,6 +48,7 @@ import {
   runVisionBatchSequential,
   type RunVisionBatchSequentialResult,
 } from "@/lib/ai/runVisionBatchSequential";
+import { dedupeVisionItems } from "@/lib/ai/visionDedupe";
 import { planVisionBatches } from "@/lib/ai/visionBatching";
 import { quizVisionItemToQuestion } from "@/lib/ai/visionMappers";
 import { attachPageImagesForQuestions } from "@/lib/ai/attachPageImagesForQuestions";
@@ -109,7 +110,8 @@ import {
   VISION_MAX_PAGES_DEFAULT,
 } from "@/lib/pdf/renderPagesToImages";
 import { sampleTextLayerSignal } from "@/lib/pdf/sampleTextLayerSignal";
-import { extractPdfText } from "@/lib/pdf/extractPdfText";
+import { extractPdfTextForPageRange } from "@/lib/pdf/extractPdfText";
+import { PREVIEW_FIRST_PAGE_BUDGET } from "@/lib/pdf/extractText";
 import { chunkText } from "@/lib/ai/chunkText";
 import { runSequentialParse } from "@/lib/ai/runSequentialParse";
 import { isMcqComplete } from "@/lib/review/validateMcq";
@@ -180,6 +182,30 @@ export type AiParseSectionHandle = {
 /** `product` hides OCR/strategy toggles from the default view (learner create flow). */
 export type AiParseSurface = "product" | "developer";
 
+function mergeVisionBatchSequentialResults(
+  first: RunVisionBatchSequentialResult | null,
+  second: RunVisionBatchSequentialResult | null,
+  mode: ParseOutputMode,
+): RunVisionBatchSequentialResult {
+  if (first && !second) {
+    return first;
+  }
+  if (!first && second) {
+    return second;
+  }
+  if (!first || !second) {
+    throw new Error("mergeVisionBatchSequentialResults: both results null");
+  }
+  const items = dedupeVisionItems([...first.items, ...second.items], mode);
+  return {
+    items,
+    benchmark: second.benchmark,
+    benchmarkReportText:
+      first.benchmarkReportText + "\n---\n" + second.benchmarkReportText,
+    failedBatches: first.failedBatches + second.failedBatches,
+  };
+}
+
 export type AiParseSectionProps = {
   studySetId: string;
   activePdfFile: File | null;
@@ -204,6 +230,8 @@ export type AiParseSectionProps = {
    * suppress the duplicate running progress block inside this section.
    */
   suppressEmbeddedRunningProgress?: boolean;
+  /** Phase 27 — prioritize first N pages for preview (clamped to 3–5 on product). */
+  previewFirstPageBudget?: number;
 };
 
 export const AiParseSection = forwardRef<
@@ -224,6 +252,7 @@ export const AiParseSection = forwardRef<
     autoStartResetKey = "default",
     onEmbeddedParseFinished,
     suppressEmbeddedRunningProgress = false,
+    previewFirstPageBudget = PREVIEW_FIRST_PAGE_BUDGET,
   },
   ref,
 ) {
@@ -284,6 +313,7 @@ export const AiParseSection = forwardRef<
   );
 
   const abortRef = useRef<AbortController | null>(null);
+  const flashVisionAccumRef = useRef<FlashcardVisionItem[]>([]);
   /** Latest raw assistant text per layout chunk id (session-only; cleared each chunk run). */
   const chunkRawByIdRef = useRef<Record<string, string>>({});
   const lastIdbWriteRef = useRef(0);
@@ -630,11 +660,17 @@ export const AiParseSection = forwardRef<
       forwardProvider: "openai" | "custom",
       timeStamp: () => string,
       afterOcrParseMode: "vision" | "none",
-      options?: { forceSkipOcr?: boolean },
+      options?: {
+        forceSkipOcr?: boolean;
+        previewPageBudget?: number;
+        onPreviewPagesAvailable?: (pages: PageImageResult[]) => void;
+      },
     ): Promise<ParseRunResult | RenderOcrPrepared> => {
       const pages = await renderPdfPagesToImages(file, {
         signal: controller.signal,
         maxPages: VISION_MAX_PAGES_DEFAULT,
+        previewPageBudget: options?.previewPageBudget,
+        onPreviewPagesAvailable: options?.onPreviewPagesAvailable,
         onPageRendered: (pg, { totalPages }) => {
           setParseOverlay((p) => ({
             ...p,
@@ -1427,7 +1463,122 @@ export const AiParseSection = forwardRef<
       thumbs: [],
     });
 
+    const mustUseVisionBatch = batchOnlyVisionParse;
+
     try {
+      flashVisionAccumRef.current = [];
+      let previewVisionPromise: Promise<RunVisionBatchSequentialResult> | null =
+        null;
+      const previewBudgetClamped =
+        mustUseVisionBatch && isProductSurface
+          ? Math.min(5, Math.max(3, previewFirstPageBudget))
+          : 0;
+
+      async function runBatchesOnPages(
+        pageSlice: PageImageResult[],
+        segment: "preview" | "rest",
+      ): Promise<RunVisionBatchSequentialResult> {
+        const plannedBatches = planVisionBatches(pageSlice, "min_requests");
+        const batchTotal = Math.max(1, plannedBatches.length);
+        const strategyHint =
+          plannedBatches.length === 1 && pageSlice.length > 1
+            ? isFlashcardParse
+              ? `1 API request (all ${pageSlice.length} pages, overlap 0; theory flashcards, strict page citations)`
+              : `1 API request (all ${pageSlice.length} pages, overlap 0; may fall back to 10+2 if it fails)`
+            : `${plannedBatches.length} API request(s) (≤${VISION_MAX_PAGES_DEFAULT} pages/batch, overlap 0)`;
+        setProgress({ current: 0, total: batchTotal, status: "running" });
+        setParseOverlay((p) => ({
+          ...p,
+          log: [
+            ...p.log,
+            `${timeStamp()} — Vision batch parse · ${pageSlice.length} page image${pageSlice.length === 1 ? "" : "s"} · ${strategyHint}`,
+          ].slice(-16),
+        }));
+
+        pipelineLog("VISION", "run", "info", "runVisionBatchSequential starting", {
+          studySetId: studySetId.trim() || "(empty)",
+          parseOutputMode,
+          batchCount: plannedBatches.length,
+          pageImages: pageSlice.length,
+          segment,
+        });
+
+        if (parseOutputMode === "quiz" && segment === "preview") {
+          setQuestions([]);
+        }
+
+        let extractedSoFar = 0;
+        let batchTotalLive = batchTotal;
+        return await runVisionBatchSequential({
+          pages: pageSlice,
+          mode: parseOutputMode,
+          signal: controller.signal,
+          forwardProvider,
+          apiKey,
+          apiUrl: urlInput,
+          model: modelInput,
+          flashcardGeneration: isFlashcardParse
+            ? resolvedFlashcardConfig
+            : undefined,
+          onBatchPlanResolved: ({ batches, reason }) => {
+            batchTotalLive = Math.max(1, batches.length);
+            setProgress((prev) => ({
+              ...prev,
+              current: 0,
+              total: batchTotalLive,
+              status: "running",
+            }));
+            if (reason === "legacy_fallback") {
+              setParseOverlay((p) => ({
+                ...p,
+                log: [
+                  ...p.log,
+                  `${timeStamp()} — Retrying vision with legacy windows (${batches.length} request${batches.length === 1 ? "" : "s"}, 10+overlap2)`,
+                ].slice(-16),
+              }));
+            }
+          },
+          onItemsExtracted: (items, meta) => {
+            extractedSoFar += items.length;
+            setProgress({
+              current: meta.batchIndex + 1,
+              total: batchTotalLive,
+              status: "running",
+            });
+            if (parseOutputMode === "quiz") {
+              const qs = items
+                .filter((it): it is QuizVisionItem => it.kind === "quiz")
+                .map((it) => quizVisionItemToQuestion(it));
+              setQuestions((prev) => {
+                const next = dedupeQuestionsByStem([...prev, ...qs]);
+                void persistQuestions(next);
+                return next;
+              });
+            } else if (parseOutputMode === "flashcard") {
+              const fc = items.filter(
+                (it): it is FlashcardVisionItem => it.kind === "flashcard",
+              );
+              flashVisionAccumRef.current = dedupeVisionItems(
+                [...flashVisionAccumRef.current, ...fc],
+                "flashcard",
+              ).filter((it): it is FlashcardVisionItem => it.kind === "flashcard");
+              void persistFlashcardVisionItemsForImmediateUse(
+                flashVisionAccumRef.current,
+                resolvedFlashcardConfig,
+              );
+            }
+            setParseOverlay((p) => ({
+              ...p,
+              extractedCount: extractedSoFar,
+              log: [
+                ...p.log,
+                `${timeStamp()} — Batch ${meta.batchIndex + 1}/${batchTotalLive} (p.${meta.startPage}–${meta.endPage}) · +${items.length} item${items.length === 1 ? "" : "s"}${meta.cacheHit ? " · cache" : ""} · ~${extractedSoFar} raw (deduped at end)`,
+              ].slice(-16),
+            }));
+          },
+        });
+      }
+
       const prep = await runRenderPagesAndOptionalOcr(
         activePdfFile,
         controller,
@@ -1435,7 +1586,20 @@ export const AiParseSection = forwardRef<
         forwardProvider,
         timeStamp,
         "vision",
-        { forceSkipOcr: isFlashcardParse || isQuizParse || isProductSurface },
+        {
+          forceSkipOcr: isFlashcardParse || isQuizParse || isProductSurface,
+          previewPageBudget:
+            previewBudgetClamped > 0 ? previewBudgetClamped : undefined,
+          onPreviewPagesAvailable:
+            previewBudgetClamped > 0
+              ? (early) => {
+                  if (early.length === 0) {
+                    return;
+                  }
+                  previewVisionPromise = runBatchesOnPages(early, "preview");
+                }
+              : undefined,
+        },
       );
       if (!("kind" in prep) || prep.kind !== "prepared") {
         return prep as ParseRunResult;
@@ -1451,95 +1615,36 @@ export const AiParseSection = forwardRef<
         };
       }
 
-      const mustUseVisionBatch = batchOnlyVisionParse;
-
       if (mustUseVisionBatch) {
-        const runVisionBatchWithUi = async (): Promise<RunVisionBatchSequentialResult> => {
-          const plannedBatches = planVisionBatches(pages, "min_requests");
-          const batchTotal = Math.max(1, plannedBatches.length);
-          const strategyHint =
-            plannedBatches.length === 1 && pages.length > 1
-              ? isFlashcardParse
-                ? `1 API request (all ${pages.length} pages, overlap 0; theory flashcards, strict page citations)`
-                : `1 API request (all ${pages.length} pages, overlap 0; may fall back to 10+2 if it fails)`
-              : `${plannedBatches.length} API request(s) (≤${VISION_MAX_PAGES_DEFAULT} pages/batch, overlap 0)`;
-          setProgress({ current: 0, total: batchTotal, status: "running" });
-          setParseOverlay((p) => ({
-            ...p,
-            log: [
-              ...p.log,
-              `${timeStamp()} — Vision batch parse · ${pages.length} page image${pages.length === 1 ? "" : "s"} · ${strategyHint}`,
-            ].slice(-16),
-          }));
-
-          pipelineLog("VISION", "run", "info", "runVisionBatchSequential starting", {
-            studySetId: studySetId.trim() || "(empty)",
-            parseOutputMode,
-            batchCount: plannedBatches.length,
-            pageImages: pages.length,
-          });
-
-          if (parseOutputMode === "quiz") {
-            setQuestions([]);
+        let batchResult: RunVisionBatchSequentialResult;
+        if (previewBudgetClamped <= 0) {
+          batchResult = await runBatchesOnPages(pages, "preview");
+        } else {
+          const earlyRes = previewVisionPromise
+            ? await previewVisionPromise
+            : null;
+          const restPages =
+            pages.length > previewBudgetClamped
+              ? pages.slice(previewBudgetClamped)
+              : [];
+          const restRes =
+            restPages.length > 0
+              ? await runBatchesOnPages(restPages, "rest")
+              : null;
+          if (earlyRes && restRes) {
+            batchResult = mergeVisionBatchSequentialResults(
+              earlyRes,
+              restRes,
+              parseOutputMode,
+            );
+          } else if (earlyRes) {
+            batchResult = earlyRes;
+          } else if (restRes) {
+            batchResult = restRes;
+          } else {
+            batchResult = await runBatchesOnPages(pages, "preview");
           }
-
-          let extractedSoFar = 0;
-          let batchTotalLive = batchTotal;
-          return await runVisionBatchSequential({
-            pages,
-            mode: parseOutputMode,
-            signal: controller.signal,
-            forwardProvider,
-            apiKey,
-            apiUrl: urlInput,
-            model: modelInput,
-            flashcardGeneration: isFlashcardParse
-              ? resolvedFlashcardConfig
-              : undefined,
-            onBatchPlanResolved: ({ batches, reason }) => {
-              batchTotalLive = Math.max(1, batches.length);
-              setProgress((prev) => ({
-                ...prev,
-                current: 0,
-                total: batchTotalLive,
-                status: "running",
-              }));
-              if (reason === "legacy_fallback") {
-                setParseOverlay((p) => ({
-                  ...p,
-                  log: [
-                    ...p.log,
-                    `${timeStamp()} — Retrying vision with legacy windows (${batches.length} request${batches.length === 1 ? "" : "s"}, 10+overlap2)`,
-                  ].slice(-16),
-                }));
-              }
-            },
-            onItemsExtracted: (items, meta) => {
-              extractedSoFar += items.length;
-              setProgress({
-                current: meta.batchIndex + 1,
-                total: batchTotalLive,
-                status: "running",
-              });
-              if (parseOutputMode === "quiz") {
-                const qs = items
-                  .filter((it): it is QuizVisionItem => it.kind === "quiz")
-                  .map((it) => quizVisionItemToQuestion(it));
-                setQuestions((prev) => [...prev, ...qs]);
-              }
-              setParseOverlay((p) => ({
-                ...p,
-                extractedCount: extractedSoFar,
-                log: [
-                  ...p.log,
-                  `${timeStamp()} — Batch ${meta.batchIndex + 1}/${batchTotalLive} (p.${meta.startPage}–${meta.endPage}) · +${items.length} item${items.length === 1 ? "" : "s"}${meta.cacheHit ? " · cache" : ""} · ~${extractedSoFar} raw (deduped at end)`,
-                ].slice(-16),
-              }));
-            },
-          });
-        };
-
-        const batchResult = await runVisionBatchWithUi();
+        }
 
         // Progress: Dedupe and validation stage
         setParseOverlay((p) => ({
@@ -1651,6 +1756,9 @@ export const AiParseSection = forwardRef<
     isProductSurface,
     resolvedFlashcardConfig,
     batchOnlyVisionParse,
+    previewFirstPageBudget,
+    persistQuestions,
+    persistFlashcardVisionItemsForImmediateUse,
   ]);
 
   const handleLayoutAwareParse =
@@ -2235,9 +2343,6 @@ export const AiParseSection = forwardRef<
             const doc = await getDocument(studySetId.trim());
             fullText = doc?.extractedText ?? "";
           }
-          if (!fullText.trim()) {
-            fullText = await extractPdfText(activePdfFile, controller.signal);
-          }
 
           if (controller.signal.aborted) {
             return {
@@ -2248,48 +2353,168 @@ export const AiParseSection = forwardRef<
             };
           }
 
-          const chunks = chunkText(fullText);
-          setProgress({
-            current: 0,
-            total: Math.max(1, chunks.length),
-            status: "running",
-          });
-          pushOverlayLog(
-            `Text chunks ready · chunks=${chunks.length} · running sequential parse...`,
+          const pc =
+            pageCountForPolicy && pageCountForPolicy > 0
+              ? pageCountForPolicy
+              : 1;
+          const pageBudget = Math.min(
+            5,
+            Math.max(3, previewFirstPageBudget),
+            pc,
           );
 
-          const result = await runSequentialParse({
-            provider,
-            apiKey: keyInput.trim(),
-            apiUrl: urlInput,
-            model: modelInput,
-            chunks,
-            signal: controller.signal,
-            onProgress: ({ current, total }) => {
-              setProgress({ current, total, status: "running" });
-              setParseOverlay((p) => ({
-                ...p,
-                log: [
-                  ...p.log,
-                  `${formatTimeStamp()} — Text parse ${current}/${total}`,
-                ].slice(-16),
-              }));
-            },
-          });
+          let qs: Question[] = [];
 
-          if (result.fatalError) {
-            setError(result.fatalError);
-            return {
-              ok: false,
-              aborted: controller.signal.aborted,
-              fatalError: result.fatalError,
-              questions: result.questions,
-              parseOutputMode: "quiz",
-            };
+          if (!fullText.trim()) {
+            const previewText = await extractPdfTextForPageRange(
+              activePdfFile,
+              1,
+              pageBudget,
+              controller.signal,
+            );
+            if (controller.signal.aborted) {
+              return {
+                ok: false,
+                aborted: true,
+                fatalError: null,
+                questions: [],
+              };
+            }
+            const restText =
+              pageBudget < pc
+                ? await extractPdfTextForPageRange(
+                    activePdfFile,
+                    pageBudget + 1,
+                    pc,
+                    controller.signal,
+                  )
+                : "";
+            if (controller.signal.aborted) {
+              return {
+                ok: false,
+                aborted: true,
+                fatalError: null,
+                questions: [],
+              };
+            }
+
+            const chunksPreview = chunkText(previewText);
+            const chunksRest = pageBudget < pc ? chunkText(restText) : [];
+            const totalChunks = chunksPreview.length + chunksRest.length;
+
+            setProgress({
+              current: 0,
+              total: Math.max(1, totalChunks),
+              status: "running",
+            });
+            pushOverlayLog(
+              `Text chunks · preview ${chunksPreview.length} · rest ${chunksRest.length} · pages 1–${pageBudget}${pageBudget < pc ? ` then ${pageBudget + 1}–${pc}` : ""}`,
+            );
+
+            const runPass = async (chunks: string[], chunkOffset: number) =>
+              runSequentialParse({
+                provider,
+                apiKey: keyInput.trim(),
+                apiUrl: urlInput,
+                model: modelInput,
+                chunks,
+                signal: controller.signal,
+                onProgress: ({ current }) => {
+                  setProgress({
+                    current: chunkOffset + current,
+                    total: Math.max(1, totalChunks),
+                    status: "running",
+                  });
+                  setParseOverlay((p) => ({
+                    ...p,
+                    log: [
+                      ...p.log,
+                      `${formatTimeStamp()} — Text parse ${chunkOffset + current}/${totalChunks}`,
+                    ].slice(-16),
+                  }));
+                },
+              });
+
+            const previewResult = await runPass(chunksPreview, 0);
+            if (previewResult.fatalError) {
+              setError(previewResult.fatalError);
+              return {
+                ok: false,
+                aborted: controller.signal.aborted,
+                fatalError: previewResult.fatalError,
+                questions: previewResult.questions,
+                parseOutputMode: "quiz",
+              };
+            }
+            qs = dedupeQuestionsByStem(previewResult.questions);
+            if (qs.length > 0) {
+              await persistQuestions(qs);
+              setQuestions(qs);
+            }
+
+            if (chunksRest.length > 0 && !controller.signal.aborted) {
+              const restResult = await runPass(chunksRest, chunksPreview.length);
+              if (restResult.fatalError) {
+                setError(restResult.fatalError);
+                return {
+                  ok: false,
+                  aborted: controller.signal.aborted,
+                  fatalError: restResult.fatalError,
+                  questions: qs,
+                  parseOutputMode: "quiz",
+                };
+              }
+              qs = dedupeQuestionsByStem([...qs, ...restResult.questions]);
+              setQuestions(qs);
+              if (!controller.signal.aborted) {
+                await persistQuestions(qs);
+              }
+            }
+          } else {
+            const chunks = chunkText(fullText);
+            setProgress({
+              current: 0,
+              total: Math.max(1, chunks.length),
+              status: "running",
+            });
+            pushOverlayLog(
+              `Text chunks ready · chunks=${chunks.length} · running sequential parse...`,
+            );
+
+            const result = await runSequentialParse({
+              provider,
+              apiKey: keyInput.trim(),
+              apiUrl: urlInput,
+              model: modelInput,
+              chunks,
+              signal: controller.signal,
+              onProgress: ({ current, total }) => {
+                setProgress({ current, total, status: "running" });
+                setParseOverlay((p) => ({
+                  ...p,
+                  log: [
+                    ...p.log,
+                    `${formatTimeStamp()} — Text parse ${current}/${total}`,
+                  ].slice(-16),
+                }));
+              },
+            });
+
+            if (result.fatalError) {
+              setError(result.fatalError);
+              return {
+                ok: false,
+                aborted: controller.signal.aborted,
+                fatalError: result.fatalError,
+                questions: result.questions,
+                parseOutputMode: "quiz",
+              };
+            }
+
+            qs = result.questions;
+            setQuestions(qs);
           }
 
-          const qs = result.questions;
-          setQuestions(qs);
           if (controller.signal.aborted) {
             setSummary(`Text-first: parsed ${qs.length} questions. Parsing stopped.`);
             return {
@@ -2419,6 +2644,7 @@ export const AiParseSection = forwardRef<
       handleLayoutAwareParse,
       parseOutputMode,
       isQuizParse,
+      previewFirstPageBudget,
     ]);
 
   useImperativeHandle(
