@@ -672,8 +672,8 @@ Plans:
 
 ### Phase 31: Cache prompt prefixes, embeddings, and content hashes
 
-**Goal:** TBD
-**Requirements**: TBD
+**Goal:** Local-only **IndexedDB-backed parse caches** keyed by **content hashes** + **prompt/model/provider version** across **vision batch**, **sequential text chunk**, and **layout-aware text** lanes; **defer embeddings** to Phase 33 (hashes + cache infrastructure only here).
+**Requirements**: TBD (set during `/gsd-plan-phase 31`)
 **Depends on:** Phase 30
 **Plans:** 0 plans
 

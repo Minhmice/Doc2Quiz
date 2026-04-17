@@ -1,7 +1,7 @@
 # Phase 31: Cache prompt prefixes, embeddings, and content hashes — Context
 
 **Gathered:** 2026-04-18  
-**Status:** Ready for planning — **pending** user picks on gray areas (see `<gray_areas>`); defaults below unblock `/gsd-plan-phase 31` if user accepts recommendations.
+**Status:** Ready for planning — user locked **Recommended package** (2026-04-18 discuss).
 
 <domain>
 ## Phase boundary
@@ -12,7 +12,7 @@ Improve the AI parse pipeline by **caching deterministic work** and by **keying 
 
 - **Prompt prefixes / system prompt identity** in cache keys (including version bumps when prompts or response schema expectations change).
 - **Content hashes** (fingerprints of inputs: chunk text, batch image fingerprints, layout-block payloads as applicable).
-- **Embeddings** *only if* explicitly confirmed in gray-area selection; otherwise treat as **prep for Phase 33** (hashes + storage hooks without forcing a vector UX).
+- **Embeddings** are **deferred to Phase 33** for this phase (Phase 31 ships hashes + versioned parse caches only).
 
 **Out of scope (defer / separate phases):**
 
@@ -40,6 +40,13 @@ Improve the AI parse pipeline by **caching deterministic work** and by **keying 
 ### Baseline behavior (today) — do not regress
 - **D-04:** Vision batch caching is currently **in-memory** (`Map`) and best-effort keyed by page image fingerprints (data URL length + head slice + indices). Phase 31 changes should preserve correctness: **cache hits must not apply** across incompatible prompt/model/provider combinations.
 
+### User-locked package: **Recommended** (2026-04-18)
+
+- **D-05 (G-01):** **Defer embeddings** to Phase 33. Phase 31 implements **content hashing + prompt/model/provider versioning + durable parse caches** only.
+- **D-06 (G-02):** Promote parse caches to **IndexedDB** (still local-only), with explicit size/eviction policy (planner/detail).
+- **D-07 (G-03):** Cache entries are **content-addressable** (shared across study sets when inputs match). Keys must still include **prompt version + model + forward provider identity** so collisions cannot cross incompatible configurations. Optional: store `studySetId` as non-key metadata for debugging.
+- **D-08 (G-04):** Apply the **same cache contract** to **vision batch**, **sequential text chunk parse**, and **layout-aware text segments** (post Phase 30).
+
 ### Claude’s discretion (implementation)
 - Exact LRU/eviction policy and per-store size caps.
 - Whether to store raw assistant text vs normalized parsed items (as long as validation/dedupe behavior matches today).
@@ -48,33 +55,9 @@ Improve the AI parse pipeline by **caching deterministic work** and by **keying 
 </decisions>
 
 <gray_areas>
-## Gray areas — user must choose (or accept recommendations)
+## Gray areas — resolved
 
-These change product behavior and cost model; pick what to lock now (multi-select in chat):
-
-1. **G-01 — Embeddings in Phase 31**
-   - **A:** Phase 31 **includes** generating/storing embeddings for chunk/content units (still local-only).
-   - **B:** Phase 31 **defers embeddings** to Phase 33; Phase 31 only ships **hashes + prompt-versioned parse caches**.
-
-2. **G-02 — Durability**
-   - **A:** **IndexedDB-backed** caches (survive reload) for at least vision batch + text chunk parses.
-   - **B:** **Session memory only** (current vision direction), Phase 31 only improves keys/versioning.
-
-3. **G-03 — Cache namespace**
-   - **A:** **Content-addressable** keys (same bytes/text → shared entry across study sets).
-   - **B:** **`studySetId`-scoped** keys (simpler lifecycle on delete; less cross-set reuse).
-
-4. **G-04 — Which lanes in wave 1**
-   - **A:** Vision batch only.
-   - **B:** Vision batch + **sequential text chunk** parse (`runSequentialParse` path).
-   - **C:** **B + layout-aware** segments (treat as same text-cache contract).
-
-### Recommended defaults (if user wants fastest planning)
-
-- **G-01 → B** (defer embeddings; prep hashes/keys for Phase 33).
-- **G-02 → A** (IDB for parse caches; keep strict caps).
-- **G-03 → A** (content-addressable + include model/provider/prompt version in key; optionally store `studySetId` as metadata only).
-- **G-04 → C** (one coherent cache story across lanes).
+User selected the **Recommended** package on 2026-04-18. See **D-05..D-08** above.
 
 </gray_areas>
 
