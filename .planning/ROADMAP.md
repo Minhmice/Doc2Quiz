@@ -663,7 +663,7 @@ Plans:
 **Goal:** Replace quiz text-lane page-level chunking with layout-aware chunking built from **pdf.js text layer + geometry**; apply only to Phase 29 `text` pages; keep preview-first 3–5 pages; per-page fallback to vision; no new UI controls.
 **Requirements**: LAYOUT-30-01, LAYOUT-30-02, LAYOUT-30-03, LAYOUT-30-04
 **Depends on:** Phase 29
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] `30-01-PLAN.md` — requirements + layout block builder utilities

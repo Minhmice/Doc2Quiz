@@ -111,10 +111,10 @@
 
 ### Layout-aware chunking from pdf.js text layer + geometry (Phase 30)
 
-- [ ] **LAYOUT-30-01**: Layout chunk source uses **pdf.js text layer + geometry** in product flow (no OCR dependency).
-- [ ] **LAYOUT-30-02**: Chunk granularity is deterministic **layout blocks** (paragraph-ish), targeting ~1–2 MCQs per chunk.
-- [ ] **LAYOUT-30-03**: Layout chunking applies only to Phase 29 `text` pages; bitmap pages remain vision.
-- [ ] **LAYOUT-30-04**: Preserve preview-first (3–5 pages) and allow **per-page and/or per-chunk** fallback to vision without falling back the whole document.
+- [x] **LAYOUT-30-01**: Layout chunk source uses **pdf.js text layer + geometry** in product flow (no OCR dependency).
+- [x] **LAYOUT-30-02**: Chunk granularity is deterministic **layout blocks** (paragraph-ish), targeting ~1–2 MCQs per chunk.
+- [x] **LAYOUT-30-03**: Layout chunking applies only to Phase 29 `text` pages; bitmap pages remain vision.
+- [x] **LAYOUT-30-04**: Preserve preview-first (3–5 pages) and allow **per-page and/or per-chunk** fallback to vision without falling back the whole document.
 
 ## Out of Scope
 
