@@ -45,8 +45,12 @@ import {
 } from "@/types/flashcardGeneration";
 import { parseOutputModeFromContentKind } from "@/types/visionParse";
 import { FlashcardsGenerationControls } from "@/components/edit/new/flashcards/FlashcardsGenerationControls";
-import { runBackgroundStudySetPdfUpload } from "@/lib/uploads/runBackgroundStudySetPdfUpload";
+import {
+  runBackgroundStudySetPdfUpload,
+  type RunBackgroundStudySetPdfUploadResult,
+} from "@/lib/uploads/runBackgroundStudySetPdfUpload";
 import { ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
 function provisionalTitleFromPdfFileName(name: string): string {
   const trimmed = name.trim();
@@ -93,6 +97,13 @@ type ParseContextState = {
   pageCount: number;
 };
 
+function isStubObjectStorageFinalizeMessage(message: string | undefined): boolean {
+  return (
+    typeof message === "string" &&
+    /not available yet for this deployment/i.test(message)
+  );
+}
+
 function parseRunHasUsableOutput(
   r: ParseRunResult,
   contentKind: StudyContentKind,
@@ -125,6 +136,10 @@ export function NewStudySetPdfImportFlow({
   const parseContextRef = useRef<ParseContextState | null>(null);
   const parseKickGen = useRef(0);
   const uploadAbortRef = useRef<AbortController | null>(null);
+  const uploadEffectPromiseRef = useRef<Promise<void>>(Promise.resolve());
+  const uploadEffectResultRef = useRef<RunBackgroundStudySetPdfUploadResult | null>(
+    null,
+  );
 
   const [ingestBusy, setIngestBusy] = useState(false);
   const [importPhase, setImportPhase] = useState<NewStudySetPdfImportPhase>("idb");
@@ -201,7 +216,22 @@ export function NewStudySetPdfImportFlow({
 
       if (r.ok && parseRunHasUsableOutput(r, contentKind)) {
         clearParse(id);
-        router.push(getPostParseHref(id));
+        void (async () => {
+          await uploadEffectPromiseRef.current;
+          if (parseContextRef.current?.studySetId !== id) {
+            return;
+          }
+          const ur = uploadEffectResultRef.current;
+          if (
+            ur?.kind === "error" &&
+            !isStubObjectStorageFinalizeMessage(ur.message)
+          ) {
+            toast.error("Transfer did not finish. Starting over.");
+            await resetAfterInlineParse();
+            return;
+          }
+          router.push(getPostParseHref(id));
+        })();
         return;
       }
 
@@ -213,7 +243,14 @@ export function NewStudySetPdfImportFlow({
           : "Parse did not finish successfully. You can retry or start over.");
       setParseError(msg);
     },
-    [clearParse, contentKind, getPostParseHref, router, runAiParseOnNewPage],
+    [
+      clearParse,
+      contentKind,
+      getPostParseHref,
+      resetAfterInlineParse,
+      router,
+      runAiParseOnNewPage,
+    ],
   );
 
   const handleValidationError = useCallback((err: PdfValidationError) => {
@@ -366,6 +403,8 @@ export function NewStudySetPdfImportFlow({
 
   useEffect(() => {
     if (!parseContext?.studySetId || !runAiParseOnNewPage) {
+      uploadEffectPromiseRef.current = Promise.resolve();
+      uploadEffectResultRef.current = null;
       return;
     }
     const studySetId = parseContext.studySetId;
@@ -374,7 +413,8 @@ export function NewStudySetPdfImportFlow({
     const ac = new AbortController();
     uploadAbortRef.current = ac;
 
-    void (async () => {
+    const p = (async () => {
+      uploadEffectResultRef.current = null;
       const result = await runBackgroundStudySetPdfUpload({
         file,
         signal: ac.signal,
@@ -398,16 +438,21 @@ export function NewStudySetPdfImportFlow({
       if (parseKickGen.current !== kickAtStart) {
         return;
       }
+      uploadEffectResultRef.current = result;
       uploadAbortRef.current = null;
       clearUpload(studySetId);
 
-      if (result.kind === "error") {
+      if (result.kind === "completed") {
+        toast.success("Upload complete", { duration: 3200 });
+      } else if (result.kind === "error") {
         pipelineLog("STUDY_SET", "new-import", "warn", "background pdf upload failed", {
           studySetId,
           message: result.message,
         });
       }
     })();
+
+    uploadEffectPromiseRef.current = p;
 
     return () => {
       ac.abort();
@@ -432,7 +477,11 @@ export function NewStudySetPdfImportFlow({
   return (
     <>
       <div className="w-full shrink-0 self-stretch">
-        <ParseProgressStrip />
+        <ParseProgressStrip
+          onCancelAll={
+            inFlow ? () => void resetAfterInlineParse() : undefined
+          }
+        />
       </div>
       <div className="mx-auto flex w-full max-w-6xl shrink-0 flex-col items-center px-4 py-4 sm:px-6 sm:py-6 lg:max-w-7xl lg:px-8">
       {showUploadChrome ? (
@@ -600,15 +649,6 @@ export function NewStudySetPdfImportFlow({
                         </AlertDescription>
                       </Alert>
                     ) : null}
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void resetAfterInlineParse()}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
                   </>
                 ) : null}
               </div>
