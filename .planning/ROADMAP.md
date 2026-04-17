@@ -702,13 +702,17 @@ Plans:
 
 ### Phase 32: Use draft-pass generation plus validator-pass rewrite
 
-**Goal:** TBD
-**Requirements**: TBD
+**Status:** Planned
+
+**Goal:** **Per-chunk** two-pass parse quality: **draft** MCQ/flashcard extraction, then **hybrid validator** (deterministic repair first, LLM validator/rewrite when needed) before merge; **always** run validator on the success path; **toast** when the LLM validator runs; **Quiz + Flashcards** share the same contract where chunk/batch extraction applies; **cache keys** stay correct vs Phase 31 (validator prompts are distinct prompt identity).
+**Requirements**: DRAFT-32-01, DRAFT-32-02, DRAFT-32-03, DRAFT-32-04, DRAFT-32-05, DRAFT-32-06
 **Depends on:** Phase 31
-**Plans:** 0 plans
+**Plans:** 0/3 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 32 to break down)
+- [ ] `32-01-PLAN.md` — ROADMAP/REQUIREMENTS reconcile; validator prompt bundle + reason codes; `ParseCacheLane` / key strategy for validator pass; `mcqDraftValidate` module skeleton (DRAFT-32-01, DRAFT-32-02, DRAFT-32-06)
+- [ ] `32-02-PLAN.md` — Wire `parseChunkOnce` / `parseChunkSingleMcqOnce` / `runSequentialParse`: draft → validate → merge; pipelineLog reason codes; abort-safe (DRAFT-32-01..03, DRAFT-32-06)
+- [ ] `32-03-PLAN.md` — `AiParseSection` toast (throttled); vision/flashcard batch path where applicable; `npm run lint` + `npm run build` (DRAFT-32-04, DRAFT-32-05)
 
 ### Phase 33: Adopt a vector store matched to your scale
 
