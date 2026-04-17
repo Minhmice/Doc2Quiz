@@ -69,6 +69,34 @@
 - **EXPORT-01**: User can export question set as JSON
 - **EXPORT-02**: User can import a JSON question set from another user
 
+## v1+ Requirements (Phases 26+)
+
+### Direct multipart/resumable upload to object storage (Phase 26)
+
+- [ ] **UPLOAD-01**: Env-gated optional object-storage upload path; when not configured, local-only behavior is unchanged. (D-01)
+- [ ] **UPLOAD-02**: Direct upload of original PDF bytes supports resumable/multipart semantics through an adapter contract. (D-04, D-08)
+- [ ] **UPLOAD-03**: Upload uses presigned URLs with short TTL and requires a server finalize step; finalize failure is user-visible. (D-09, D-10, D-11)
+- [ ] **UPLOAD-04**: Upload UX supports bytes-based progress, cancel, and same-session auto-retry/resume on network drops. (D-07, D-13, D-14, D-15)
+- [ ] **UPLOAD-05**: Object keys are random uploadId + sanitized suffix; do not embed original filename/PII. (D-03)
+- [ ] **UPLOAD-06**: Storage retention uses short TTL and has a documented expiry/cleanup story (provider-agnostic). (D-05)
+
+### Preview-first parsing while upload continues (Phase 27)
+
+- [ ] **PREVIEW-01**: Parse starts immediately after PDF file selection, without waiting for any background upload to complete.
+- [ ] **PREVIEW-02**: Preview is incremental streaming: quiz questions / flashcards appear as they are produced (no “wait until finished” gate).
+- [ ] **PREVIEW-03**: Preview-first applies to both Quiz and Flashcards create flows.
+- [ ] **PREVIEW-04**: Preview prioritizes the first 3–5 pages (aligned with PDF sampling budget) to minimize time-to-first-results.
+- [ ] **PREVIEW-05**: UI shows a sticky top progress strip combining parse progress and (when enabled) background upload byte progress.
+- [ ] **PREVIEW-06**: User can Cancel-all to cancel parse + upload and clean up the in-progress set (no “trash sets” left behind).
+- [ ] **PREVIEW-07**: Entering study/play is blocked until background upload completes when direct-upload is enabled.
+- [ ] **PREVIEW-08**: When background upload completes, UI shows a light toast “Upload complete” (or equivalent short copy).
+- [ ] **PREVIEW-09**: Study set metadata (and `studySetId`) is created/persisted first so preview is not blocked by full PDF bytes persistence.
+- [ ] **PREVIEW-10**: Preview parsing always runs from the local `File` via pdf.js; it does not depend on remote upload URLs.
+- [ ] **PREVIEW-11**: If upload capability is not configured/available, upload UI is hidden and the flow behaves as local-only (no cloud messaging).
+- [ ] **PREVIEW-12**: If upload fails with a non-retryable/finalize error, the flow cancels everything and returns to start (no continuing into study).
+- [ ] **PREVIEW-13**: If parse fails or produces no usable output while upload is OK, the user can retry parse / adjust settings (consistent with existing parse UX).
+- [ ] **PREVIEW-14**: Refresh/close mid-flow is not resumable; user returns to upload step on reload.
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -107,6 +135,26 @@
 | SCORE-02 | Phase 5 | Complete |
 | SCORE-03 | Phase 5 | Complete |
 | SCORE-04 | Phase 5 | Complete |
+| UPLOAD-01 | Phase 26 | Planned |
+| UPLOAD-02 | Phase 26 | Planned |
+| UPLOAD-03 | Phase 26 | Planned |
+| UPLOAD-04 | Phase 26 | Planned |
+| UPLOAD-05 | Phase 26 | Planned |
+| UPLOAD-06 | Phase 26 | Planned |
+| PREVIEW-01 | Phase 27 | Planned |
+| PREVIEW-02 | Phase 27 | Planned |
+| PREVIEW-03 | Phase 27 | Planned |
+| PREVIEW-04 | Phase 27 | Planned |
+| PREVIEW-05 | Phase 27 | Planned |
+| PREVIEW-06 | Phase 27 | Planned |
+| PREVIEW-07 | Phase 27 | Planned |
+| PREVIEW-08 | Phase 27 | Planned |
+| PREVIEW-09 | Phase 27 | Planned |
+| PREVIEW-10 | Phase 27 | Planned |
+| PREVIEW-11 | Phase 27 | Planned |
+| PREVIEW-12 | Phase 27 | Planned |
+| PREVIEW-13 | Phase 27 | Planned |
+| PREVIEW-14 | Phase 27 | Planned |
 
 **Coverage:**
 - v1 requirements: 23 total

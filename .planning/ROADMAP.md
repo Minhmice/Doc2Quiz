@@ -610,27 +610,31 @@ Plans:
 
 ### Phase 26: Direct multipart/resumable upload to object storage
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add an **optional (env-gated)** direct-to-object-storage upload path for the **original PDF bytes** with a stable init → part/chunk → complete → finalize contract, while keeping the app **local-first by default**.
+
+**Requirements**: UPLOAD-01, UPLOAD-02, UPLOAD-03, UPLOAD-04, UPLOAD-05, UPLOAD-06
 **Depends on:** Phase 25
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 26 to break down)
+- [ ] `26-01-PLAN.md` — Define requirements + ship provider-agnostic upload contracts, client helper, and env-gated API route stubs with finalize validations.
+- [ ] `26-02-PLAN.md` — Wire optional upload into `NewStudySetPdfImportFlow` + `UploadBox` with bytes-based progress, cancel, and same-session retry/resume (local-only default preserved).
 
 ### Phase 27: Preview-first parsing while full upload continues
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Enable preview-first parsing: begin AI parsing immediately on file selection and stream preview results while an optional env-gated background upload continues in parallel, without breaking local-first persistence.
+**Requirements**: PREVIEW-01, PREVIEW-02, PREVIEW-03, PREVIEW-04, PREVIEW-05, PREVIEW-06, PREVIEW-07, PREVIEW-08, PREVIEW-09, PREVIEW-10, PREVIEW-11, PREVIEW-12, PREVIEW-13, PREVIEW-14
 **Depends on:** Phase 26
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 27 to break down)
+- [ ] `27-01-PLAN.md` — Start parse immediately + preview scheduling (first 3–5 pages) + persist set meta first.
+- [ ] `27-02-PLAN.md` — Sticky combined progress strip + cancel controls + upload-complete toast + local-only hiding.
+- [ ] `27-03-PLAN.md` — Navigation gating until upload complete + failure policies (upload vs parse) + no-resume-on-refresh contract.
 
 ### Phase 28: Move image preprocessing into Web Workers
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 27
 **Plans:** 0 plans
@@ -640,7 +644,7 @@ Plans:
 
 ### Phase 29: Route by page type: text page vs bitmap page vs rich layout page
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 28
 **Plans:** 0 plans
@@ -650,7 +654,7 @@ Plans:
 
 ### Phase 30: Replace page-level chunking with layout-aware chunking
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 29
 **Plans:** 0 plans
@@ -660,7 +664,7 @@ Plans:
 
 ### Phase 31: Cache prompt prefixes, embeddings, and content hashes
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 30
 **Plans:** 0 plans
@@ -670,7 +674,7 @@ Plans:
 
 ### Phase 32: Use draft-pass generation plus validator-pass rewrite
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 31
 **Plans:** 0 plans
@@ -680,7 +684,7 @@ Plans:
 
 ### Phase 33: Adopt a vector store matched to your scale
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 32
 **Plans:** 0 plans
@@ -690,7 +694,7 @@ Plans:
 
 ### Phase 34: Add async workers / task queue for full indexing
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 33
 **Plans:** 0 plans
@@ -700,7 +704,7 @@ Plans:
 
 ### Phase 35: Tune OCR preprocessing: thresholding, downsample huge pages, 300-DPI target
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 34
 **Plans:** 0 plans
@@ -710,7 +714,7 @@ Plans:
 
 ### Phase 36: Queue-based fallback to high-accuracy pipeline only on uncertain docs
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 35
 **Plans:** 0 plans
@@ -720,7 +724,7 @@ Plans:
 
 ### Phase 37: Global transfer acceleration / edge ingress
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 36
 **Plans:** 0 plans
@@ -730,7 +734,7 @@ Plans:
 
 ### Phase 38: Full fine-tuning or distillation for quiz style
 
-**Goal:** [To be planned]
+**Goal:** TBD
 **Requirements**: TBD
 **Depends on:** Phase 37
 **Plans:** 0 plans
