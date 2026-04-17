@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 26
-stopped_at: Completed 26-01-PLAN.md (direct-multipart-resumable-upload-to-object-storage)
+status: Ready to plan
+stopped_at: Completed Phase 27 — preview-first parsing + combined progress strip + upload gating (`27-01`..`27-03` SUMMARYs)
 last_updated: "2026-04-17T12:00:00.000Z"
 progress:
   total_phases: 38
-  completed_phases: 24
+  completed_phases: 25
   total_plans: 56
-  completed_plans: 52
-  percent: 93
+  completed_plans: 55
+  percent: 98
 ---
 
 # Doc2Quiz — State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 26 — direct-multipart-resumable-upload-to-object-storage
+**Current focus:** Phase 28 — move-image-preprocessing-into-web-workers (plan next with `/gsd-plan-phase 28`). *Note:* Phase 26 roadmap still lists `26-02-PLAN.md` open; reconcile with upload wiring shipped during Phase 27 if needed.
 
 ## Current Status
 
@@ -36,17 +36,19 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 22 (Mint UI/UX from `example/`): Complete — wave 0 (tokens/shell) prior session; waves 1–2 (`22-01` dashboard + stats, `22-02` settings + source/review headers); `22-01-SUMMARY.md`, `22-02-SUMMARY.md`
 - Phase 23 (full layout from `example/`): Complete — `/develop`, `mockAllowlist`, `/api/develop/mock/[slug]`, `DevelopLabClient`, dev Command Palette; inventory §8 + play outer chrome; `23-01-SUMMARY.md`, `23-02-SUMMARY.md`.
 - Phase 24 (vision parse fewer round-trips): Complete — `24-01-SUMMARY.md`, `24-02-SUMMARY.md`.
+- Phase 27 (Preview-first parsing while full upload continues): Complete — `27-01-SUMMARY.md`, `27-02-SUMMARY.md`, `27-03-SUMMARY.md`.
 
 ## Last Session
 
-**Stopped at:** Completed `26-01-PLAN.md` — PDF upload contracts + env-gated `/api/uploads/pdf/*` stubs (`26-01-SUMMARY.md`)
+**Stopped at:** Executed Phase 27 (`/gsd-execute-phase` style) — immediate parse on file pick, preview-first 3–5 page budget, sticky parse+upload strip, cancel-all, upload-complete toast, study navigation gated on upload completion (direct-upload), failure split upload vs parse.
 **Date:** 2026-04-17
-**Resume file:** `.planning/phases/26-direct-multipart-resumable-upload-to-object-storage/26-02-PLAN.md` (UI wiring)
+**Resume file:** `.planning/phases/28-move-image-preprocessing-into-web-workers/` (plan when ready)
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- Phase 27 execute (2026-04-17): preview-first create flow per `27-CONTEXT.md`; `27-01`..`27-03` SUMMARYs; `npm run lint` + `npm run build` green; roadmap Phase 27 → **Complete** (3/3 plans).
 - Phase 26 plan `26-01` execute (2026-04-17): UPLOAD-01..03,05,06 captured in requirements + roadmap; shipped `src/types/uploads.ts`, `src/lib/uploads/pdfUpload*.ts`, `/api/uploads/pdf/{init,part,complete,abort}` with HMAC finalize token + `uploadCapability` gating; `npm run lint` + `npm run build` green; `26-01-SUMMARY.md`. **UPLOAD-04** remains for `26-02` (progress/cancel UX).
 - Phase 24 execute (`/gsd-execute-phase 24`, 2026-04-13): shipped `planVisionBatches` + `runVisionBatchSequential` defaults + legacy fallback + strict `sourcePages` + `AiParseSection` `onBatchPlanResolved`; `npm run lint` + `npm run build` green; roadmap Phase 24 → **Complete**; `24-01-SUMMARY.md`, `24-02-SUMMARY.md`.
 - Phase 24 added + planned (`/gsd-add-phase`, 2026-04-13): **Vision parse: fewer round-trips — single request or max-window batches when within provider limits**; dir `.planning/phases/24-vision-parse-fewer-round-trips-single-request-or-max-window-/`; artifacts `24-CONTEXT.md`, `24-01-PLAN.md`, `24-02-PLAN.md`; roadmap Phase 24 → **Planned**; depends Phase 21.

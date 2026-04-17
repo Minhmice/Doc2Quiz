@@ -625,12 +625,12 @@ Plans:
 **Goal:** Enable preview-first parsing: begin AI parsing immediately on file selection and stream preview results while an optional env-gated background upload continues in parallel, without breaking local-first persistence.
 **Requirements**: PREVIEW-01, PREVIEW-02, PREVIEW-03, PREVIEW-04, PREVIEW-05, PREVIEW-06, PREVIEW-07, PREVIEW-08, PREVIEW-09, PREVIEW-10, PREVIEW-11, PREVIEW-12, PREVIEW-13, PREVIEW-14
 **Depends on:** Phase 26
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] `27-01-PLAN.md` — Start parse immediately + preview scheduling (first 3–5 pages) + persist set meta first.
-- [ ] `27-02-PLAN.md` — Sticky combined progress strip + cancel controls + upload-complete toast + local-only hiding.
-- [ ] `27-03-PLAN.md` — Navigation gating until upload complete + failure policies (upload vs parse) + no-resume-on-refresh contract.
+- [x] `27-01-PLAN.md` — Start parse immediately + preview scheduling (first 3–5 pages) + persist set meta first.
+- [x] `27-02-PLAN.md` — Sticky combined progress strip + cancel controls + upload-complete toast + local-only hiding.
+- [x] `27-03-PLAN.md` — Navigation gating until upload complete + failure policies (upload vs parse) + no-resume-on-refresh contract.
 
 ### Phase 28: Move image preprocessing into Web Workers
 
