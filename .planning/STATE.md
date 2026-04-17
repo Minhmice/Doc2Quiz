@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 30
-current_plan: Not started
+current_plan: 2
 status: Ready to execute
-stopped_at: Completed 29-03-PLAN.md
-last_updated: "2026-04-17T18:26:05.696Z"
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-04-17T18:32:25.025Z"
 progress:
   total_phases: 38
   completed_phases: 27
   total_plans: 64
-  completed_plans: 60
-  percent: 94
+  completed_plans: 61
+  percent: 95
 ---
 
 # Doc2Quiz — State
@@ -22,12 +22,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 29 — route-by-page-type-text-page-vs-bitmap-page-vs-rich-layout-p
+**Current focus:** Phase 30 — replace-page-level-chunking-with-layout-aware-chunking
 
 ## Execution Progress
 
 **Current Phase:** 30
-**Current Plan:** Not started
+**Current Plan:** 2
 **Total Plans in Phase:** 3
 
 ## Current Status
@@ -48,7 +48,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Completed 29-03-PLAN.md
+**Stopped at:** Completed 30-01-PLAN.md
 **Date:** 2026-04-17
 **Resume file:** None
 
