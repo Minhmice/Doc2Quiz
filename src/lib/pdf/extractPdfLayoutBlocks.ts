@@ -82,10 +82,10 @@ export async function extractPdfLayoutBlocksForPageIndices(
             ...meta,
             stoppedAtPage: pageIndex1Raw,
           });
-          return { pageCount, pages: [] };
+          return { pageCount, pages };
         }
 
-        const pageIndex1 = Math.min(pageIndex1Raw, pageCount);
+        const pageIndex1 = pageIndex1Raw;
         if (pageIndex1 < 1 || pageIndex1 > pageCount) {
           continue;
         }
