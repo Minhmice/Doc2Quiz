@@ -8,6 +8,17 @@ Doc2Quiz is a local-first web app that converts PDFs of study materials — past
 
 The practice loop must feel faster and more effective than reading the PDF directly: upload → questions → drill → score → repeat mistakes.
 
+## Current state (v1.0 shipped)
+
+- **Milestone v1.0** (“Local Practice Loop”, phases 1–38) is **archived** under `.planning/milestones/` (roadmap, requirements snapshot, phase dirs). Active planning files are **short stubs** until the next milestone is defined.
+- **Known gap:** uncertain-doc second-pass vision (`FB-36-03`) remains **deferred** (registry + logging only).
+- **Planning:** see `.planning/MILESTONES.md`, `.planning/v1.0-MILESTONE-AUDIT.md`, and collapsed `.planning/ROADMAP.md`.
+
+## Next milestone goals (TBD)
+
+- Run `/gsd-new-milestone` (or equivalent) to set version name, scope, and fresh `REQUIREMENTS.md` / phased `ROADMAP.md`.
+- Candidate follow-ups: implement `FB-36-03`, reconcile INDEX-34 traceability vs Phase 34 status, or product goals outside v1 archive.
+
 ## Requirements
 
 ### Validated
@@ -40,7 +51,7 @@ The practice loop must feel faster and more effective than reading the PDF direc
 
 **What "offline-first" means here:** No cloud account or sync. Study material and quiz state stay on-device (IndexedDB). AI extraction is online only to the user-chosen vendor.
 
-**Starting point:** v1 practice loop (phases 1–5) is implemented; later roadmap phases cover hardening, math preview, scale-mode stubs, and domain cleanup — see `.planning/STATE.md` and `.planning/ROADMAP.md`.
+**Starting point:** v1.0 milestone (phases 1–38) is archived; detailed roadmap lives in `.planning/milestones/v1.0-ROADMAP.md`. Current `.planning/ROADMAP.md` points at that archive until the next milestone is planned.
 
 ## Constraints
 
@@ -75,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 — aligned with implementation (`src/`) and `.planning/STATE.md`*
+*Last updated: 2026-04-18 — v1.0 milestone archived; next milestone TBD*
