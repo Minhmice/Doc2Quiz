@@ -650,10 +650,10 @@ Plans:
 **Goal:** Add **per-page routing** for mixed PDFs so text-heavy pages can be parsed via text-first lanes **without rasterizing** them, while bitmap/scanned pages continue through the existing vision lane — preserving current caps and preview-first behavior.
 **Requirements**: ROUTE-29-01, ROUTE-29-02, ROUTE-29-03, ROUTE-29-04
 **Depends on:** Phase 28
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] `29-01-PLAN.md` — Define Phase 29 goal/req IDs; add per-page classification + routing-plan data structures (no UI wiring).
+- [x] `29-01-PLAN.md` — Define Phase 29 goal/req IDs; add per-page classification + routing-plan data structures (no UI wiring). (completed 2026-04-17)
 - [ ] `29-02-PLAN.md` — Integrate per-page routing into `AiParseSection` **before rasterization**; route text pages to text-first, bitmap pages to vision (no new UI controls).
 - [ ] `29-03-PLAN.md` — Observability + safety: reason-code logging, bounded work + abort handling, and cap enforcement so routing never increases vision workload.
 
