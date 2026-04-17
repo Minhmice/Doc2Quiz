@@ -637,7 +637,7 @@ Plans:
 **Goal:** Move CPU-heavy image preprocessing (resize + JPEG encode for vision/OCR) into a single sequential Web Worker with safe auto-fallback, keeping PDF render on the main thread and preserving existing dataUrl + AbortSignal semantics.
 **Requirements**: PERF-28-01, PERF-28-02
 **Depends on:** Phase 27
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] `28-01-PLAN.md` — Single sequential resize+JPEG encode worker + client helper; Phase 28 requirements + roadmap entries.

@@ -2,15 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: 28
+current_plan: 2
 status: Ready to execute
-stopped_at: Executed Phase 27 (`/gsd-execute-phase` style) — immediate parse on file pick, preview-first 3–5 page budget, sticky parse+upload strip, cancel-all, upload-complete toast, study navigation gated on upload completion (direct-upload), failure split upload vs parse.
-last_updated: "2026-04-17T15:51:15.578Z"
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-04-17T16:21:52.312Z"
 progress:
   total_phases: 38
   completed_phases: 25
   total_plans: 58
-  completed_plans: 55
-  percent: 95
+  completed_plans: 56
+  percent: 97
 ---
 
 # Doc2Quiz — State
@@ -20,7 +22,13 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 28 — move-image-preprocessing-into-web-workers (plan next with `/gsd-plan-phase 28`). *Note:* Phase 26 roadmap still lists `26-02-PLAN.md` open; reconcile with upload wiring shipped during Phase 27 if needed.
+**Current focus:** Phase 28 — move-image-preprocessing-into-web-workers
+
+## Execution Progress
+
+**Current Phase:** 28  
+**Current Plan:** 2
+**Total Plans in Phase:** 2
 
 ## Current Status
 
@@ -40,9 +48,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Executed Phase 27 (`/gsd-execute-phase` style) — immediate parse on file pick, preview-first 3–5 page budget, sticky parse+upload strip, cancel-all, upload-complete toast, study navigation gated on upload completion (direct-upload), failure split upload vs parse.
+**Stopped at:** Completed 28-01-PLAN.md
 **Date:** 2026-04-17
-**Resume file:** `.planning/phases/28-move-image-preprocessing-into-web-workers/` (plan when ready)
+**Resume file:** None
 
 ## Accumulated Context
 
@@ -106,6 +114,11 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 7 discuss (`/gsd-discuss-phase 7`): gray areas closed in `07-CONTEXT.md` (D-16–D-26: OCR prereq, providers, sort key, hybrid threshold 85%, bulk fallback rules, Question optional fields, debug UI).
 - Phase 7 plan (`/gsd-plan-phase 7`): `07-01-PLAN.md`, `07-02-PLAN.md` added — ready for `/gsd-execute-phase 7` or manual execution.
 - Phase 9: **Math & notation preview (LaTeX-first)** — roadmap goal/deliverables set; math-first MCQ + preview; other subjects reuse notation layer when still formula/LaTeX; `docs/NOTES-latex-math-rendering.md` extended with stack comparison table.
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Tasks | Files | Date |
+|------:|-----:|----------|------:|------:|------|
 
 ## Config
 
