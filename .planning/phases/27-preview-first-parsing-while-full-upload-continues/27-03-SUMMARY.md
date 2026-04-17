@@ -62,7 +62,7 @@ completed: 2026-04-17
 ## Task Commits
 
 1. **Task 1: Gate navigation until background upload completes (D-07)** — `a1b9cef` (feat)
-2. **Task 2: Upload failure cancel-all + parse retry preserved + D-11 note** — `9234ef5` (feat)
+2. **Task 2: Upload failure cancel-all + parse retry preserved + D-11 note** — `9234ef5` (feat), `d5c4dfa` (fix: awaited reset; see Deviations)
 
 ## Files Created/Modified
 
@@ -71,7 +71,15 @@ completed: 2026-04-17
 
 ## Deviations from Plan
 
-None — behavior matches D-07, D-11, D-13, D-14, D-15 and reuses the existing stub-finalize exception from plan 27-02.
+### Auto-fixed Issues
+
+**1. [Rule 1 — Bug] Upload error path could double-toast with post-parse waiter**
+
+- **Found during:** Task 2 verification
+- **Issue:** `void resetAfterInlineParse()` let the background-upload promise resolve before reset finished, so a successful parse’s navigation waiter could still see the draft set and emit a second error toast.
+- **Fix:** `await resetAfterInlineParse()` in the upload `error` branch so the async runner finishes cleanup before dependents observe completion.
+- **Files modified:** `src/app/(app)/edit/new/NewStudySetPdfImportFlow.tsx`
+- **Commit:** `d5c4dfa`
 
 ## Threat Flags
 
@@ -84,7 +92,7 @@ None beyond plan register (T-27-07–09): gating uses explicit terminal upload r
 ## Self-Check: PASSED
 
 - `27-03-SUMMARY.md` present at `.planning/phases/27-preview-first-parsing-while-full-upload-continues/27-03-SUMMARY.md`
-- `git log --oneline` includes `a1b9cef` and `9234ef5`
+- `git log --oneline` includes `a1b9cef`, `9234ef5`, `d5c4dfa`, and `41e4f5c` (summary)
 - `npm run lint` and `npm run build` succeeded after changes
 
 ---
