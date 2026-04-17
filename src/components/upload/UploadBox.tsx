@@ -20,6 +20,8 @@ const LEAVE_EASE = [0.45, 0, 0.55, 1] as const;
 const INGEST_MS = 0.28;
 const INGEST_EASE = [0.22, 1, 0.36, 1] as const;
 
+/** Picker UI only; create flow does not persist in-progress import state (D-11: refresh returns here). */
+
 type UploadBoxProps = {
   disabled?: boolean;
   error?: string | null;

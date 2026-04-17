@@ -467,6 +467,10 @@ export function NewStudySetPdfImportFlow({
           studySetId,
           message: result.message,
         });
+        if (!isStubObjectStorageFinalizeMessage(result.message)) {
+          toast.error("Transfer did not finish. Starting over.");
+          void resetAfterInlineParse();
+        }
       }
     })();
 
@@ -481,6 +485,7 @@ export function NewStudySetPdfImportFlow({
     runAiParseOnNewPage,
     reportUpload,
     clearUpload,
+    resetAfterInlineParse,
   ]);
 
   const showUploadChrome = !ingestBusy && !parseContext;
