@@ -736,14 +736,17 @@ Plans:
 **Plans:** 0/3 plans complete
 
 Plans:
-- [ ] `34-01-PLAN.md` — Core job runner: `runEmbeddingIndexJob`, concurrency, retries, `pipelineLog`, IDB invalidation metadata; ROADMAP/REQUIREMENTS reconcile
-- [ ] `34-02-PLAN.md` — Auto-start after `putDocument` / extract paths via `embeddingIndexScheduler`; debounce; idempotency; single-flight per study set; `AiParseSection` registers runner
-- [ ] `34-03-PLAN.md` — `RagChunkSearchPanel` + `AiParseSection` wiring for job state; manual rebuild; `npm run lint` + `npm run build`
+- [x] `34-01-PLAN.md` — Core job runner: `runEmbeddingIndexJob`, concurrency, retries, `pipelineLog`, IDB invalidation metadata; ROADMAP/REQUIREMENTS reconcile
+- [x] `34-02-PLAN.md` — Auto-start after `putDocument` / extract paths via `embeddingIndexScheduler`; debounce; idempotency; single-flight per study set; `AiParseSection` registers runner
+- [x] `34-03-PLAN.md` — `RagChunkSearchPanel` + `AiParseSection` wiring for job state; manual rebuild; `npm run lint` + `npm run build`
 
 ### Phase 35: Tune OCR preprocessing: thresholding, downsample huge pages, 300-DPI target
 
-**Goal:** TBD
-**Requirements**: TBD
+**Status:** Discussed — `35-CONTEXT.md` (smart discuss auto, 2026-04-18)
+
+**Goal:** Tune **client-side** OCR/vision raster preprocessing: optional thresholding for scanned pages, **downsample** over a megapixel cap, **~300 DPI effective** target; Worker-first (Phase 28 path); bounded logging.
+
+**Requirements**: TBD (run `/gsd-plan-phase 35`)
 **Depends on:** Phase 34
 **Plans:** 0 plans
 
@@ -752,8 +755,11 @@ Plans:
 
 ### Phase 36: Queue-based fallback to high-accuracy pipeline only on uncertain docs
 
-**Goal:** TBD
-**Requirements**: TBD
+**Status:** Discussed — `36-CONTEXT.md` (smart discuss auto, 2026-04-18)
+
+**Goal:** **Enqueue** a second-pass **higher-accuracy** parse (existing vision/OCR paths with relaxed limits) only when **uncertainty signals** fire; client queue first (Phase 34 patterns); non-blocking first-pass UX.
+
+**Requirements**: TBD (run `/gsd-plan-phase 36`)
 **Depends on:** Phase 35
 **Plans:** 0 plans
 
@@ -762,8 +768,11 @@ Plans:
 
 ### Phase 37: Global transfer acceleration / edge ingress
 
-**Goal:** TBD
-**Requirements**: TBD
+**Status:** Discussed — `37-CONTEXT.md` (smart discuss auto, 2026-04-18)
+
+**Goal:** Incremental **CDN/edge** and upload latency wins (headers, provider features, docs) without breaking local-first; env-gated.
+
+**Requirements**: TBD (run `/gsd-plan-phase 37`)
 **Depends on:** Phase 36
 **Plans:** 0 plans
 
@@ -772,8 +781,11 @@ Plans:
 
 ### Phase 38: Full fine-tuning or distillation for quiz style
 
-**Goal:** TBD
-**Requirements**: TBD
+**Status:** Discussed — `38-CONTEXT.md` (smart discuss auto, 2026-04-18)
+
+**Goal:** **Research / export** track: training-data export hooks, eval criteria, go/no-go — not shipping a bundled fine-tuned model in-app for v1.
+
+**Requirements**: TBD (run `/gsd-plan-phase 38`)
 **Depends on:** Phase 37
 **Plans:** 0 plans
 

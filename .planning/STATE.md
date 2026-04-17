@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 32
 current_plan: 3
-status: Ready to execute
-stopped_at: Phase 34 context gathered
-last_updated: "2026-04-17T22:46:42.627Z"
+status: Ready to plan
+stopped_at: Smart discuss completed for phases 35–38 (2026-04-18)
+last_updated: "2026-04-18T12:00:00.000Z"
 progress:
   total_phases: 38
   completed_phases: 31
@@ -49,14 +49,15 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Phase 34 context gathered
+**Stopped at:** Smart discuss (auto) for phases 35–38 — `35-CONTEXT.md` … `38-CONTEXT.md` written and committed (`383ae43`).
 **Date:** 2026-04-18
-**Artifacts:** `32-01-SUMMARY.md` … `32-03-SUMMARY.md`; `npm run lint` + `npm run build` green
+**Artifacts:** Phase 33–34 already had context; phases 35–38 now **Ready for planning** per GSD smart-discuss template.
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- Phase 35–38 smart discuss (2026-04-18): **auto-accepted** recommended defaults (no interactive grey-area session); boundaries and decisions captured in `35-CONTEXT.md` … `38-CONTEXT.md`; `gsd-tools commit` applied.
 - Phase 32 execute (2026-04-18): draft→deterministic→validator LLM + IDB lanes `text_*_validator`; `mcqDraftValidate.ts`, `parseChunk`/`runSequentialParse`/`AiParseSection` toast (12s throttle); `PROMPTS_BUNDLE_VERSION` 2; roadmap Phase 32 → **Complete** (3/3 plans).
 - Phase 27 execute (2026-04-17): preview-first create flow per `27-CONTEXT.md`; `27-01`..`27-03` SUMMARYs; `npm run lint` + `npm run build` green; roadmap Phase 27 → **Complete** (3/3 plans).
 - Phase 26 plan `26-01` execute (2026-04-17): UPLOAD-01..03,05,06 captured in requirements + roadmap; shipped `src/types/uploads.ts`, `src/lib/uploads/pdfUpload*.ts`, `/api/uploads/pdf/{init,part,complete,abort}` with HMAC finalize token + `uploadCapability` gating; `npm run lint` + `npm run build` green; `26-01-SUMMARY.md`. **UPLOAD-04** remains for `26-02` (progress/cancel UX).
