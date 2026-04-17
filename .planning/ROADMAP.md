@@ -600,13 +600,16 @@ Plans:
 ### Phase 25: Skip rasterization for born-digital PDFs; extract text layer first
 
 **Goal:** When parsing **Quiz** from a PDF, if the document has a **strong native text layer**, the app should **avoid rasterizing pages to images** and run a **text-first** parse path. Vision rasterization remains the fallback for scanned/weak-text PDFs, and can also be used as an automatic fallback when the text-first output quality is too low. (Document-level only; per-page routing deferred to Phase 29.)
+
+**Status:** Complete — `25-01-SUMMARY.md`, `25-02-SUMMARY.md`
+
 **Requirements**: PDFOPT-01, PDFOPT-02, PDFOPT-03, PDFOPT-04
 **Depends on:** Phase 24
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] `25-01-PLAN.md` — Add sampled text-layer signal + update route policy reason codes and roadmap requirements.
-- [ ] `25-02-PLAN.md` — Wire quiz text-first lane in `AiParseSection` with quality-gated automatic vision fallback + short UX messaging.
+- [x] `25-01-PLAN.md` — Add sampled text-layer signal + update route policy reason codes and roadmap requirements.
+- [x] `25-02-PLAN.md` — Wire quiz text-first lane in `AiParseSection` with quality-gated automatic vision fallback + short UX messaging.
 
 ### Phase 26: Direct multipart/resumable upload to object storage
 
@@ -650,6 +653,9 @@ Plans:
 ### Phase 29: Route by page type: text page vs bitmap page vs rich layout page
 
 **Goal:** Add **per-page routing** for mixed PDFs so text-heavy pages can be parsed via text-first lanes **without rasterizing** them, while bitmap/scanned pages continue through the existing vision lane — preserving current caps and preview-first behavior.
+
+**Status:** Complete — `29-01-SUMMARY.md`, `29-02-SUMMARY.md`, `29-03-SUMMARY.md`
+
 **Requirements**: ROUTE-29-01, ROUTE-29-02, ROUTE-29-03, ROUTE-29-04
 **Depends on:** Phase 28
 **Plans:** 3/3 plans complete
@@ -657,8 +663,10 @@ Plans:
 Plans:
 - [x] `29-01-PLAN.md` — Define Phase 29 goal/req IDs; add per-page classification + routing-plan data structures (no UI wiring).
  (completed 2026-04-17)
-- [ ] `29-02-PLAN.md` — Integrate per-page routing into `AiParseSection` **before rasterization**; route text pages to text-first, bitmap pages to vision (no new UI controls).
-- [ ] `29-03-PLAN.md` — Observability + safety: reason-code logging, bounded work + abort handling, and cap enforcement so routing never increases vision workload.
+- [x] `29-02-PLAN.md` — Integrate per-page routing into `AiParseSection` **before rasterization**; route text pages to text-first, bitmap pages to vision (no new UI controls).
+ (completed 2026-04-18)
+- [x] `29-03-PLAN.md` — Observability + safety: reason-code logging, bounded work + abort handling, and cap enforcement so routing never increases vision workload.
+ (completed 2026-04-18)
 
 ### Phase 30: Replace page-level chunking with layout-aware chunking
 
