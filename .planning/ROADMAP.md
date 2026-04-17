@@ -634,13 +634,14 @@ Plans:
 
 ### Phase 28: Move image preprocessing into Web Workers
 
-**Goal:** TBD
-**Requirements**: TBD
+**Goal:** Move CPU-heavy image preprocessing (resize + JPEG encode for vision/OCR) into a single sequential Web Worker with safe auto-fallback, keeping PDF render on the main thread and preserving existing dataUrl + AbortSignal semantics.
+**Requirements**: PERF-28-01, PERF-28-02
 **Depends on:** Phase 27
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 28 to break down)
+- [ ] `28-01-PLAN.md` — Single sequential resize+JPEG encode worker + client helper; Phase 28 requirements + roadmap entries.
+- [ ] `28-02-PLAN.md` — Integrate worker helper into the vision raster pipeline (auto-detect + safe fallback; no UI surface).
 
 ### Phase 29: Route by page type: text page vs bitmap page vs rich layout page
 

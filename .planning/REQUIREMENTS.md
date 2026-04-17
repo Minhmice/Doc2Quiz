@@ -97,6 +97,11 @@
 - [ ] **PREVIEW-13**: If parse fails or produces no usable output while upload is OK, the user can retry parse / adjust settings (consistent with existing parse UX).
 - [ ] **PREVIEW-14**: Refresh/close mid-flow is not resumable; user returns to upload step on reload.
 
+### Image preprocessing in Web Workers (Phase 28)
+
+- [ ] **PERF-28-01**: JPEG resize + encode happens in a Web Worker when available; single sequential worker; keep `dataUrl: string` output contract (`data:image/jpeg;base64,...`).
+- [ ] **PERF-28-02**: Auto-fallback to existing main-thread preprocessing when worker/image APIs are unavailable or worker fails; no new UI controls; AbortSignal cancellation remains correct.
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -155,6 +160,8 @@
 | PREVIEW-12 | Phase 27 | Planned |
 | PREVIEW-13 | Phase 27 | Planned |
 | PREVIEW-14 | Phase 27 | Planned |
+| PERF-28-01 | Phase 28 | Planned |
+| PERF-28-02 | Phase 28 | Planned |
 
 **Coverage:**
 - v1 requirements: 23 total
