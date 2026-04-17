@@ -637,10 +637,10 @@ Plans:
 **Goal:** Move CPU-heavy image preprocessing (resize + JPEG encode for vision/OCR) into a single sequential Web Worker with safe auto-fallback, keeping PDF render on the main thread and preserving existing dataUrl + AbortSignal semantics.
 **Requirements**: PERF-28-01, PERF-28-02
 **Depends on:** Phase 27
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] `28-01-PLAN.md` — Single sequential resize+JPEG encode worker + client helper; Phase 28 requirements + roadmap entries.
+- [x] `28-01-PLAN.md` — Single sequential resize+JPEG encode worker + client helper; Phase 28 requirements + roadmap entries. (completed 2026-04-17)
 - [ ] `28-02-PLAN.md` — Integrate worker helper into the vision raster pipeline (auto-detect + safe fallback; no UI surface).
 
 ### Phase 29: Route by page type: text page vs bitmap page vs rich layout page

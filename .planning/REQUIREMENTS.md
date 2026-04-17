@@ -99,8 +99,8 @@
 
 ### Image preprocessing in Web Workers (Phase 28)
 
-- [ ] **PERF-28-01**: JPEG resize + encode happens in a Web Worker when available; single sequential worker; keep `dataUrl: string` output contract (`data:image/jpeg;base64,...`).
-- [ ] **PERF-28-02**: Auto-fallback to existing main-thread preprocessing when worker/image APIs are unavailable or worker fails; no new UI controls; AbortSignal cancellation remains correct.
+- [x] **PERF-28-01**: JPEG resize + encode happens in a Web Worker when available; single sequential worker; keep `dataUrl: string` output contract (`data:image/jpeg;base64,...`).
+- [x] **PERF-28-02**: Auto-fallback to existing main-thread preprocessing when worker/image APIs are unavailable or worker fails; no new UI controls; AbortSignal cancellation remains correct.
 
 ## Out of Scope
 
