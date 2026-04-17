@@ -16,6 +16,7 @@ import {
   PAGE_SIGNAL_UNKNOWN_DEFAULT_BITMAP,
   PAGE_TEXT_STRONG,
   PAGE_TEXT_WEAK,
+  finalizePageRoutePlan,
   type PageRoutePlan,
   type PageRoutePlanPage,
   type PageTextLayerSignal,
@@ -53,32 +54,7 @@ function buildConservativeAllBitmapPlan(
       reasonCodes: [reasonCode],
     });
   }
-  const bitmapPageIndicesAll = pages.map((p) => p.pageIndex);
-  const bitmapPageIndicesForVision = bitmapPageIndicesAll.slice(
-    0,
-    limitsApplied.visionMaxPages,
-  );
-  const droppedBitmapPageIndices = bitmapPageIndicesAll.slice(
-    limitsApplied.visionMaxPages,
-  );
-  if (droppedBitmapPageIndices.length > 0) {
-    const dropped = new Set(droppedBitmapPageIndices);
-    for (const p of pages) {
-      if (dropped.has(p.pageIndex)) {
-        p.reasonCodes.push(PAGE_DROPPED_VISION_CAP);
-      }
-    }
-  }
-  return {
-    pageCount,
-    pages,
-    textPageIndices: [],
-    bitmapPageIndicesAll,
-    bitmapPageIndicesForVision,
-    droppedBitmapPageIndices,
-    droppedBitmapPagesCount: droppedBitmapPageIndices.length,
-    limitsApplied,
-  };
+  return finalizePageRoutePlan({ pageCount, pages, limitsApplied });
 }
 
 export type ClassifyPdfPagesOptions = {
@@ -199,21 +175,6 @@ export async function classifyPdfPages(
         }
       }
 
-      const bitmapPageIndicesForVision = bitmapPageIndicesAll.slice(
-        0,
-        visionMaxPages,
-      );
-      const droppedBitmapPageIndices = bitmapPageIndicesAll.slice(visionMaxPages);
-
-      if (droppedBitmapPageIndices.length > 0) {
-        const dropped = new Set(droppedBitmapPageIndices);
-        for (const p of pages) {
-          if (p.kind === "bitmap" && dropped.has(p.pageIndex)) {
-            p.reasonCodes.push(PAGE_DROPPED_VISION_CAP);
-          }
-        }
-      }
-
       pipelineLog("PDF", "page-classify", "info", "page route plan computed", {
         ...meta,
         pageCount,
@@ -221,23 +182,19 @@ export async function classifyPdfPages(
         scanBudget,
         textPages: textPageIndices.length,
         bitmapPages: bitmapPageIndicesAll.length,
-        bitmapForVision: bitmapPageIndicesForVision.length,
-        droppedBitmapPages: droppedBitmapPageIndices.length,
+        bitmapForVision: Math.min(bitmapPageIndicesAll.length, visionMaxPages),
+        droppedBitmapPages:
+          Math.max(0, bitmapPageIndicesAll.length - visionMaxPages),
       });
 
-      return {
+      return finalizePageRoutePlan({
         pageCount,
         pages,
-        textPageIndices,
-        bitmapPageIndicesAll,
-        bitmapPageIndicesForVision,
-        droppedBitmapPageIndices,
-        droppedBitmapPagesCount: droppedBitmapPageIndices.length,
         limitsApplied: {
           previewFirstPageBudget: previewBudget,
           visionMaxPages,
         },
-      };
+      });
     } finally {
       await pdf.destroy();
     }

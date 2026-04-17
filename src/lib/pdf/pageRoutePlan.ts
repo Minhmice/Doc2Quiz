@@ -22,6 +22,20 @@ export type PageRoutePlanPage = {
   reasonCodes: string[];
 };
 
+function normalizePageIndices(indices: readonly number[], pageCount: number): number[] {
+  const out: number[] = [];
+  const seen = new Set<number>();
+  for (const raw of indices) {
+    const n = Math.floor(raw);
+    if (n < 1 || n > pageCount) continue;
+    if (seen.has(n)) continue;
+    seen.add(n);
+    out.push(n);
+  }
+  out.sort((a, b) => a - b);
+  return out;
+}
+
 export type PageRoutePlan = {
   pageCount: number;
   pages: PageRoutePlanPage[];
@@ -41,4 +55,56 @@ export type PageRoutePlan = {
     visionMaxPages: number;
   };
 };
+
+/**
+ * Finalizes a partially-built page plan by applying invariants:
+ * - normalized, de-duped indices
+ * - bitmap vision cap enforced (and dropped pages annotated with a stable reason code)
+ */
+export function finalizePageRoutePlan(args: {
+  pageCount: number;
+  pages: readonly PageRoutePlanPage[];
+  limitsApplied: PageRoutePlan["limitsApplied"];
+}): PageRoutePlan {
+  const { pageCount, limitsApplied } = args;
+  const pages = [...args.pages];
+
+  const textPageIndices = normalizePageIndices(
+    pages.filter((p) => p.kind === "text").map((p) => p.pageIndex),
+    pageCount,
+  );
+  const bitmapPageIndicesAll = normalizePageIndices(
+    pages.filter((p) => p.kind === "bitmap").map((p) => p.pageIndex),
+    pageCount,
+  );
+  const bitmapPageIndicesForVision = bitmapPageIndicesAll.slice(
+    0,
+    limitsApplied.visionMaxPages,
+  );
+  const droppedBitmapPageIndices = bitmapPageIndicesAll.slice(
+    limitsApplied.visionMaxPages,
+  );
+
+  if (droppedBitmapPageIndices.length > 0) {
+    const dropped = new Set(droppedBitmapPageIndices);
+    for (const p of pages) {
+      if (p.kind !== "bitmap") continue;
+      if (!dropped.has(p.pageIndex)) continue;
+      if (!p.reasonCodes.includes(PAGE_DROPPED_VISION_CAP)) {
+        p.reasonCodes.push(PAGE_DROPPED_VISION_CAP);
+      }
+    }
+  }
+
+  return {
+    pageCount,
+    pages,
+    textPageIndices,
+    bitmapPageIndicesAll,
+    bitmapPageIndicesForVision,
+    droppedBitmapPageIndices,
+    droppedBitmapPagesCount: droppedBitmapPageIndices.length,
+    limitsApplied,
+  };
+}
 
