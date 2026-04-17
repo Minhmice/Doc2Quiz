@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed Phase 27 — preview-first parsing + combined progress strip + upload gating (`27-01`..`27-03` SUMMARYs)
-last_updated: "2026-04-17T12:00:00.000Z"
+status: Ready to execute
+stopped_at: Executed Phase 27 (`/gsd-execute-phase` style) — immediate parse on file pick, preview-first 3–5 page budget, sticky parse+upload strip, cancel-all, upload-complete toast, study navigation gated on upload completion (direct-upload), failure split upload vs parse.
+last_updated: "2026-04-17T15:51:15.578Z"
 progress:
   total_phases: 38
   completed_phases: 25
-  total_plans: 56
+  total_plans: 58
   completed_plans: 55
-  percent: 98
+  percent: 95
 ---
 
 # Doc2Quiz — State
