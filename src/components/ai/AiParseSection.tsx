@@ -1533,14 +1533,24 @@ export const AiParseSection = forwardRef<
       const routePlan =
         routePlanRaw && routePlanRaw.pageCount > 0 ? routePlanRaw : null;
       if (routePlan && !controller.signal.aborted) {
-        pipelineLog("PDF", "page-route", "info", "quiz page route plan", {
+        const stableReasonCodes = Array.from(
+          new Set(routePlan.pages.flatMap((p) => p.reasonCodes)),
+        ).sort();
+        pipelineLog("VISION", "page-route", "info", "quiz page routing summary", {
           studySetId: studySetId.trim() || "(empty)",
-          pageCount: routePlan.pageCount,
-          plannedPages: routePlan.pages.length,
-          textPages: routePlan.textPageIndices.length,
-          bitmapPages: routePlan.bitmapPageIndicesAll.length,
-          bitmapForVision: routePlan.bitmapPageIndicesForVision.length,
-          droppedBitmapPages: routePlan.droppedBitmapPagesCount,
+          counts: {
+            pageCount: routePlan.pageCount,
+            pages: routePlan.pages.length,
+            textPageIndices: routePlan.textPageIndices.length,
+            bitmapPageIndicesAll: routePlan.bitmapPageIndicesAll.length,
+            bitmapPageIndicesForVision: routePlan.bitmapPageIndicesForVision.length,
+            droppedBitmapPagesCount: routePlan.droppedBitmapPagesCount,
+          },
+          caps: {
+            previewFirstPageBudget: routePlan.limitsApplied.previewFirstPageBudget,
+            visionMaxPages: routePlan.limitsApplied.visionMaxPages,
+          },
+          stableReasonCodes,
         });
       }
 
