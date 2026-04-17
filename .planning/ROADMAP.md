@@ -730,13 +730,15 @@ Plans:
 
 ### Phase 34: Add async workers / task queue for full indexing
 
-**Goal:** TBD
-**Requirements**: TBD
+**Goal:** **Browser-local** async queue for **full embedding indexing** after text extract: cancellable jobs with **bounded concurrency** and **retries**, **progress / cancel / error** in the **RAG panel**, **partial index** usable for search, **invalidation** on embedding model or index schema change. **Not** primary on server **`parse-jobs`** (Phase 34 `34-CONTEXT` D-01).
+**Requirements**: INDEX-34-01, INDEX-34-02, INDEX-34-03, INDEX-34-04, INDEX-34-05, INDEX-34-06, INDEX-34-07, INDEX-34-08, INDEX-34-09
 **Depends on:** Phase 33
-**Plans:** 0 plans
+**Plans:** 0/3 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 34 to break down)
+- [ ] `34-01-PLAN.md` — Core job runner: `runEmbeddingIndexJob`, concurrency, retries, `pipelineLog`, IDB invalidation metadata; ROADMAP/REQUIREMENTS reconcile
+- [ ] `34-02-PLAN.md` — Auto-start after `putDocument` / extract paths via `embeddingIndexScheduler`; debounce; idempotency; single-flight per study set; `AiParseSection` registers runner
+- [ ] `34-03-PLAN.md` — `RagChunkSearchPanel` + `AiParseSection` wiring for job state; manual rebuild; `npm run lint` + `npm run build`
 
 ### Phase 35: Tune OCR preprocessing: thresholding, downsample huge pages, 300-DPI target
 

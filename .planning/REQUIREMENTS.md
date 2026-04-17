@@ -147,6 +147,18 @@
 - [ ] **RAG-33-07**: **Safe display:** chunk text in RAG UI is treated as **untrusted** — **no** `dangerouslySetInnerHTML` from model/store strings; plain text / existing sanitization patterns. (D-05)
 - [ ] **RAG-33-08**: **Review gate unchanged:** RAG does **not** auto-approve questions; assists only. (D-06)
 
+### Async embedding index queue (Phase 34)
+
+- [ ] **INDEX-34-01**: Export **`runEmbeddingIndexJob`** (or equivalent) with **TypeScript types** for progress and result (cancellable, structured outcome).
+- [ ] **INDEX-34-02**: **Bounded concurrency** (e.g. 2) and **bounded retries** on transient embedding failures; **partial index** remains searchable after mid-run failure.
+- [ ] **INDEX-34-03**: **Execution plane documented** — prefer **main-thread** cooperative queue first; comment explains **`/api/ai/embed`** same-origin + **cookies** / session constraints vs Workers.
+- [ ] **INDEX-34-04**: **`pipelineLog`** events for embedding index job lifecycle (start, progress/done, cancel, error) without logging secrets or vectors.
+- [ ] **INDEX-34-05**: **Auto-start full indexing** after **extracted text is persisted** (`putDocument` / related paths), **debounced**.
+- [ ] **INDEX-34-06**: **Idempotency:** skip redundant rebuilds when **content fingerprint** + **embedding model** + **schema/version** match stored index metadata.
+- [ ] **INDEX-34-07**: **At most one** concurrent index job per **`studySetId`** (coalesce / replace / abort policy).
+- [ ] **INDEX-34-08**: **Invalidate** incompatible IndexedDB vectors when **embedding model** or **index schema version** changes vs stored rows.
+- [ ] **INDEX-34-09**: **RAG panel** is the **primary UX** for **progress**, **cancel**, and **last error**; **manual “Build embedding index”** remains available.
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -229,6 +241,15 @@
 | RAG-33-06 | Phase 33 | Planned |
 | RAG-33-07 | Phase 33 | Planned |
 | RAG-33-08 | Phase 33 | Planned |
+| INDEX-34-01 | Phase 34 | Planned |
+| INDEX-34-02 | Phase 34 | Planned |
+| INDEX-34-03 | Phase 34 | Planned |
+| INDEX-34-04 | Phase 34 | Planned |
+| INDEX-34-05 | Phase 34 | Planned |
+| INDEX-34-06 | Phase 34 | Planned |
+| INDEX-34-07 | Phase 34 | Planned |
+| INDEX-34-08 | Phase 34 | Planned |
+| INDEX-34-09 | Phase 34 | Planned |
 
 **Coverage:**
 - v1 requirements: 23 total
