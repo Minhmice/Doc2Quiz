@@ -21,10 +21,10 @@ import { useStudySetNewImportStepOptional } from "@/components/edit/new/import/S
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/buttons/button";
 import { UploadBox } from "@/components/upload/UploadBox";
-import { generateStudySetTitle } from "@/lib/ai/generateStudySetTitle";
 import {
-  createStudySet,
+  createStudySetEarlyMeta,
   deleteStudySet,
+  enrichStudySetDocumentFromLocalPdf,
   ensureStudySetDb,
 } from "@/lib/db/studySetDb";
 import {
@@ -33,7 +33,6 @@ import {
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
 import { cn } from "@/lib/utils";
-import { extractPdfText } from "@/lib/pdf/extractPdfText";
 import { getPdfPageCount } from "@/lib/pdf/getPdfPageCount";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { PdfValidationError } from "@/lib/pdf/validatePdfFile";
@@ -45,6 +44,16 @@ import {
 import { parseOutputModeFromContentKind } from "@/types/visionParse";
 import { FlashcardsGenerationControls } from "@/components/edit/new/flashcards/FlashcardsGenerationControls";
 import { ChevronDown } from "lucide-react";
+
+function provisionalTitleFromPdfFileName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return "New study set";
+  }
+  const noExt = trimmed.replace(/\.pdf$/i, "").trim();
+  const base = noExt.length > 0 ? noExt : trimmed;
+  return base.slice(0, 80);
+}
 
 function userMessageForImportFailure(phase: NewStudySetPdfImportPhase): string {
   if (phase === "idb") {
@@ -112,7 +121,6 @@ export function NewStudySetPdfImportFlow({
   const parseRef = useRef<AiParseSectionHandle>(null);
   const parseContextRef = useRef<ParseContextState | null>(null);
   const parseKickGen = useRef(0);
-  const [parseRequested, setParseRequested] = useState(false);
 
   const [ingestBusy, setIngestBusy] = useState(false);
   const [importPhase, setImportPhase] = useState<NewStudySetPdfImportPhase>("idb");
@@ -160,7 +168,6 @@ export function NewStudySetPdfImportFlow({
     setParseContext(null);
     parseContextRef.current = null;
     setParseError(null);
-    setParseRequested(false);
     setImportPhase("idb");
     setLoadingFileName(null);
     setIngestPreviewFile(null);
@@ -200,24 +207,6 @@ export function NewStudySetPdfImportFlow({
     },
     [clearParse, contentKind, getPostParseHref, router, runAiParseOnNewPage],
   );
-
-  const handleStartParse = useCallback(() => {
-    if (!parseContext || !runAiParseOnNewPage) {
-      return;
-    }
-    setParseRequested(true);
-    setParseError(null);
-    void (async () => {
-      try {
-        const r = await parseRef.current?.runParse();
-        if (r) {
-          handleParseFinished(r);
-        }
-      } finally {
-        setParseRequested(false);
-      }
-    })();
-  }, [handleParseFinished, parseContext, runAiParseOnNewPage]);
 
   const handleValidationError = useCallback((err: PdfValidationError) => {
     setError(
@@ -269,55 +258,48 @@ export function NewStudySetPdfImportFlow({
         });
         setIngestPageCount(pageCount);
 
-        pipelineLog("PDF", "extract-text", "info", "new import: extractPdfText start", {
-          ...fileSummary(file),
-          pageCount,
-        });
-        const extractedText = await extractPdfText(file);
-        pipelineLog("PDF", "extract-text", "info", "new import: extractPdfText finished", {
-          ...fileSummary(file),
-          pageCount,
-          extractedCharCount: extractedText.length,
-        });
-
-        const naming = await generateStudySetTitle(extractedText, file.name);
-        const title =
-          titlePrefix !== undefined && titlePrefix.length > 0
-            ? `${titlePrefix}${naming.title}`
-            : naming.title;
-
         phase = "persist";
         setImportPhase("persist");
-        pipelineLog("STUDY_SET", "new-import", "info", "new import: createStudySet start", {
+        const provisionalTitle = provisionalTitleFromPdfFileName(file.name);
+        pipelineLog("STUDY_SET", "new-import", "info", "new import: createStudySetEarlyMeta start", {
           ...fileSummary(file),
           pageCount,
-          title,
+          title: provisionalTitle,
           contentKind,
         });
-        const id = await createStudySet({
-          title,
-          subtitle: naming.subtitle,
+        const id = await createStudySetEarlyMeta({
+          title: provisionalTitle,
           sourceFileName: file.name,
           pageCount,
-          extractedText,
-          pdfFile: file,
           contentKind,
+          extractedText: "",
         });
-        pipelineLog("STUDY_SET", "new-import", "info", "new import: study set created", {
+        pipelineLog("STUDY_SET", "new-import", "info", "new import: study set meta persisted (early)", {
           studySetId: id,
           ...fileSummary(file),
           runAiParseOnNewPage,
         });
 
         if (runAiParseOnNewPage && getPostParseHref) {
+          void enrichStudySetDocumentFromLocalPdf({
+            studySetId: id,
+            file,
+            pageCount,
+            titlePrefix,
+          });
           const nextCtx: ParseContextState = { studySetId: id, file, pageCount };
           parseContextRef.current = nextCtx;
           setParseContext(nextCtx);
-          setParseRequested(false);
           setIngestPreviewFile(null);
           setImportPhase("ai");
           retainLoaderFilename = true;
         } else if (getPostCreateHref) {
+          await enrichStudySetDocumentFromLocalPdf({
+            studySetId: id,
+            file,
+            pageCount,
+            titlePrefix,
+          });
           router.push(getPostCreateHref(id));
         }
       } catch (raw) {
@@ -503,16 +485,6 @@ export function NewStudySetPdfImportFlow({
                         disabled={parsing}
                       />
                     ) : null}
-                    {!parsing && !parseError ? (
-                      <Alert aria-live="polite">
-                        <AlertTitle>Ready to parse</AlertTitle>
-                        <AlertDescription>
-                          {contentKind === "flashcards"
-                            ? "Flashcards generate theory/concept cards from page images. Quiz is for question-based practice."
-                            : "Quiz generates question-based practice. Flashcards are for theory/concept learning."}
-                        </AlertDescription>
-                      </Alert>
-                    ) : null}
                     <AiParseSection
                       ref={parseRef}
                       studySetId={parseContext.studySetId}
@@ -528,7 +500,9 @@ export function NewStudySetPdfImportFlow({
                           ? flashcardGenerationConfig
                           : undefined
                       }
-                      autoStartWhenBankEmpty={false}
+                      autoStartWhenBankEmpty
+                      autoStartResetKey={parseContext.studySetId}
+                      onEmbeddedParseFinished={handleParseFinished}
                       suppressEmbeddedRunningProgress={parsing}
                     />
                     {parseError ? (
@@ -558,15 +532,6 @@ export function NewStudySetPdfImportFlow({
                       </Alert>
                     ) : null}
                     <div className="flex flex-wrap justify-end gap-2">
-                      {!parseError ? (
-                        <Button
-                          type="button"
-                          onClick={handleStartParse}
-                          disabled={parsing}
-                        >
-                          {parseRequested && !parsing ? "Starting…" : "Parse"}
-                        </Button>
-                      ) : null}
                       <Button
                         type="button"
                         variant="outline"

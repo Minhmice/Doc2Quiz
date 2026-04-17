@@ -1,3 +1,4 @@
+import { generateStudySetTitle } from "@/lib/ai/generateStudySetTitle";
 import { withRetries } from "@/lib/ai/pipelineStageRetry";
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
@@ -663,6 +664,131 @@ export async function deleteMedia(mediaId: string): Promise<void> {
 
 export function newStudySetId(): string {
   return createRandomUuid();
+}
+
+/**
+ * Persist meta + empty draft + document row (no PDF bytes) immediately so inline parse can start
+ * without waiting for full extract, title model, or arrayBuffer persistence (Phase 27 D-09).
+ */
+export async function createStudySetEarlyMeta(input: {
+  title: string;
+  subtitle?: string;
+  sourceFileName?: string;
+  pageCount?: number;
+  extractedText?: string;
+  contentKind?: StudyContentKind;
+}): Promise<string> {
+  const id = newStudySetId();
+  const now = new Date().toISOString();
+  const meta: StudySetMeta = {
+    id,
+    title: input.title,
+    subtitle: input.subtitle,
+    createdAt: now,
+    updatedAt: now,
+    sourceFileName: input.sourceFileName,
+    pageCount: input.pageCount ?? undefined,
+    status: "draft",
+    ...(input.contentKind !== undefined ? { contentKind: input.contentKind } : {}),
+  };
+  const doc: StudySetDocumentRecord = {
+    studySetId: id,
+    extractedText: input.extractedText ?? "",
+    pdfFileName: input.sourceFileName,
+  };
+  pipelineLog("STUDY_SET", "create", "info", "createStudySetEarlyMeta", {
+    studySetId: id,
+    title: input.title,
+    pageCount: input.pageCount,
+    sourceFileName: input.sourceFileName,
+    contentKind: input.contentKind,
+  });
+  const db = await ensureStudySetDb();
+  const tx = db.transaction(["meta", "document", "draft"], "readwrite");
+  tx.objectStore("meta").put(meta);
+  tx.objectStore("document").put(doc);
+  tx.objectStore("draft").put({
+    studySetId: id,
+    savedAt: now,
+    questions: [],
+  });
+  await txDone(tx);
+  return id;
+}
+
+/**
+ * Background: full text extract, optional AI title, and PDF bytes into IDB. Safe if user cancelled (no meta).
+ */
+export async function enrichStudySetDocumentFromLocalPdf(input: {
+  studySetId: string;
+  file: File;
+  pageCount: number;
+  titlePrefix?: string;
+}): Promise<void> {
+  const { studySetId, file, pageCount, titlePrefix } = input;
+  const meta = await getStudySetMeta(studySetId);
+  if (!meta) {
+    pipelineLog("STUDY_SET", "enrich", "warn", "enrichStudySetDocumentFromLocalPdf: no meta (cancelled?)", {
+      studySetId,
+    });
+    return;
+  }
+  try {
+    pipelineLog("PDF", "extract-text", "info", "enrichStudySet: extractPdfText start", {
+      studySetId,
+      ...fileSummary(file),
+      pageCount,
+    });
+    const extractedText = await extractPdfText(file);
+    pipelineLog("PDF", "extract-text", "info", "enrichStudySet: extractPdfText done", {
+      studySetId,
+      extractedCharCount: extractedText.length,
+    });
+
+    let title = meta.title;
+    let subtitle = meta.subtitle;
+    try {
+      const naming = await generateStudySetTitle(extractedText, file.name);
+      title =
+        titlePrefix !== undefined && titlePrefix.length > 0
+          ? `${titlePrefix}${naming.title}`
+          : naming.title;
+      subtitle = naming.subtitle;
+    } catch (raw) {
+      pipelineLog("STUDY_SET", "enrich", "warn", "generateStudySetTitle failed; keeping provisional title", {
+        studySetId,
+        ...normalizeUnknownError(raw),
+        raw,
+      });
+    }
+
+    pipelineLog("PDF", "array-buffer", "info", "enrichStudySet: reading pdf arrayBuffer", {
+      studySetId,
+      ...fileSummary(file),
+    });
+    const pdfArrayBuffer = await file.arrayBuffer();
+    await putDocument({
+      studySetId,
+      extractedText,
+      pdfArrayBuffer,
+      pdfFileName: file.name,
+    });
+    await touchStudySetMeta(studySetId, {
+      title,
+      subtitle,
+      pageCount,
+      sourceFileName: file.name,
+    });
+    pipelineLog("STUDY_SET", "enrich", "info", "enrichStudySetDocumentFromLocalPdf success", {
+      studySetId,
+    });
+  } catch (raw) {
+    pipelineLog("STUDY_SET", "enrich", "error", "enrichStudySetDocumentFromLocalPdf failed", {
+      studySetId,
+      ...normalizeUnknownError(raw),
+      raw,
+    });
+  }
 }
 
 export async function createStudySet(input: {
