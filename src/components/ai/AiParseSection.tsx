@@ -115,7 +115,10 @@ import { PREVIEW_FIRST_PAGE_BUDGET } from "@/lib/pdf/extractText";
 import { classifyPdfPages } from "@/lib/pdf/classifyPdfPages";
 import { extractPdfLayoutBlocksForPageIndices } from "@/lib/pdf/extractPdfLayoutBlocks";
 import { chunkText } from "@/lib/ai/chunkText";
-import { layoutBlocksToQuizChunks } from "@/lib/ai/layoutChunking";
+import {
+  layoutBlocksToQuizChunks,
+  layoutPagesNeedingVisionFallback,
+} from "@/lib/ai/layoutChunking";
 import { runSequentialParse } from "@/lib/ai/runSequentialParse";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { OcrRunResult } from "@/types/ocr";
@@ -1511,6 +1514,7 @@ export const AiParseSection = forwardRef<
     const mustUseVisionBatch = batchOnlyVisionParse;
 
     try {
+      const pdfFile = activePdfFile;
       flashVisionAccumRef.current = [];
       let previewVisionPromise: Promise<RunVisionBatchSequentialResult> | null =
         null;
@@ -1660,6 +1664,7 @@ export const AiParseSection = forwardRef<
       // Quiz lane: if page routing says we have text pages, parse them without rasterization.
       // Bitmap pages (if any) get rasterized/vision-parsed, capped by routePlan.bitmapPageIndicesForVision.
       let routedTextQuestions: Question[] = [];
+      let routedTextFallbackPageIndices: number[] = [];
       if (
         parseOutputMode === "quiz" &&
         routePlan &&
@@ -1675,32 +1680,66 @@ export const AiParseSection = forwardRef<
             `${timeStamp()} — Routing: parsing ${routePlan.textPageIndices.length} text page(s) without rasterization`,
           ].slice(-16),
         }));
-        const layout = await extractPdfLayoutBlocksForPageIndices(
-          activePdfFile,
-          routePlan.textPageIndices,
-          {
-            signal: controller.signal,
-            build: {
-              // Bounded work for adversarial PDFs; matches Phase 30 defaults but keeps the cap explicit here.
-              maxItemsPerPage: 20_000,
-            },
-          },
-        );
-        const routedChunks = layoutBlocksToQuizChunks(layout.pages, {
-          // Quiz lane policy: keep chunks small enough for ~1–2 MCQs, but deterministic.
-          allowCrossPageMerge: false,
-        });
-        const chunks = routedChunks.map((c) => c.chunkText);
-        const blockCount = layout.pages.reduce((acc, p) => acc + p.blocks.length, 0);
-        setParseOverlay((p) => ({
-          ...p,
-          log: [
-            ...p.log,
-            `${timeStamp()} — Layout chunks: ${layout.pages.length} page(s) · ${blockCount} blocks · ${chunks.length} chunk(s)`,
-          ].slice(-16),
-        }));
 
-        if (!controller.signal.aborted && chunks.length > 0) {
+        const textPreviewBudget =
+          previewBudgetClamped > 0 ? previewBudgetClamped : 0;
+        const sortedTextPageIndices = Array.from(routePlan.textPageIndices).sort(
+          (a, b) => a - b,
+        );
+        const previewTextPageIndices =
+          textPreviewBudget > 0
+            ? sortedTextPageIndices.slice(0, textPreviewBudget)
+            : sortedTextPageIndices;
+        const restTextPageIndices =
+          textPreviewBudget > 0
+            ? sortedTextPageIndices.slice(textPreviewBudget)
+            : [];
+
+        async function parseLayoutChunkSegment(
+          segmentPageIndices: number[],
+          segment: "preview" | "rest",
+        ): Promise<{
+          questions: Question[];
+          fallbackPageIndices: number[];
+        }> {
+          if (segmentPageIndices.length === 0) {
+            return { questions: [], fallbackPageIndices: [] };
+          }
+
+          const layout = await extractPdfLayoutBlocksForPageIndices(
+            pdfFile,
+            segmentPageIndices,
+            {
+              signal: controller.signal,
+              build: {
+                // Bounded work for adversarial PDFs; matches Phase 30 defaults but keeps the cap explicit here.
+                maxItemsPerPage: 20_000,
+              },
+            },
+          );
+          const routedChunks = layoutBlocksToQuizChunks(layout.pages, {
+            // Quiz lane policy: keep chunks small enough for ~1–2 MCQs, but deterministic.
+            allowCrossPageMerge: false,
+          });
+          const chunks = routedChunks.map((c) => c.chunkText);
+          const blockCount = layout.pages.reduce((acc, p) => acc + p.blocks.length, 0);
+          const fallbackFromLayout =
+            layout.pages.length > 0
+              ? layoutPagesNeedingVisionFallback(layout.pages)
+              : Array.from(new Set(segmentPageIndices)).sort((a, b) => a - b);
+
+          setParseOverlay((p) => ({
+            ...p,
+            log: [
+              ...p.log,
+              `${timeStamp()} — Layout chunks (${segment}): ${layout.pages.length} page(s) · ${blockCount} blocks · ${chunks.length} chunk(s) · fallback candidates ${fallbackFromLayout.length}`,
+            ].slice(-16),
+          }));
+
+          if (controller.signal.aborted || chunks.length === 0) {
+            return { questions: [], fallbackPageIndices: fallbackFromLayout };
+          }
+
           setProgress({
             current: 0,
             total: Math.max(1, chunks.length),
@@ -1719,29 +1758,107 @@ export const AiParseSection = forwardRef<
                 ...p,
                 log: [
                   ...p.log,
-                  `${formatTimeStamp()} — Text parse ${current}/${total}`,
+                  `${formatTimeStamp()} — Text parse (${segment}) ${current}/${total}`,
                 ].slice(-16),
               }));
             },
           });
           if (result.fatalError) {
             setError(result.fatalError);
-            return {
-              ok: false,
-              aborted: controller.signal.aborted,
-              fatalError: result.fatalError,
-              questions: result.questions,
-              parseOutputMode: "quiz",
-            };
+            throw new FatalParseError(result.fatalError);
           }
-          routedTextQuestions = result.questions;
+          return {
+            questions: result.questions,
+            fallbackPageIndices: fallbackFromLayout,
+          };
+        }
+
+        if (textPreviewBudget > 0 && previewTextPageIndices.length > 0) {
+          setQuestions([]);
+          const previewRes = await parseLayoutChunkSegment(
+            previewTextPageIndices,
+            "preview",
+          );
+          routedTextQuestions = previewRes.questions;
+          routedTextFallbackPageIndices = [
+            ...routedTextFallbackPageIndices,
+            ...previewRes.fallbackPageIndices,
+          ];
+          setQuestions(routedTextQuestions);
+
+          if (restTextPageIndices.length > 0 && !controller.signal.aborted) {
+            const restRes = await parseLayoutChunkSegment(
+              restTextPageIndices,
+              "rest",
+            );
+            routedTextQuestions = dedupeQuestionsByStem([
+              ...routedTextQuestions,
+              ...restRes.questions,
+            ]);
+            routedTextFallbackPageIndices = [
+              ...routedTextFallbackPageIndices,
+              ...restRes.fallbackPageIndices,
+            ];
+          }
+        } else {
+          const fullRes = await parseLayoutChunkSegment(
+            sortedTextPageIndices,
+            "rest",
+          );
+          routedTextQuestions = fullRes.questions;
+          routedTextFallbackPageIndices = fullRes.fallbackPageIndices;
         }
       }
 
-      const bitmapIndicesForVision =
+      const bitmapIndicesForVisionBase =
         parseOutputMode === "quiz" && routePlan
           ? routePlan.bitmapPageIndicesForVision
           : null;
+      const bitmapIndicesForVision =
+        parseOutputMode === "quiz" && routePlan && bitmapIndicesForVisionBase
+          ? (() => {
+              const base = bitmapIndicesForVisionBase;
+              const baseSet = new Set(base);
+              const fallbackCandidates = Array.from(
+                new Set(
+                  routedTextFallbackPageIndices.filter((p) => !baseSet.has(p)),
+                ),
+              );
+              if (fallbackCandidates.length === 0) {
+                return base;
+              }
+
+              const previewWindow = previewBudgetClamped > 0 ? previewBudgetClamped : 0;
+              const orderedFallback = fallbackCandidates.sort((a, b) => {
+                const ap = previewWindow > 0 && a <= previewWindow ? 0 : 1;
+                const bp = previewWindow > 0 && b <= previewWindow ? 0 : 1;
+                return ap !== bp ? ap - bp : a - b;
+              });
+
+              const remaining = Math.max(0, VISION_MAX_PAGES_DEFAULT - base.length);
+              const acceptedFallback = orderedFallback.slice(0, remaining);
+              const dropped = orderedFallback.length - acceptedFallback.length;
+              if (dropped > 0) {
+                setParseOverlay((p) => ({
+                  ...p,
+                  log: [
+                    ...p.log,
+                    `${timeStamp()} — Routing: dropped ${dropped} fallback page(s) due to vision cap (${VISION_MAX_PAGES_DEFAULT})`,
+                  ].slice(-16),
+                }));
+              }
+
+              const combined = [...base, ...acceptedFallback];
+              if (previewWindow > 0) {
+                return combined.slice().sort((a, b) => {
+                  const ap = a <= previewWindow ? 0 : 1;
+                  const bp = b <= previewWindow ? 0 : 1;
+                  return ap !== bp ? ap - bp : a - b;
+                });
+              }
+              return combined;
+            })()
+          : bitmapIndicesForVisionBase;
 
       if (
         parseOutputMode === "quiz" &&

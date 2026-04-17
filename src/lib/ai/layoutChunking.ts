@@ -154,3 +154,23 @@ export function layoutBlocksToQuizChunks(
   return out;
 }
 
+/**
+ * Conservative per-page fallback candidates for the vision lane.
+ *
+ * Deterministic signal only (no AI output inspection):
+ * - page extraction was truncated (hit item cap), or
+ * - page produced zero non-empty blocks.
+ */
+export function layoutPagesNeedingVisionFallback(
+  pages: readonly ExtractPdfLayoutBlocksPage[],
+): number[] {
+  const out: number[] = [];
+  for (const p of pagesFromBlocksInput(pages)) {
+    const hasAnyNonEmptyBlock = blocksForPage(p).length > 0;
+    if (p.truncated || !hasAnyNonEmptyBlock) {
+      out.push(p.pageIndex1);
+    }
+  }
+  return Array.from(new Set(out)).sort((a, b) => a - b);
+}
+
