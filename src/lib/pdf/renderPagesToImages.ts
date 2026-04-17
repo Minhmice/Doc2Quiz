@@ -1,13 +1,17 @@
 "use client";
 
-import * as pdfjsLib from "pdfjs-dist";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import {
   fileSummary,
   isPipelineVerbose,
   normalizeUnknownError,
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
-import { ensurePdfWorker } from "@/lib/pdf/pdfWorker";
+import { getPdfjs } from "@/lib/pdf/getPdfjs";
+import {
+  canUseImagePreprocessWorker,
+  encodeJpegDataUrlInWorker,
+} from "@/lib/pdf/imagePreprocess/encodeJpegInWorker";
 
 export const VISION_MAX_PAGES_DEFAULT = 20;
 /** Max raster width (CSS px) before JPEG encode — keeps payloads bounded for vision APIs. */
@@ -24,6 +28,13 @@ export type PageImageResult = {
   pageIndex: number;
   dataUrl: string;
 };
+
+function isAbortError(err: unknown): boolean {
+  if (!err) return false;
+  if (err instanceof DOMException) return err.name === "AbortError";
+  if (err instanceof Error) return err.name === "AbortError";
+  return false;
+}
 
 /**
  * Renders PDF pages to JPEG data URLs for multimodal chat (OpenAI-style image_url).
@@ -50,7 +61,7 @@ export async function renderPdfPagesToImages(
   },
 ): Promise<PageImageResult[]> {
   const meta = fileSummary(file);
-  ensurePdfWorker();
+  const pdfjsLib = await getPdfjs();
   const {
     signal,
     maxPages = VISION_MAX_PAGES_DEFAULT,
@@ -82,7 +93,7 @@ export async function renderPdfPagesToImages(
     });
   }
 
-  let pdf: pdfjsLib.PDFDocumentProxy;
+  let pdf: PDFDocumentProxy;
   try {
     pipelineLog("PDF", "open", "info", "getDocument() starting (vision render batch)", meta);
     pdf = await pdfjsLib.getDocument({ data }).promise;
@@ -110,6 +121,7 @@ export async function renderPdfPagesToImages(
         ? Math.min(previewPageBudget, limit)
         : 0;
     let previewFired = false;
+    let workerOk = canUseImagePreprocessWorker();
 
     for (let i = 1; i <= limit; i++) {
       if (signal.aborted) {
@@ -135,13 +147,35 @@ export async function renderPdfPagesToImages(
         const canvas = document.createElement("canvas");
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
+        if (!canvas.getContext("2d")) {
           throw new Error("Canvas 2D context not available");
         }
 
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        const dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
+        await page.render({ canvas, viewport }).promise;
+        if (signal.aborted) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+
+        let dataUrl: string;
+        if (workerOk) {
+          try {
+            dataUrl = await encodeJpegDataUrlInWorker({
+              canvas,
+              maxWidth,
+              maxHeight,
+              jpegQuality,
+              signal,
+            });
+          } catch (err) {
+            if (isAbortError(err)) {
+              throw err;
+            }
+            workerOk = false;
+            dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
+          }
+        } else {
+          dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
+        }
         const pageResult = { pageIndex: i, dataUrl };
         out.push(pageResult);
         onPageRendered?.(pageResult, { totalPages: limit });
@@ -198,7 +232,7 @@ export async function renderSinglePdfPageToDataUrl(
   },
 ): Promise<string | null> {
   const meta = fileSummary(file);
-  ensurePdfWorker();
+  const pdfjsLib = await getPdfjs();
   const maxWidth = options?.maxWidth ?? VISION_MAX_WIDTH_DEFAULT;
   const maxHeight = options?.maxHeight ?? VISION_MAX_HEIGHT_DEFAULT;
   const jpegQuality = options?.jpegQuality ?? VISION_JPEG_QUALITY;
@@ -236,8 +270,7 @@ export async function renderSinglePdfPageToDataUrl(
       const canvas = document.createElement("canvas");
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
+      if (!canvas.getContext("2d")) {
         pipelineLog("PDF", "render-page", "error", "single page: no canvas 2d context", {
           ...meta,
           pageIndex,
@@ -245,7 +278,7 @@ export async function renderSinglePdfPageToDataUrl(
         return null;
       }
 
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await page.render({ canvas, viewport }).promise;
       return canvas.toDataURL("image/jpeg", jpegQuality);
     } finally {
       await pdf.destroy();
