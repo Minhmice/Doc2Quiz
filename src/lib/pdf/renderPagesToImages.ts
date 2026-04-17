@@ -166,11 +166,12 @@ export async function renderPdfPagesToImages(
         const canvas = document.createElement("canvas");
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
-        if (!canvas.getContext("2d")) {
+        const canvasContext = canvas.getContext("2d");
+        if (!canvasContext) {
           throw new Error("Canvas 2D context not available");
         }
 
-        await page.render({ canvas, viewport }).promise;
+        await page.render({ canvasContext, viewport }).promise;
         if (signal.aborted) {
           throw new DOMException("Aborted", "AbortError");
         }
@@ -301,7 +302,8 @@ export async function renderSinglePdfPageToDataUrl(
       const canvas = document.createElement("canvas");
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
-      if (!canvas.getContext("2d")) {
+      const canvasContext = canvas.getContext("2d");
+      if (!canvasContext) {
         pipelineLog("PDF", "render-page", "error", "single page: no canvas 2d context", {
           ...meta,
           pageIndex,
@@ -309,8 +311,11 @@ export async function renderSinglePdfPageToDataUrl(
         return null;
       }
 
-      await page.render({ canvas, viewport }).promise;
-      return canvas.toDataURL("image/jpeg", jpegQuality);
+      await page.render({ canvasContext, viewport }).promise;
+      const dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
+      canvas.width = 0;
+      canvas.height = 0;
+      return dataUrl;
     } finally {
       await pdf.destroy();
     }

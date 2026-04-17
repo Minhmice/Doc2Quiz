@@ -1,12 +1,12 @@
 "use client";
 
-import * as pdfjsLib from "pdfjs-dist";
 import {
   fileSummary,
   isPipelineVerbose,
   normalizeUnknownError,
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
+import { getPdfjs } from "@/lib/pdf/getPdfjs";
 import { ensurePdfWorker } from "@/lib/pdf/pdfWorker";
 
 export type TextLayerSignal = {
@@ -91,6 +91,7 @@ export async function sampleTextLayerSignal(
     }
 
     pipelineLog("PDF", "open", "info", "getDocument() starting (text signal)", meta ?? {});
+    const pdfjsLib = await getPdfjs();
     const pdf = await pdfjsLib.getDocument({ data }).promise;
 
     try {

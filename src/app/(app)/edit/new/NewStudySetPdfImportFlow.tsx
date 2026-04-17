@@ -368,7 +368,9 @@ export function NewStudySetPdfImportFlow({
       } catch (raw) {
         const norm = normalizeUnknownError(raw);
         const cause =
-          raw instanceof Error && raw.cause ? normalizeUnknownError(raw.cause) : undefined;
+          raw instanceof Error && "cause" in raw && raw.cause != null
+            ? normalizeUnknownError(raw.cause)
+            : undefined;
         pipelineLog("STUDY_SET", "new-import", "error", "new study set pipeline failed", {
           phase,
           userFacingBucket:

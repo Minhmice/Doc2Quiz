@@ -841,43 +841,6 @@ export const AiParseSection = forwardRef<
     ],
   );
 
-  const extractTextForPageIndices = useCallback(
-    async (file: File, indices: number[], signal: AbortSignal): Promise<string> => {
-      if (indices.length === 0) {
-        return "";
-      }
-      const sorted = [...indices].sort((a, b) => a - b);
-      const runs: Array<{ start: number; end: number }> = [];
-      let start = sorted[0];
-      let end = sorted[0];
-      for (let i = 1; i < sorted.length; i++) {
-        const n = sorted[i];
-        if (n === end + 1) {
-          end = n;
-        } else {
-          runs.push({ start, end });
-          start = n;
-          end = n;
-        }
-      }
-      runs.push({ start, end });
-
-      let combined = "";
-      for (const r of runs) {
-        if (signal.aborted) {
-          throw new DOMException("Aborted", "AbortError");
-        }
-        const part = await extractPdfTextForPageRange(file, r.start, r.end, signal);
-        if (part.trim().length === 0) {
-          continue;
-        }
-        combined += (combined ? "\n\n" : "") + part;
-      }
-      return combined;
-    },
-    [],
-  );
-
   const runVisionSequentialWithUi = useCallback(
     async (
       pages: PageImageResult[],

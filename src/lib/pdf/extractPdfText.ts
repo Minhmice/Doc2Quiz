@@ -1,12 +1,12 @@
 "use client";
 
-import * as pdfjsLib from "pdfjs-dist";
 import {
   fileSummary,
   isPipelineVerbose,
   normalizeUnknownError,
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
+import { getPdfjs } from "@/lib/pdf/getPdfjs";
 import { ensurePdfWorker } from "@/lib/pdf/pdfWorker";
 
 function textContentToPageString(content: { items: readonly unknown[] }): string {
@@ -59,6 +59,7 @@ export async function extractPdfText(
       });
     }
     pipelineLog("PDF", "open", "info", "getDocument() starting (text extract)", meta);
+    const pdfjsLib = await getPdfjs();
     const pdf = await pdfjsLib.getDocument({ data }).promise;
     try {
       const numPages = pdf.numPages;
@@ -134,6 +135,7 @@ export async function extractPdfTextForPageRange(
     if (signal?.aborted) {
       return "";
     }
+    const pdfjsLib = await getPdfjs();
     const pdf = await pdfjsLib.getDocument({ data }).promise;
     try {
       const numPages = pdf.numPages;
