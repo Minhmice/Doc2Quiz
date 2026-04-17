@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 30
-current_plan: 3
-status: Phase complete — ready for verification
-stopped_at: Completed 30-03-PLAN.md
-last_updated: "2026-04-17T19:19:46.794Z"
+current_phase: 31
+current_plan: 1
+status: Planned — ready for execute
+stopped_at: Planned 31-01..31-03 + VALIDATION.md (plan-checker fixes)
+last_updated: "2026-04-18T12:00:00.000Z"
 progress:
   total_phases: 38
   completed_phases: 28
@@ -22,12 +22,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 30 — replace-page-level-chunking-with-layout-aware-chunking
+**Current focus:** Phase 31 — cache prompt prefixes, embeddings prep (hashes), content-addressable parse cache
 
 ## Execution Progress
 
-**Current Phase:** 30
-**Current Plan:** 3
+**Current Phase:** 31
+**Current Plan:** 1
 **Total Plans in Phase:** 3
 
 ## Current Status

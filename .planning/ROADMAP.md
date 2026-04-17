@@ -673,12 +673,14 @@ Plans:
 ### Phase 31: Cache prompt prefixes, embeddings, and content hashes
 
 **Goal:** Local-only **IndexedDB-backed parse caches** keyed by **content hashes** + **prompt/model/provider version** across **vision batch**, **sequential text chunk**, and **layout-aware text** lanes; **defer embeddings** to Phase 33 (hashes + cache infrastructure only here).
-**Requirements**: TBD (set during `/gsd-plan-phase 31`)
+**Requirements**: CACHE-31-01, CACHE-31-02, CACHE-31-03, CACHE-31-04, CACHE-31-05, CACHE-31-06, CACHE-31-07, CACHE-31-08
 **Depends on:** Phase 30
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 31 to break down)
+- [ ] `31-01-PLAN.md` — ROADMAP/REQUIREMENTS IDs; IDB store design, key derivation API, prompt bundle alignment + LRU caps
+- [ ] `31-02-PLAN.md` — Vision batch cache: memory Map → IndexedDB with fallback; wire `runVisionBatchSequential`
+- [ ] `31-03-PLAN.md` — (wave 3, after 31-02) Text + layout single-MCQ cache in `parseChunk` / `runSequentialParse`; minimal pipelineLog summary; lint + build
 
 ### Phase 32: Use draft-pass generation plus validator-pass rewrite
 
