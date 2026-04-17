@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 31
-current_plan: 1
-status: Complete — Phase 31 executed (31-01..31-03)
-stopped_at: Phase 32 context gathered
-last_updated: "2026-04-17T22:10:25.043Z"
+current_phase: 32
+current_plan: 3
+status: Complete — Phase 32 executed (32-01..32-03)
+stopped_at: Phase 32 draft+validator shipped
+last_updated: "2026-04-18T12:00:00.000Z"
 progress:
   total_phases: 38
-  completed_phases: 30
-  total_plans: 67
-  completed_plans: 67
+  completed_phases: 31
+  total_plans: 70
+  completed_plans: 70
   percent: 100
 ---
 
@@ -22,12 +22,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 31 — cache prompt prefixes, embeddings prep (hashes), content-addressable parse cache
+**Current focus:** Phase 33+ roadmap — next: vector store / indexing (see ROADMAP)
 
 ## Execution Progress
 
-**Current Phase:** 31
-**Current Plan:** 1
+**Current Phase:** 32
+**Current Plan:** 3
 **Total Plans in Phase:** 3
 
 ## Current Status
@@ -45,17 +45,19 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 - Phase 23 (full layout from `example/`): Complete — `/develop`, `mockAllowlist`, `/api/develop/mock/[slug]`, `DevelopLabClient`, dev Command Palette; inventory §8 + play outer chrome; `23-01-SUMMARY.md`, `23-02-SUMMARY.md`.
 - Phase 24 (vision parse fewer round-trips): Complete — `24-01-SUMMARY.md`, `24-02-SUMMARY.md`.
 - Phase 27 (Preview-first parsing while full upload continues): Complete — `27-01-SUMMARY.md`, `27-02-SUMMARY.md`, `27-03-SUMMARY.md`.
+- Phase 32 (Draft + validator pass): Complete — `32-01-SUMMARY.md`, `32-02-SUMMARY.md`, `32-03-SUMMARY.md`.
 
 ## Last Session
 
-**Stopped at:** Phase 32 context gathered
+**Stopped at:** Phase 32 complete — draft + validator pass + toast
 **Date:** 2026-04-18
-**Resume file:** .planning/phases/32-use-draft-pass-generation-plus-validator-pass-rewrite/32-CONTEXT.md
+**Artifacts:** `32-01-SUMMARY.md` … `32-03-SUMMARY.md`; `npm run lint` + `npm run build` green
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- Phase 32 execute (2026-04-18): draft→deterministic→validator LLM + IDB lanes `text_*_validator`; `mcqDraftValidate.ts`, `parseChunk`/`runSequentialParse`/`AiParseSection` toast (12s throttle); `PROMPTS_BUNDLE_VERSION` 2; roadmap Phase 32 → **Complete** (3/3 plans).
 - Phase 27 execute (2026-04-17): preview-first create flow per `27-CONTEXT.md`; `27-01`..`27-03` SUMMARYs; `npm run lint` + `npm run build` green; roadmap Phase 27 → **Complete** (3/3 plans).
 - Phase 26 plan `26-01` execute (2026-04-17): UPLOAD-01..03,05,06 captured in requirements + roadmap; shipped `src/types/uploads.ts`, `src/lib/uploads/pdfUpload*.ts`, `/api/uploads/pdf/{init,part,complete,abort}` with HMAC finalize token + `uploadCapability` gating; `npm run lint` + `npm run build` green; `26-01-SUMMARY.md`. **UPLOAD-04** remains for `26-02` (progress/cancel UX).
 - Phase 26 plan `26-02` execute (2026-04-18): `runPdfUploadSession`, `PdfUploadProgressRow`, `runBackgroundStudySetPdfUpload` refactor, `NewStudySetPdfImportFlow` upload UI + `UploadBox` optional `enableBackgroundPdfUpload`; `UPLOAD-04` complete; `26-02-SUMMARY.md`; `npm run lint` + `npm run build` green.

@@ -31,9 +31,22 @@ import {
   parseCacheSetTextChunk,
   sha256Utf8Hex,
 } from "@/lib/db/parseCacheDb";
+import {
+  buildValidatorContentFingerprint,
+  deterministicRepairDraftQuestions,
+  needsValidatorLlm,
+  runValidatorLlmPassWithRetries,
+  validatorPromptIdentity,
+  type ValidatorReasonCode,
+} from "@/lib/ai/mcqDraftValidate";
+import { parseJsonFromModelText } from "@/lib/ai/jsonFromModelText";
+import { pipelineLog } from "@/lib/logging/pipelineLogger";
 import type { AiProvider, Question } from "@/types/question";
 
+export type { ValidatorReasonCode } from "@/lib/ai/mcqDraftValidate";
+
 export { MCQ_EXTRACTION_SYSTEM_PROMPT, MCQ_SINGLE_CHUNK_SYSTEM_PROMPT };
+export { parseJsonFromModelText };
 
 export const OPENAI_MODEL = "gpt-4o-mini";
 export const DEFAULT_OPENAI_CHAT_URL =
@@ -81,6 +94,11 @@ export type ParseChunkOnceParams = {
   onRawAssistantText?: (text: string) => void;
   /** Optional; recorded in parse-cache metadata only (not part of the key). */
   studySetId?: string;
+  /** Phase 32 — fires after deterministic pass; `usedLlm` when an LLM validator call ran (not cache-only). */
+  onValidatorStage?: (info: {
+    usedLlm: boolean;
+    reasons: ValidatorReasonCode[];
+  }) => void;
 };
 
 function cloneQuestions(qs: Question[]): Question[] {
@@ -89,6 +107,10 @@ function cloneQuestions(qs: Question[]): Question[] {
 
 export type ParseChunkOnceResult = {
   questions: Question[];
+  /**
+   * True only when both draft and validator stages were served from parse cache (no
+   * upstream calls). False when debug `onRawAssistantText` is set, or when any stage missed.
+   */
   cacheHit: boolean;
 };
 
@@ -128,37 +150,6 @@ export function resolveModelId(
     return t;
   }
   return provider === "openai" ? OPENAI_MODEL : ANTHROPIC_MODEL;
-}
-
-/** Exported for vision batch parsers (`parseVisionQuizResponse`, etc.). */
-export function parseJsonFromModelText(text: string): unknown {
-  const trimmed = text.trim();
-  const fenceStripped = trimmed
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
-
-  try {
-    return JSON.parse(fenceStripped);
-  } catch {
-    const start = fenceStripped.indexOf("{");
-    if (start === -1) {
-      throw new Error("No JSON object in model output");
-    }
-    let depth = 0;
-    for (let i = start; i < fenceStripped.length; i++) {
-      const c = fenceStripped[i];
-      if (c === "{") {
-        depth++;
-      } else if (c === "}") {
-        depth--;
-        if (depth === 0) {
-          return JSON.parse(fenceStripped.slice(start, i + 1));
-        }
-      }
-    }
-    throw new Error("Unbalanced JSON object in model output");
-  }
 }
 
 async function parseOpenAI(
@@ -231,7 +222,7 @@ async function parseOpenAI(
   return extractQuestions(content);
 }
 
-function resolveOpenAiCompatEndpointAndModel(
+export function resolveOpenAiCompatEndpointAndModel(
   apiUrl: string | undefined,
   model: string | undefined,
 ): { endpoint: string; modelId: string; forwardProvider: "openai" | "custom" } {
@@ -256,16 +247,150 @@ function resolveOpenAiCompatEndpointAndModel(
   return { endpoint, modelId, forwardProvider };
 }
 
+async function finalizeChunkQuestions(options: {
+  chunkText: string;
+  draftQuestions: Question[];
+  draftCacheHit: boolean;
+  skipAllCache: boolean;
+  validatorLane: "text_multi_mcq_validator" | "text_single_mcq_validator";
+  apiKey: string;
+  apiUrl?: string;
+  model?: string;
+  modelId: string;
+  forwardProvider: "openai" | "custom";
+  signal: AbortSignal;
+  studySetId?: string;
+  onRawAssistantText?: (text: string) => void;
+  onValidatorStage?: ParseChunkOnceParams["onValidatorStage"];
+}): Promise<ParseChunkOnceResult> {
+  const {
+    chunkText,
+    draftQuestions,
+    draftCacheHit,
+    skipAllCache,
+    validatorLane,
+    apiKey,
+    apiUrl,
+    model,
+    modelId,
+    forwardProvider,
+    signal,
+    studySetId,
+    onRawAssistantText,
+    onValidatorStage,
+  } = options;
+
+  const { questions: repaired, reasons: baseReasons } =
+    deterministicRepairDraftQuestions(draftQuestions);
+  const reasons: ValidatorReasonCode[] = [...baseReasons];
+
+  if (repaired.length === 0) {
+    onValidatorStage?.({ usedLlm: false, reasons });
+    return { questions: [], cacheHit: draftCacheHit };
+  }
+
+  if (!needsValidatorLlm(repaired)) {
+    onValidatorStage?.({ usedLlm: false, reasons });
+    return { questions: cloneQuestions(repaired), cacheHit: draftCacheHit };
+  }
+
+  reasons.push("needs_llm");
+  let validatorCacheHit = false;
+
+  if (!skipAllCache) {
+    const vFp = await buildValidatorContentFingerprint(chunkText, repaired);
+    const promptIdentity = await validatorPromptIdentity();
+    const vKey = await canonicalParseCacheKey({
+      lane: validatorLane,
+      contentFingerprint: vFp,
+      promptIdentity,
+      model: modelId,
+      forwardProvider,
+    });
+    const vCached = await parseCacheGetTextChunk(vKey);
+    if (vCached && vCached.length > 0) {
+      validatorCacheHit = true;
+      reasons.push("llm_ok");
+      onValidatorStage?.({ usedLlm: false, reasons });
+      pipelineLog("PARSE", "validator", "info", "validator_cache_hit", {
+        lane: validatorLane,
+      });
+      return {
+        questions: cloneQuestions(vCached),
+        cacheHit: draftCacheHit && validatorCacheHit,
+      };
+    }
+  }
+
+  try {
+    let out = await runValidatorLlmPassWithRetries({
+      apiKey,
+      apiUrl,
+      model,
+      chunkText,
+      draftQuestions: repaired,
+      signal,
+      onRawAssistantText,
+    });
+    if (out.length === 0) {
+      pipelineLog("PARSE", "validator", "warn", "validator_empty_output_fallback", {});
+      out = repaired;
+      reasons.push("llm_failed_fallback");
+    } else {
+      reasons.push("llm_ok");
+    }
+    onValidatorStage?.({ usedLlm: true, reasons });
+    if (!skipAllCache) {
+      const vFp = await buildValidatorContentFingerprint(chunkText, repaired);
+      const promptIdentity = await validatorPromptIdentity();
+      const vKey = await canonicalParseCacheKey({
+        lane: validatorLane,
+        contentFingerprint: vFp,
+        promptIdentity,
+        model: modelId,
+        forwardProvider,
+      });
+      await parseCacheSetTextChunk(vKey, out, studySetId);
+    }
+    return {
+      questions: cloneQuestions(out),
+      cacheHit: false,
+    };
+  } catch (e) {
+    pipelineLog("PARSE", "validator", "warn", "validator_llm_failed_fallback", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    reasons.push("llm_failed_fallback");
+    onValidatorStage?.({ usedLlm: true, reasons });
+    return {
+      questions: cloneQuestions(repaired),
+      cacheHit: false,
+    };
+  }
+}
+
 export async function parseChunkOnce(
   params: ParseChunkOnceParams,
 ): Promise<ParseChunkOnceResult> {
-  const { apiKey, apiUrl, model, chunkText, signal, onRawAssistantText, studySetId } =
-    params;
+  const {
+    apiKey,
+    apiUrl,
+    model,
+    chunkText,
+    signal,
+    onRawAssistantText,
+    studySetId,
+    onValidatorStage,
+  } = params;
   const { endpoint, modelId, forwardProvider } =
     resolveOpenAiCompatEndpointAndModel(apiUrl, model);
+  const skipAllCache = Boolean(onRawAssistantText);
 
-  if (onRawAssistantText) {
-    const questions = await withRetries("llm_chunk", signal, async () =>
+  let draftQuestions: Question[];
+  let draftCacheHit = false;
+
+  if (skipAllCache) {
+    draftQuestions = await withRetries("llm_chunk", signal, async () =>
       parseOpenAI(
         apiKey,
         endpoint,
@@ -278,40 +403,56 @@ export async function parseChunkOnce(
         onRawAssistantText,
       ),
     );
-    return { questions, cacheHit: false };
-  }
-
-  const contentFingerprint = await sha256Utf8Hex(chunkText);
-  const promptIdentity = formatPromptKeyComponent(
-    PROMPTS_BUNDLE_VERSION,
-    await hashPromptIdentity(MCQ_EXTRACTION_SYSTEM_PROMPT),
-  );
-  const cacheKey = await canonicalParseCacheKey({
-    lane: "text_multi_mcq",
-    contentFingerprint,
-    promptIdentity,
-    model: modelId,
-    forwardProvider,
-  });
-
-  const cached = await parseCacheGetTextChunk(cacheKey);
-  if (cached) {
-    return { questions: cloneQuestions(cached), cacheHit: true };
-  }
-
-  const questions = await withRetries("llm_chunk", signal, async () =>
-    parseOpenAI(
-      apiKey,
-      endpoint,
-      modelId,
-      chunkText,
-      signal,
+  } else {
+    const contentFingerprint = await sha256Utf8Hex(chunkText);
+    const promptIdentity = formatPromptKeyComponent(
+      PROMPTS_BUNDLE_VERSION,
+      await hashPromptIdentity(MCQ_EXTRACTION_SYSTEM_PROMPT),
+    );
+    const cacheKey = await canonicalParseCacheKey({
+      lane: "text_multi_mcq",
+      contentFingerprint,
+      promptIdentity,
+      model: modelId,
       forwardProvider,
-      MCQ_EXTRACTION_SYSTEM_PROMPT,
-    ),
-  );
-  await parseCacheSetTextChunk(cacheKey, questions, studySetId);
-  return { questions, cacheHit: false };
+    });
+
+    const cached = await parseCacheGetTextChunk(cacheKey);
+    if (cached) {
+      draftQuestions = cloneQuestions(cached);
+      draftCacheHit = true;
+    } else {
+      draftQuestions = await withRetries("llm_chunk", signal, async () =>
+        parseOpenAI(
+          apiKey,
+          endpoint,
+          modelId,
+          chunkText,
+          signal,
+          forwardProvider,
+          MCQ_EXTRACTION_SYSTEM_PROMPT,
+        ),
+      );
+      await parseCacheSetTextChunk(cacheKey, draftQuestions, studySetId);
+    }
+  }
+
+  return finalizeChunkQuestions({
+    chunkText,
+    draftQuestions,
+    draftCacheHit,
+    skipAllCache,
+    validatorLane: "text_multi_mcq_validator",
+    apiKey,
+    apiUrl,
+    model,
+    modelId,
+    forwardProvider,
+    signal,
+    studySetId,
+    onRawAssistantText,
+    onValidatorStage,
+  });
 }
 
 /**
@@ -331,9 +472,11 @@ export async function parseChunkSingleMcqOnce(
     signal,
     onRawAssistantText,
     studySetId,
+    onValidatorStage,
   } = params;
   const { endpoint, modelId, forwardProvider } =
     resolveOpenAiCompatEndpointAndModel(apiUrl, model);
+  const skipAllCache = Boolean(onRawAssistantText);
 
   const runForward = () =>
     withRetries("llm_chunk", signal, async () => {
@@ -354,31 +497,57 @@ export async function parseChunkSingleMcqOnce(
       return qs[0] ?? null;
     });
 
-  if (onRawAssistantText) {
-    return runForward();
+  let draftQ: Question | null = null;
+  let draftCacheHit = false;
+
+  if (skipAllCache) {
+    draftQ = await runForward();
+  } else {
+    const contentFingerprint = await sha256Utf8Hex(chunkText);
+    const promptIdentity = formatPromptKeyComponent(
+      PROMPTS_BUNDLE_VERSION,
+      await hashPromptIdentity(MCQ_SINGLE_CHUNK_SYSTEM_PROMPT),
+    );
+    const cacheKey = await canonicalParseCacheKey({
+      lane: "text_single_mcq",
+      contentFingerprint,
+      promptIdentity,
+      model: modelId,
+      forwardProvider,
+    });
+
+    const cached = await parseCacheGetTextChunk(cacheKey);
+    if (cached !== null && cached.length > 0) {
+      draftQ = cloneQuestions(cached)[0] ?? null;
+      draftCacheHit = true;
+    } else {
+      draftQ = await runForward();
+      if (draftQ) {
+        await parseCacheSetTextChunk(cacheKey, [draftQ], studySetId);
+      }
+    }
   }
 
-  const contentFingerprint = await sha256Utf8Hex(chunkText);
-  const promptIdentity = formatPromptKeyComponent(
-    PROMPTS_BUNDLE_VERSION,
-    await hashPromptIdentity(MCQ_SINGLE_CHUNK_SYSTEM_PROMPT),
-  );
-  const cacheKey = await canonicalParseCacheKey({
-    lane: "text_single_mcq",
-    contentFingerprint,
-    promptIdentity,
-    model: modelId,
+  if (draftQ === null) {
+    return null;
+  }
+
+  const finalized = await finalizeChunkQuestions({
+    chunkText,
+    draftQuestions: [draftQ],
+    draftCacheHit,
+    skipAllCache,
+    validatorLane: "text_single_mcq_validator",
+    apiKey,
+    apiUrl,
+    model,
+    modelId,
     forwardProvider,
+    signal,
+    studySetId,
+    onRawAssistantText,
+    onValidatorStage,
   });
 
-  const cached = await parseCacheGetTextChunk(cacheKey);
-  if (cached !== null && cached.length > 0) {
-    return cloneQuestions(cached)[0] ?? null;
-  }
-
-  const q = await runForward();
-  if (q) {
-    await parseCacheSetTextChunk(cacheKey, [q], studySetId);
-  }
-  return q;
+  return finalized.questions[0] ?? null;
 }

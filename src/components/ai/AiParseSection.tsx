@@ -6,6 +6,10 @@
  * **Flashcards (parseOutputMode === "flashcard"):** vision **batch** only, **theory-only**
  * concept cards — no OCR prefetch, no layout/chunk/hybrid, no `Question[]` / MCQ sequential vision.
  * **Quiz** owns MCQ prompts, parsers, chunk paths, and review routes.
+ *
+ * **Phase 32 (DRAFT-32-04):** Text/layout chunk paths use draft→validator (`parseChunkOnce` / `parseChunkSingleMcqOnce`).
+ * Vision batch (quiz/flashcard) uses multimodal prompts + `validateVision*` parsers — not the text MCQ validator LLM;
+ * parity is “same quality bar per lane,” not identical implementation.
  */
 
 import Link from "next/link";
@@ -33,6 +37,7 @@ import {
   parseChunkSingleMcqOnce,
   resolveChatApiUrl,
   resolveModelId,
+  type ValidatorReasonCode,
 } from "@/lib/ai/parseChunk";
 import { buildLayoutChunksFromRun } from "@/lib/ai/layoutChunksFromOcr";
 import {
@@ -315,6 +320,25 @@ export const AiParseSection = forwardRef<
   const [estimateDocChars, setEstimateDocChars] = useState(0);
   const [estimatePageCount, setEstimatePageCount] = useState<number | null>(
     null,
+  );
+
+  /** Phase 32 — throttle “validator LLM” toasts (min 12s between toasts). */
+  const validatorToastLastMsRef = useRef(0);
+  const onValidatorStage = useCallback(
+    (info: {
+      usedLlm: boolean;
+      reasons: ValidatorReasonCode[];
+    }) => {
+      if (!info.usedLlm) return;
+      const now = Date.now();
+      if (now - validatorToastLastMsRef.current < 12_000) return;
+      validatorToastLastMsRef.current = now;
+      toast.message("Refining questions…", { duration: 2500 });
+      pipelineLog("PARSE", "validator", "info", "validator_llm_toast", {
+        reasons: info.reasons,
+      });
+    },
+    [],
   );
 
   const abortRef = useRef<AbortController | null>(null);
@@ -1237,6 +1261,7 @@ export const AiParseSection = forwardRef<
             chunkText: userContent,
             signal,
             studySetId: studySetId.trim() || undefined,
+            onValidatorStage,
             onRawAssistantText: meta
               ? (text) => {
                   chunkRawByIdRef.current[meta.layoutChunkId] = text;
@@ -1386,6 +1411,7 @@ export const AiParseSection = forwardRef<
       persistQuestions,
       runVisionSequentialWithUi,
       parseOutputMode,
+      onValidatorStage,
     ],
   );
 
@@ -1824,6 +1850,7 @@ export const AiParseSection = forwardRef<
             chunks,
             signal: controller.signal,
             studySetId: studySetId.trim() || undefined,
+            onValidatorStage,
             onProgress: ({ current, total }) => {
               setProgress({ current, total, status: "running" });
               setParseOverlay((p) => ({
@@ -2200,6 +2227,7 @@ export const AiParseSection = forwardRef<
     previewFirstPageBudget,
     persistQuestions,
     persistFlashcardVisionItemsForImmediateUse,
+    onValidatorStage,
   ]);
 
   const handleLayoutAwareParse =
@@ -2861,6 +2889,7 @@ export const AiParseSection = forwardRef<
                 chunks,
                 signal: controller.signal,
                 studySetId: studySetId.trim() || undefined,
+                onValidatorStage,
                 onProgress: ({ current }) => {
                   setProgress({
                     current: chunkOffset + current,
@@ -2931,6 +2960,7 @@ export const AiParseSection = forwardRef<
               chunks,
               signal: controller.signal,
               studySetId: studySetId.trim() || undefined,
+              onValidatorStage,
               onProgress: ({ current, total }) => {
                 setProgress({ current, total, status: "running" });
                 setParseOverlay((p) => ({
@@ -3088,6 +3118,7 @@ export const AiParseSection = forwardRef<
       parseOutputMode,
       isQuizParse,
       previewFirstPageBudget,
+      onValidatorStage,
     ]);
 
   useImperativeHandle(

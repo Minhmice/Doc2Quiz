@@ -12,7 +12,9 @@ export type PipelineDomain =
   | "VISION"
   | "IDB"
   | "STUDY_SET"
-  | "MAPPING";
+  | "MAPPING"
+  /** Text/layout chunk + validator pass (Phase 32). */
+  | "PARSE";
 
 export function isPipelineVerbose(): boolean {
   if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {

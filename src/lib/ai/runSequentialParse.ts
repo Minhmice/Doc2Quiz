@@ -5,7 +5,10 @@
 import type { AiProvider, Question } from "@/types/question";
 import { dedupeQuestionsByStem } from "@/lib/ai/dedupeQuestions";
 import { FatalParseError, isAbortError } from "@/lib/ai/errors";
-import { parseChunkOnce } from "@/lib/ai/parseChunk";
+import {
+  parseChunkOnce,
+  type ValidatorReasonCode,
+} from "@/lib/ai/parseChunk";
 import { logParseCacheSummary } from "@/lib/logging/pipelineLogger";
 
 export type ParseProgress = {
@@ -26,14 +29,28 @@ export async function runSequentialParse(options: {
   onProgress?: (p: { current: number; total: number }) => void;
   /** Optional; parse-cache metadata only (not part of cache keys). */
   studySetId?: string;
+  /** Phase 32 — LLM validator invoked (for toast / logging). */
+  onValidatorStage?: (info: {
+    usedLlm: boolean;
+    reasons: ValidatorReasonCode[];
+  }) => void;
 }): Promise<{
   questions: Question[];
   failedChunks: number;
   /** Set when a chunk hit 401/429 etc. — earlier chunks remain in `questions`. */
   fatalError?: string;
 }> {
-  const { provider, apiKey, apiUrl, model, chunks, signal, onProgress, studySetId } =
-    options;
+  const {
+    provider,
+    apiKey,
+    apiUrl,
+    model,
+    chunks,
+    signal,
+    onProgress,
+    studySetId,
+    onValidatorStage,
+  } = options;
   const questions: Question[] = [];
   let failedChunks = 0;
   const total = chunks.length;
@@ -61,6 +78,7 @@ export async function runSequentialParse(options: {
           chunkText: chunks[i]!,
           signal,
           studySetId,
+          onValidatorStage,
         });
         if (cacheHit) {
           cacheHits += 1;

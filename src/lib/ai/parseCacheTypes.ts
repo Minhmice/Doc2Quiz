@@ -1,11 +1,19 @@
 import type { Question } from "@/types/question";
 import type { VisionParseItem } from "@/types/visionParse";
 
-/** Parse-cache lane — encoded in `ParseCacheKeyParts.lane` and hashed into the store key. */
+/**
+ * Parse-cache lane — encoded in `ParseCacheKeyParts.lane` and hashed into the store key.
+ *
+ * Phase 32: `text_*_validator` lanes store the **validator LLM** output for a draft chunk.
+ * Keys use `buildValidatorContentFingerprint` (chunk + normalized draft question digest)
+ * so draft hits never collide with validator entries (DRAFT-32-06).
+ */
 export type ParseCacheLane =
   | "vision_batch"
   | "text_multi_mcq"
-  | "text_single_mcq";
+  | "text_single_mcq"
+  | "text_multi_mcq_validator"
+  | "text_single_mcq_validator";
 
 export type ParseCacheForwardProvider = "openai" | "custom";
 
@@ -36,7 +44,11 @@ export type ParseCacheVisionValue = {
 };
 
 export type ParseCacheTextValue = {
-  kind: "text_multi_mcq" | "text_single_mcq";
+  kind:
+    | "text_multi_mcq"
+    | "text_single_mcq"
+    | "text_multi_mcq_validator"
+    | "text_single_mcq_validator";
   items: Question[];
   meta: ParseCacheRecordMeta;
 };

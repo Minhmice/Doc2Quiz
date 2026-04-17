@@ -129,12 +129,12 @@
 
 ### Draft pass + validator pass (Phase 32)
 
-- [ ] **DRAFT-32-01**: **Per-chunk contract:** after draft MCQ extraction from a text/layout chunk, run validation before merging into the accumulated question list (matches `32-CONTEXT` D-01).
-- [ ] **DRAFT-32-02**: **Hybrid validator:** deterministic/schema repair first; **LLM-based validator/rewrite only when** local repair cannot produce a valid item set; emit **stable reason codes** in pipeline logs (D-02).
-- [ ] **DRAFT-32-03**: **Always run** the validator stage on the success path when a draft completes (user accepts extra token cost); do not silently skip for savings (D-03).
-- [ ] **DRAFT-32-04**: **Quiz and Flashcards** share the same two-pass policy **where** the pipeline uses chunk/batch text extraction (vision-only flashcard flows document any exception in code comments) (D-04).
-- [ ] **DRAFT-32-05**: **User-visible toast** when the validator pass runs (short copy; may throttle across chunks) (D-05).
-- [ ] **DRAFT-32-06**: **Cache compatibility:** validator LLM calls use **distinct prompt identity** in Phase 31 cache keys (separate system prompt / lane metadata) so draft hits never mask validator misses (extends CACHE-31-03..04).
+- [x] **DRAFT-32-01**: **Per-chunk contract:** after draft MCQ extraction from a text/layout chunk, run validation before merging into the accumulated question list (matches `32-CONTEXT` D-01).
+- [x] **DRAFT-32-02**: **Hybrid validator:** deterministic/schema repair first; **LLM-based validator/rewrite** when the repaired draft is non-empty (quality pass; stable **reason codes** in pipeline logs) (D-02).
+- [x] **DRAFT-32-03**: **Always run** the validator stage on the success path when a draft completes (user accepts extra token cost); do not silently skip for savings (D-03).
+- [x] **DRAFT-32-04**: **Quiz and Flashcards** share the same two-pass policy **where** the pipeline uses chunk/batch text extraction (vision-only flashcard flows document any exception in code comments) (D-04).
+- [x] **DRAFT-32-05**: **User-visible toast** when the validator pass runs (short copy; may throttle across chunks) (D-05).
+- [x] **DRAFT-32-06**: **Cache compatibility:** validator LLM calls use **distinct prompt identity** in Phase 31 cache keys (separate system prompt / lane metadata) so draft hits never mask validator misses (extends CACHE-31-03..04).
 
 ## Out of Scope
 
@@ -204,19 +204,19 @@
 | CACHE-31-06 | Phase 31 | Complete |
 | CACHE-31-07 | Phase 31 | Complete |
 | CACHE-31-08 | Phase 31 | Complete |
-| DRAFT-32-01 | Phase 32 | Planned |
-| DRAFT-32-02 | Phase 32 | Planned |
-| DRAFT-32-03 | Phase 32 | Planned |
-| DRAFT-32-04 | Phase 32 | Planned |
-| DRAFT-32-05 | Phase 32 | Planned |
-| DRAFT-32-06 | Phase 32 | Planned |
+| DRAFT-32-01 | Phase 32 | Complete |
+| DRAFT-32-02 | Phase 32 | Complete |
+| DRAFT-32-03 | Phase 32 | Complete |
+| DRAFT-32-04 | Phase 32 | Complete |
+| DRAFT-32-05 | Phase 32 | Complete |
+| DRAFT-32-06 | Phase 32 | Complete |
 
 **Coverage:**
 - v1 requirements: 23 total
 - Mapped to phases: 23
 - Unmapped: 0 ✓
-- Phase 32 (draft+validator): 6 requirements (`DRAFT-32-01`..`06`); status Planned
+- Phase 32 (draft+validator): 6 requirements (`DRAFT-32-01`..`06`); status Complete
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-18 — Phase 32 draft+validator IDs (DRAFT-32-01..06); Phase 31 parse-cache (CACHE-31-01..08)*
+*Last updated: 2026-04-18 — Phase 32 draft+validator complete (DRAFT-32-01..06); Phase 31 parse-cache (CACHE-31-01..08)*

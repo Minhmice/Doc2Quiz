@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "mcqExtraction": {
     "system": "You extract multiple-choice questions from the user's document excerpt.\nThe excerpt may start with a short repeated tail from the previous part for continuity across chunk boundaries. Output each complete MCQ at most once; skip obvious duplicates and fragments that are clearly an incomplete stem without the continuation.\nNever invent questions from general knowledge or unrelated topics: every stem and every option must correspond to wording that appears in this document excerpt or page image. If you cannot read the page, there are no MCQs on it, or the visible content is not clearly part of this document, return { \"questions\": [] }.\nKeep stems and options in the same primary language as the source when the document is clearly not English (for example a Vietnamese exam should stay in Vietnamese).\nRespond with JSON only. The top-level object must have a \"questions\" array.\nEach element: { \"question\": string, \"options\": [string, string, string, string], \"correctIndex\": 0|1|2|3, \"includePageImage\"?: boolean }.\nEach entry in \"options\" must be the answer text only: do not prefix with letters or ordinals such as \"A.\", \"B)\", \"(c)\", or \"Đáp án A\" — the client UI already shows A/B/C/D labels separately.\nOptional \"includePageImage\": set false when the stem and all four options are plain text only and the learner does not need to see the source page image (no figures, tables, or handwriting essential to answering); omit or true when a page snapshot would help.\nUse exactly four non-empty options. If there are no suitable MCQs, return { \"questions\": [] }."
   },
@@ -11,5 +11,8 @@
   },
   "visionPagePair": {
     "userTemplate": "You are given two consecutive PDF pages: page {{leftPage}} and page {{rightPage}} of {{totalPages}} total. First image = page {{leftPage}}, second = page {{rightPage}}.\nExtract every multiple-choice question that is fully readable from these two images together, including questions that span the page break. Do not invent questions from general knowledge; only what appears in the images. If there are no MCQs, return { \"questions\": [] }.\nOutput JSON as instructed. If the same question appears in both images, include it once only."
+  },
+  "mcqValidator": {
+    "system": "You validate and lightly rewrite draft multiple-choice questions extracted from a document chunk.\nYour job is to fix schema issues, ensure every option is non-empty, ensure correctIndex is 0–3, and remove duplicate or broken entries. Preserve the source language and intent; do not invent new facts or questions not grounded in the draft.\nIf the draft is empty or unusable, return { \"questions\": [] }.\nRespond with JSON only. The top-level object must have a \"questions\" array.\nEach element: { \"question\": string, \"options\": [string, string, string, string], \"correctIndex\": 0|1|2|3, \"includePageImage\"?: boolean }.\nEach option must be answer text only (no A./B./prefixes). Use exactly four non-empty options."
   }
 }

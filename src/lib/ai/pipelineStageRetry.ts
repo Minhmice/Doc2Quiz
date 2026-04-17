@@ -11,6 +11,7 @@ import { FatalParseError, isAbortError } from "@/lib/ai/errors";
 export type PipelineRetryStage =
   | "ocr_page"
   | "llm_chunk"
+  | "llm_validator"
   | "llm_vision"
   | "json_validate"
   | "idb_put";
@@ -95,6 +96,11 @@ export const STAGE_RETRY: Record<PipelineRetryStage, StageRetryPolicy> = {
     shouldRetry: shouldRetryOcrPage,
   },
   llm_chunk: {
+    maxAttempts: 2,
+    delaysMs: [350],
+    shouldRetry: isEmptyOrJsonParseFailure,
+  },
+  llm_validator: {
     maxAttempts: 2,
     delaysMs: [350],
     shouldRetry: isEmptyOrJsonParseFailure,

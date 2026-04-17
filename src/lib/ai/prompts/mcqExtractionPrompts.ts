@@ -4,6 +4,7 @@ type McqExtractionPromptsFile = {
   version: number;
   mcqExtraction: { system: string };
   mcqSingleChunk: { system: string };
+  mcqValidator: { system: string };
   visionPageImage: { userTemplate: string };
   visionPagePair: { userTemplate: string };
 };
@@ -18,6 +19,9 @@ export const MCQ_EXTRACTION_SYSTEM_PROMPT = prompts.mcqExtraction.system;
 
 /** System prompt: one OCR layout chunk → at most one MCQ (text API). */
 export const MCQ_SINGLE_CHUNK_SYSTEM_PROMPT = prompts.mcqSingleChunk.system;
+
+/** Phase 32 — second pass on draft MCQ JSON (text API, OpenAI-compatible). */
+export const MCQ_VALIDATOR_SYSTEM_PROMPT = prompts.mcqValidator.system;
 
 export function visionPageUserPrompt(pageIndex: number, totalPages: number): string {
   return prompts.visionPageImage.userTemplate
