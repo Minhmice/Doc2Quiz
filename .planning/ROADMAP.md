@@ -721,7 +721,7 @@ Plans:
 **Goal:** **Browser-local** semantic index (IndexedDB) with **embeddings via same-origin forward**, **bounded storage**, and a **user-visible RAG surface**: **chunk search** plus **inject retrieved context** into the **text parse** path (minimum); safe rendering; **review-before-bank** unchanged.
 **Requirements**: RAG-33-01, RAG-33-02, RAG-33-03, RAG-33-04, RAG-33-05, RAG-33-06, RAG-33-07, RAG-33-08
 **Depends on:** Phase 32
-**Plans:** 0/3 plans complete
+**Plans:** 3 plans filed — execution pending (`/gsd-execute-phase 33`)
 
 Plans:
 - [ ] `33-01-PLAN.md` — IDs + ROADMAP reconcile; `embeddingIndexDb` (or equivalent) schema; `POST /api/ai/embed` (or forward extension); types; caps constants; cosine similarity helper (RAG-33-01..04)
@@ -733,7 +733,7 @@ Plans:
 **Goal:** **Browser-local** async queue for **full embedding indexing** after text extract: cancellable jobs with **bounded concurrency** and **retries**, **progress / cancel / error** in the **RAG panel**, **partial index** usable for search, **invalidation** on embedding model or index schema change. **Not** primary on server **`parse-jobs`** (Phase 34 `34-CONTEXT` D-01).
 **Requirements**: INDEX-34-01, INDEX-34-02, INDEX-34-03, INDEX-34-04, INDEX-34-05, INDEX-34-06, INDEX-34-07, INDEX-34-08, INDEX-34-09
 **Depends on:** Phase 33
-**Plans:** 0/3 plans complete
+**Plans:** 3/3 plans executed (see summaries)
 
 Plans:
 - [x] `34-01-PLAN.md` — Core job runner: `runEmbeddingIndexJob`, concurrency, retries, `pipelineLog`, IDB invalidation metadata; ROADMAP/REQUIREMENTS reconcile
@@ -742,55 +742,63 @@ Plans:
 
 ### Phase 35: Tune OCR preprocessing: thresholding, downsample huge pages, 300-DPI target
 
-**Status:** Discussed — `35-CONTEXT.md` (smart discuss auto, 2026-04-18)
+**Status:** Planned — `35-CONTEXT.md` + three plans (2026-04-18)
 
 **Goal:** Tune **client-side** OCR/vision raster preprocessing: optional thresholding for scanned pages, **downsample** over a megapixel cap, **~300 DPI effective** target; Worker-first (Phase 28 path); bounded logging.
 
-**Requirements**: TBD (run `/gsd-plan-phase 35`)
+**Requirements**: OCR-35-01..OCR-35-08
 **Depends on:** Phase 34
-**Plans:** 0 plans
+**Plans:** 3 plans filed — execution pending
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 35 to break down)
+- [ ] `35-01-PLAN.md` — Constants module + `ocrRasterPreprocess.ts` skeleton; ROADMAP/REQUIREMENTS reconcile (wave 1)
+- [ ] `35-02-PLAN.md` — Integrate downsample/threshold into `renderPagesToImages` + OCR path (wave 2)
+- [ ] `35-03-PLAN.md` — `pipelineLog` batch summary; `npm run build`; `35-03-SUMMARY.md` (wave 3)
 
 ### Phase 36: Queue-based fallback to high-accuracy pipeline only on uncertain docs
 
-**Status:** Discussed — `36-CONTEXT.md` (smart discuss auto, 2026-04-18)
+**Status:** Planned — `36-CONTEXT.md` + three plans (2026-04-18)
 
 **Goal:** **Enqueue** a second-pass **higher-accuracy** parse (existing vision/OCR paths with relaxed limits) only when **uncertainty signals** fire; client queue first (Phase 34 patterns); non-blocking first-pass UX.
 
-**Requirements**: TBD (run `/gsd-plan-phase 36`)
+**Requirements**: FB-36-01..FB-36-07
 **Depends on:** Phase 35
-**Plans:** 0 plans
+**Plans:** 3 plans filed — execution pending
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 36 to break down)
+- [ ] `36-01-PLAN.md` — Uncertainty types + `uncertainParseFallback.ts` queue skeleton (wave 1)
+- [ ] `36-02-PLAN.md` — `AiParseSection` enqueue + second-pass runner (wave 2)
+- [ ] `36-03-PLAN.md` — Minimal UX toast/summary; build; `36-03-SUMMARY.md` (wave 3)
 
 ### Phase 37: Global transfer acceleration / edge ingress
 
-**Status:** Discussed — `37-CONTEXT.md` (smart discuss auto, 2026-04-18)
+**Status:** Planned — `37-CONTEXT.md` + three plans (2026-04-18)
 
 **Goal:** Incremental **CDN/edge** and upload latency wins (headers, provider features, docs) without breaking local-first; env-gated.
 
-**Requirements**: TBD (run `/gsd-plan-phase 37`)
+**Requirements**: EDGE-37-01..EDGE-37-05
 **Depends on:** Phase 36
-**Plans:** 0 plans
+**Plans:** 3 plans filed — execution pending
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 37 to break down)
+- [ ] `37-01-PLAN.md` — `docs/DEPLOY-edge-and-upload.md` + traceability (wave 1)
+- [ ] `37-02-PLAN.md` — `next.config.ts` / middleware safe cache headers (wave 2)
+- [ ] `37-03-PLAN.md` — `pdfUploadClient` regional URL tuning; `37-03-SUMMARY.md` (wave 3)
 
 ### Phase 38: Full fine-tuning or distillation for quiz style
 
-**Status:** Discussed — `38-CONTEXT.md` (smart discuss auto, 2026-04-18)
+**Status:** Planned — `38-CONTEXT.md` + three plans (2026-04-18)
 
 **Goal:** **Research / export** track: training-data export hooks, eval criteria, go/no-go — not shipping a bundled fine-tuned model in-app for v1.
 
-**Requirements**: TBD (run `/gsd-plan-phase 38`)
+**Requirements**: FT-38-01..FT-38-06
 **Depends on:** Phase 37
-**Plans:** 0 plans
+**Plans:** 3 plans filed — execution pending
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 38 to break down)
+- [ ] `38-01-PLAN.md` — `38-RESEARCH.md` go/no-go (wave 1)
+- [ ] `38-02-PLAN.md` — Eval criteria doc + explicit JSONL export from Settings (wave 2)
+- [ ] `38-03-PLAN.md` — Optional `scripts/eval-export-smoke.mjs`; build; `38-03-SUMMARY.md` (wave 3)
 
 ---
 

@@ -159,6 +159,44 @@
 - [ ] **INDEX-34-08**: **Invalidate** incompatible IndexedDB vectors when **embedding model** or **index schema version** changes vs stored rows.
 - [ ] **INDEX-34-09**: **RAG panel** is the **primary UX** for **progress**, **cancel**, and **last error**; **manual “Build embedding index”** remains available.
 
+### OCR / raster preprocessing (Phase 35)
+
+- [ ] **OCR-35-01**: **Constants module** documents **~300 DPI effective** target and **megapixel cap** for raster images sent to OCR/vision (numbers in one place).
+- [ ] **OCR-35-02**: **Downsample** proportionally when decoded pixels exceed cap **before** JPEG encode (preserve aspect ratio).
+- [ ] **OCR-35-03**: **Optional thresholding** (e.g. global/Otsu) runs only when **bitmap / low-contrast** heuristic matches (Phase 29 signals); **off** for clean text-layer pages.
+- [ ] **OCR-35-04**: Preprocessing runs in **Phase 28 Web Worker** path first; **main-thread fallback** matches existing auto-fallback pattern.
+- [ ] **OCR-35-05**: **`pipelineLog`** emits **batch/run summary** for downsample/threshold (not per-page spam by default).
+- [ ] **OCR-35-06**: **`AbortSignal`** and existing **byte/size caps** remain honored end-to-end.
+- [ ] **OCR-35-07**: **Single entrypoint** function (or thin wrapper) used by **OCR sequential** and **vision raster** pipelines so behavior does not diverge.
+- [ ] **OCR-35-08**: **REQUIREMENTS** + **ROADMAP** rows for Phase 35 stay reconciled with plans.
+
+### Uncertain-doc fallback queue (Phase 36)
+
+- [ ] **FB-36-01**: **Uncertainty signals** typed and thresholded (document/page level); conservative defaults to limit cost.
+- [ ] **FB-36-02**: **Client queue** per `studySetId`: **single-flight** or bounded concurrency, **cancellable** via `AbortSignal`, **idempotent** job keys.
+- [ ] **FB-36-03**: **Second pass** uses **existing** vision/OCR code paths with **relaxed caps** or full-page fallback — **no** new vendor.
+- [ ] **FB-36-04**: **First-pass** parse UX **never blocked** waiting on fallback job.
+- [ ] **FB-36-05**: **Minimal UX**: toast or one-line parse summary when refinement runs (`pipelineLog` may supplement).
+- [ ] **FB-36-06**: **Integration** after first-pass completion in parse orchestration (`AiParseSection` or extracted hook).
+- [ ] **FB-36-07**: **REQUIREMENTS** + **ROADMAP** reconcile for Phase 36.
+
+### Transfer / edge (Phase 37)
+
+- [ ] **EDGE-37-01**: **Deployer documentation** for Vercel + Supabase Storage: what improves latency (cache, regions) without breaking local-first.
+- [ ] **EDGE-37-02**: **Safe** HTTP cache headers for **static** app chunks where Next allows (no fragile `immutable` misuse on dynamic routes).
+- [ ] **EDGE-37-03**: **Multipart / upload** client uses **provider-documented** optimal URLs when env flags allow (Phase 26 contract preserved).
+- [ ] **EDGE-37-04**: **Offline / local-only** flows **unchanged** when upload/sync disabled.
+- [ ] **EDGE-37-05**: **REQUIREMENTS** + **ROADMAP** reconcile for Phase 37.
+
+### Fine-tuning / distillation research (Phase 38)
+
+- [ ] **FT-38-01**: **Explicit user action** to export training/eval payloads — **no** silent export.
+- [ ] **FT-38-02**: **Machine-readable export** from **approved bank** (e.g. JSONL) with schema note in docs.
+- [ ] **FT-38-03**: **`docs/` evaluation criteria** — what “better quiz style” means for stems/distractors/JSON validity.
+- [ ] **FT-38-04**: **`38-RESEARCH.md`** (or equivalent) records **go/no-go** and links to Phase 39 if go.
+- [ ] **FT-38-05**: **Optional** non-production **spike script** under `scripts/` (or dev-only) — not bundled inference.
+- [ ] **FT-38-06**: **REQUIREMENTS** + **ROADMAP** reconcile for Phase 38.
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -250,6 +288,32 @@
 | INDEX-34-07 | Phase 34 | Planned |
 | INDEX-34-08 | Phase 34 | Planned |
 | INDEX-34-09 | Phase 34 | Planned |
+| OCR-35-01 | Phase 35 | Planned |
+| OCR-35-02 | Phase 35 | Planned |
+| OCR-35-03 | Phase 35 | Planned |
+| OCR-35-04 | Phase 35 | Planned |
+| OCR-35-05 | Phase 35 | Planned |
+| OCR-35-06 | Phase 35 | Planned |
+| OCR-35-07 | Phase 35 | Planned |
+| OCR-35-08 | Phase 35 | Planned |
+| FB-36-01 | Phase 36 | Planned |
+| FB-36-02 | Phase 36 | Planned |
+| FB-36-03 | Phase 36 | Planned |
+| FB-36-04 | Phase 36 | Planned |
+| FB-36-05 | Phase 36 | Planned |
+| FB-36-06 | Phase 36 | Planned |
+| FB-36-07 | Phase 36 | Planned |
+| EDGE-37-01 | Phase 37 | Planned |
+| EDGE-37-02 | Phase 37 | Planned |
+| EDGE-37-03 | Phase 37 | Planned |
+| EDGE-37-04 | Phase 37 | Planned |
+| EDGE-37-05 | Phase 37 | Planned |
+| FT-38-01 | Phase 38 | Planned |
+| FT-38-02 | Phase 38 | Planned |
+| FT-38-03 | Phase 38 | Planned |
+| FT-38-04 | Phase 38 | Planned |
+| FT-38-05 | Phase 38 | Planned |
+| FT-38-06 | Phase 38 | Planned |
 
 **Coverage:**
 - v1 requirements: 23 total
@@ -260,4 +324,4 @@
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-18 — Phase 33 local RAG IDs (RAG-33-01..08); Phase 32 draft+validator; Phase 31 parse-cache*
+*Last updated: 2026-04-18 — Phases 35–38 requirement IDs (OCR-35, FB-36, EDGE-37, FT-38); Phase 33 local RAG; Phase 34 index queue*
