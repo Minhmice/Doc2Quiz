@@ -1481,6 +1481,84 @@ export const AiParseSection = forwardRef<
       flashVisionAccumRef.current = [];
       let previewVisionPromise: Promise<RunVisionBatchSequentialResult> | null =
         null;
+
+      let layoutChunkingSummaryEmitted = false;
+      const layoutChunkingReasonCodes = new Set<string>();
+      const layoutChunkingMetrics = {
+        attempted: false,
+        startedAt: 0,
+        textPageCountPlanned: 0,
+        textPageCountExtracted: 0,
+        textPageTruncatedCount: 0,
+        layoutBlockCountTotal: 0,
+        layoutChunkCountTotal: 0,
+        layoutChunkParseQuestionCount: 0,
+        fallbackCandidatesPageCount: 0,
+        fallbackToVisionPageCount: 0,
+        fallbackDroppedByCapCount: 0,
+        extractBlocksMs: 0,
+        buildChunksMs: 0,
+        sequentialParseMs: 0,
+        layoutChunkingTotalMs: 0,
+        previewFirstPageBudgetApplied: 0,
+        visionMaxPages: VISION_MAX_PAGES_DEFAULT,
+        aborted: false,
+      };
+
+      const emitLayoutChunkingSummaryOnce = (why: string) => {
+        if (!layoutChunkingMetrics.attempted || layoutChunkingSummaryEmitted) {
+          return;
+        }
+        layoutChunkingSummaryEmitted = true;
+        layoutChunkingMetrics.aborted = controller.signal.aborted;
+        layoutChunkingMetrics.layoutChunkingTotalMs =
+          layoutChunkingMetrics.startedAt > 0
+            ? Math.max(
+                0,
+                Math.round(performance.now() - layoutChunkingMetrics.startedAt),
+              )
+            : 0;
+        const stableReasonCodes = Array.from(layoutChunkingReasonCodes).sort();
+
+        pipelineLog(
+          "VISION",
+          "layout-chunk-summary",
+          "info",
+          "layout-aware chunking summary",
+          {
+            studySetId: studySetId.trim() || "(empty)",
+            why,
+            aborted: layoutChunkingMetrics.aborted,
+            counts: {
+              textPageCountPlanned: layoutChunkingMetrics.textPageCountPlanned,
+              textPageCountExtracted: layoutChunkingMetrics.textPageCountExtracted,
+              textPageTruncatedCount: layoutChunkingMetrics.textPageTruncatedCount,
+              layoutBlockCountTotal: layoutChunkingMetrics.layoutBlockCountTotal,
+              layoutChunkCountTotal: layoutChunkingMetrics.layoutChunkCountTotal,
+              layoutChunkParseQuestionCount:
+                layoutChunkingMetrics.layoutChunkParseQuestionCount,
+              fallbackCandidatesPageCount:
+                layoutChunkingMetrics.fallbackCandidatesPageCount,
+              fallbackToVisionPageCount:
+                layoutChunkingMetrics.fallbackToVisionPageCount,
+              fallbackDroppedByCapCount:
+                layoutChunkingMetrics.fallbackDroppedByCapCount,
+            },
+            caps: {
+              previewFirstPageBudgetApplied:
+                layoutChunkingMetrics.previewFirstPageBudgetApplied,
+              visionMaxPages: layoutChunkingMetrics.visionMaxPages,
+            },
+            wallMs: {
+              extractBlocksMs: layoutChunkingMetrics.extractBlocksMs,
+              buildChunksMs: layoutChunkingMetrics.buildChunksMs,
+              sequentialParseMs: layoutChunkingMetrics.sequentialParseMs,
+              layoutChunkingTotalMs: layoutChunkingMetrics.layoutChunkingTotalMs,
+            },
+            stableReasonCodes,
+          },
+        );
+      };
       const previewBudgetClamped =
         mustUseVisionBatch && isProductSurface
           ? Math.min(5, Math.max(3, previewFirstPageBudget))
@@ -1634,6 +1712,9 @@ export const AiParseSection = forwardRef<
         routePlan.textPageIndices.length > 0 &&
         !controller.signal.aborted
       ) {
+        layoutChunkingMetrics.attempted = true;
+        layoutChunkingMetrics.startedAt = performance.now();
+        layoutChunkingMetrics.textPageCountPlanned = routePlan.textPageIndices.length;
         setParseMode("chunk");
         setVisionRendering(false);
         setParseOverlay((p) => ({
@@ -1646,6 +1727,7 @@ export const AiParseSection = forwardRef<
 
         const textPreviewBudget =
           previewBudgetClamped > 0 ? previewBudgetClamped : 0;
+        layoutChunkingMetrics.previewFirstPageBudgetApplied = textPreviewBudget;
         const sortedTextPageIndices = Array.from(routePlan.textPageIndices).sort(
           (a, b) => a - b,
         );
@@ -1669,6 +1751,7 @@ export const AiParseSection = forwardRef<
             return { questions: [], fallbackPageIndices: [] };
           }
 
+          const tExtractStart = performance.now();
           const layout = await extractPdfLayoutBlocksForPageIndices(
             pdfFile,
             segmentPageIndices,
@@ -1680,12 +1763,36 @@ export const AiParseSection = forwardRef<
               },
             },
           );
+          layoutChunkingMetrics.extractBlocksMs += Math.max(
+            0,
+            Math.round(performance.now() - tExtractStart),
+          );
+
+          layoutChunkingMetrics.textPageCountExtracted += layout.pages.length;
+          for (const p of layout.pages) {
+            if (p.truncated) {
+              layoutChunkingMetrics.textPageTruncatedCount += 1;
+              layoutChunkingReasonCodes.add("truncated");
+            }
+            const hasAnyNonEmptyBlock = p.blocks.some((b) => b.text.trim().length > 0);
+            if (!hasAnyNonEmptyBlock) {
+              layoutChunkingReasonCodes.add("zero_blocks");
+            }
+          }
+
+          const tBuildChunksStart = performance.now();
           const routedChunks = layoutBlocksToQuizChunks(layout.pages, {
             // Quiz lane policy: keep chunks small enough for ~1–2 MCQs, but deterministic.
             allowCrossPageMerge: false,
           });
+          layoutChunkingMetrics.buildChunksMs += Math.max(
+            0,
+            Math.round(performance.now() - tBuildChunksStart),
+          );
           const chunks = routedChunks.map((c) => c.chunkText);
           const blockCount = layout.pages.reduce((acc, p) => acc + p.blocks.length, 0);
+          layoutChunkingMetrics.layoutBlockCountTotal += blockCount;
+          layoutChunkingMetrics.layoutChunkCountTotal += chunks.length;
           const fallbackFromLayout =
             layout.pages.length > 0
               ? layoutPagesNeedingVisionFallback(layout.pages)
@@ -1700,6 +1807,9 @@ export const AiParseSection = forwardRef<
           }));
 
           if (controller.signal.aborted || chunks.length === 0) {
+            if (chunks.length === 0) {
+              layoutChunkingReasonCodes.add("zero_chunks");
+            }
             return { questions: [], fallbackPageIndices: fallbackFromLayout };
           }
 
@@ -1708,6 +1818,7 @@ export const AiParseSection = forwardRef<
             total: Math.max(1, chunks.length),
             status: "running",
           });
+          const tParseStart = performance.now();
           const result = await runSequentialParse({
             provider,
             apiKey: keyInput.trim(),
@@ -1726,13 +1837,28 @@ export const AiParseSection = forwardRef<
               }));
             },
           });
+          layoutChunkingMetrics.sequentialParseMs += Math.max(
+            0,
+            Math.round(performance.now() - tParseStart),
+          );
           if (result.fatalError) {
             setError(result.fatalError);
             throw new FatalParseError(result.fatalError);
           }
+
+          layoutChunkingMetrics.layoutChunkParseQuestionCount += result.questions.length;
+          let fallbackFinal = fallbackFromLayout;
+          if (!controller.signal.aborted && result.questions.length === 0) {
+            // Conservative "no output" signal: escalate the segment's pages, bounded by the global vision cap.
+            layoutChunkingReasonCodes.add("zero_questions");
+            fallbackFinal = Array.from(
+              new Set([...fallbackFromLayout, ...segmentPageIndices]),
+            ).sort((a, b) => a - b);
+          }
+
           return {
             questions: result.questions,
-            fallbackPageIndices: fallbackFromLayout,
+            fallbackPageIndices: fallbackFinal,
           };
         }
 
@@ -1777,6 +1903,9 @@ export const AiParseSection = forwardRef<
         parseOutputMode === "quiz" && routePlan
           ? routePlan.bitmapPageIndicesForVision
           : null;
+      let fallbackCandidatesPageCount = 0;
+      let fallbackToVisionPageCount = 0;
+      let fallbackDroppedByCapCount = 0;
       const bitmapIndicesForVision =
         parseOutputMode === "quiz" && routePlan && bitmapIndicesForVisionBase
           ? (() => {
@@ -1787,26 +1916,31 @@ export const AiParseSection = forwardRef<
                   routedTextFallbackPageIndices.filter((p) => !baseSet.has(p)),
                 ),
               );
+              fallbackCandidatesPageCount = fallbackCandidates.length;
               if (fallbackCandidates.length === 0) {
                 return base;
               }
 
-              const previewWindow = previewBudgetClamped > 0 ? previewBudgetClamped : 0;
+              const previewWindow =
+                previewBudgetClamped > 0 ? previewBudgetClamped : 0;
               const orderedFallback = fallbackCandidates.sort((a, b) => {
                 const ap = previewWindow > 0 && a <= previewWindow ? 0 : 1;
                 const bp = previewWindow > 0 && b <= previewWindow ? 0 : 1;
                 return ap !== bp ? ap - bp : a - b;
               });
 
+              // Explicit cap policy: never exceed VISION_MAX_PAGES_DEFAULT; drop fallback pages first.
               const remaining = Math.max(0, VISION_MAX_PAGES_DEFAULT - base.length);
               const acceptedFallback = orderedFallback.slice(0, remaining);
-              const dropped = orderedFallback.length - acceptedFallback.length;
-              if (dropped > 0) {
+              fallbackToVisionPageCount = acceptedFallback.length;
+              fallbackDroppedByCapCount = orderedFallback.length - acceptedFallback.length;
+              if (fallbackDroppedByCapCount > 0) {
+                layoutChunkingReasonCodes.add("vision_cap_dropped");
                 setParseOverlay((p) => ({
                   ...p,
                   log: [
                     ...p.log,
-                    `${timeStamp()} — Routing: dropped ${dropped} fallback page(s) due to vision cap (${VISION_MAX_PAGES_DEFAULT})`,
+                    `${timeStamp()} — Routing: dropped ${fallbackDroppedByCapCount} fallback page(s) due to vision cap (${VISION_MAX_PAGES_DEFAULT})`,
                   ].slice(-16),
                 }));
               }
@@ -1823,6 +1957,12 @@ export const AiParseSection = forwardRef<
             })()
           : bitmapIndicesForVisionBase;
 
+      if (layoutChunkingMetrics.attempted) {
+        layoutChunkingMetrics.fallbackCandidatesPageCount = fallbackCandidatesPageCount;
+        layoutChunkingMetrics.fallbackToVisionPageCount = fallbackToVisionPageCount;
+        layoutChunkingMetrics.fallbackDroppedByCapCount = fallbackDroppedByCapCount;
+      }
+
       if (
         parseOutputMode === "quiz" &&
         routePlan &&
@@ -1838,6 +1978,7 @@ export const AiParseSection = forwardRef<
             `Routed (text-only): parsed ${merged.length} question${merged.length === 1 ? "" : "s"}. Parsing stopped.`,
           );
         }
+        emitLayoutChunkingSummaryOnce("text_only_return");
         return {
           ok: !controller.signal.aborted && merged.length > 0,
           aborted: controller.signal.aborted,
@@ -1846,6 +1987,12 @@ export const AiParseSection = forwardRef<
           parseOutputMode: "quiz",
           usedVisionFallback: false,
         };
+      }
+
+      if (layoutChunkingMetrics.attempted && !controller.signal.aborted) {
+        emitLayoutChunkingSummaryOnce("before_vision_render");
+      } else if (layoutChunkingMetrics.attempted && controller.signal.aborted) {
+        emitLayoutChunkingSummaryOnce("aborted_before_vision_render");
       }
 
       const prep = await runRenderPagesAndOptionalOcr(
@@ -2011,6 +2158,7 @@ export const AiParseSection = forwardRef<
         questions: [],
       };
     } finally {
+      emitLayoutChunkingSummaryOnce("finally");
       setVisionRendering(false);
       abortRef.current = null;
       setParseMode(null);
