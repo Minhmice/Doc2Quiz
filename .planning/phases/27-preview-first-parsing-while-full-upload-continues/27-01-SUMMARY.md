@@ -83,7 +83,7 @@ Each task was committed atomically:
 1. **Task 1: Persist studySet meta first, then start parse immediately on file select** — `ae67d15` (feat)
 2. **Task 2: Implement preview budget + scheduling for first 3–5 pages** — `e7d8413` (feat)
 
-**Plan artifact:** `24647bd` (docs: `27-01-SUMMARY.md`)
+**Plan artifact:** docs commit `docs(27-01): add plan 27-01 execution summary` (this file)
 
 ## Files Created/Modified
 
@@ -117,7 +117,7 @@ None.
 ## Self-Check: PASSED
 
 - `27-01-SUMMARY.md` present at `.planning/phases/27-preview-first-parsing-while-full-upload-continues/27-01-SUMMARY.md`
-- Commits `ae67d15`, `e7d8413`, `24647bd` on branch with messages containing `27-01`
+- `git log --oneline -5` includes two `feat(27-01)` commits plus one `docs(27-01)` commit adding this SUMMARY
 
 ---
 *Phase: 27-preview-first-parsing-while-full-upload-continues*  
