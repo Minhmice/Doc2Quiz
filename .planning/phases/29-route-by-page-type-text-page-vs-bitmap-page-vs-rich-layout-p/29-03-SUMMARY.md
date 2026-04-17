@@ -66,6 +66,14 @@ None — executed as written.
 
 None — routing logs remain numeric/count-based and caps are enforced centrally.
 
+## Addendum (2026-04-18): Long-PDF page coverage bug fix
+
+Code review found a critical long-PDF edge case: `classifyPdfPages(...)` only samples the first `scanBudget` pages for text-layer evidence; any **unsampled** page was previously defaulted to `bitmap`, which then made it compete for the vision cap in `finalizePageRoutePlan(...)`. On long PDFs this could cause **tail pages to be neither text-parsed nor rasterized** (silent coverage drop).
+
+Fix (minimal + safe):
+- Unsampled/unknown pages now default to **TEXT routing** with reason code `page_signal_unknown_default_text`, so every page is always covered by construction via `textPageIndices ∪ bitmapPageIndicesAll`.
+- The **vision cap now only limits sampled bitmap pages**, because only sampled pages can be classified as `bitmap` by default.
+
 ## Self-Check
 
 PASSED

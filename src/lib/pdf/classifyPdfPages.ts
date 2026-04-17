@@ -11,8 +11,8 @@ import {
 import { getPdfjs } from "@/lib/pdf/getPdfjs";
 import { VISION_MAX_PAGES_DEFAULT } from "@/lib/pdf/renderPagesToImages";
 import {
-  PAGE_DROPPED_VISION_CAP,
   PAGE_SIGNAL_SAMPLED_TEXT_LAYER,
+  PAGE_SIGNAL_UNKNOWN_DEFAULT_TEXT,
   PAGE_SIGNAL_UNKNOWN_DEFAULT_BITMAP,
   PAGE_TEXT_STRONG,
   PAGE_TEXT_WEAK,
@@ -147,10 +147,9 @@ export async function classifyPdfPages(
         if (!sig) {
           pages.push({
             pageIndex,
-            kind: "bitmap",
-            reasonCodes: [PAGE_SIGNAL_UNKNOWN_DEFAULT_BITMAP],
+            kind: "text",
+            reasonCodes: [PAGE_SIGNAL_UNKNOWN_DEFAULT_TEXT],
           });
-          bitmapPageIndicesAll.push(pageIndex);
           continue;
         }
 

@@ -10,6 +10,8 @@ export type PageTextLayerSignal = {
 
 export const PAGE_TEXT_STRONG = "page_text_strong";
 export const PAGE_TEXT_WEAK = "page_text_weak";
+export const PAGE_SIGNAL_UNKNOWN_DEFAULT_TEXT =
+  "page_signal_unknown_default_text";
 export const PAGE_SIGNAL_UNKNOWN_DEFAULT_BITMAP =
   "page_signal_unknown_default_bitmap";
 export const PAGE_SIGNAL_SAMPLED_TEXT_LAYER = "page_signal_sampled_text_layer";
