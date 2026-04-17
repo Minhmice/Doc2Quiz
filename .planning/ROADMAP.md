@@ -653,19 +653,22 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [x] `29-01-PLAN.md` — Define Phase 29 goal/req IDs; add per-page classification + routing-plan data structures (no UI wiring). (completed 2026-04-17)
+- [x] `29-01-PLAN.md` — Define Phase 29 goal/req IDs; add per-page classification + routing-plan data structures (no UI wiring).
+ (completed 2026-04-17)
 - [ ] `29-02-PLAN.md` — Integrate per-page routing into `AiParseSection` **before rasterization**; route text pages to text-first, bitmap pages to vision (no new UI controls).
 - [ ] `29-03-PLAN.md` — Observability + safety: reason-code logging, bounded work + abort handling, and cap enforcement so routing never increases vision workload.
 
 ### Phase 30: Replace page-level chunking with layout-aware chunking
 
-**Goal:** TBD
-**Requirements**: TBD
+**Goal:** Replace quiz text-lane page-level chunking with layout-aware chunking built from **pdf.js text layer + geometry**; apply only to Phase 29 `text` pages; keep preview-first 3–5 pages; per-page fallback to vision; no new UI controls.
+**Requirements**: LAYOUT-30-01, LAYOUT-30-02, LAYOUT-30-03, LAYOUT-30-04
 **Depends on:** Phase 29
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 30 to break down)
+- [ ] `30-01-PLAN.md` — requirements + layout block builder utilities
+- [ ] `30-02-PLAN.md` — wire into quiz text lane (Phase 29 text pages) + preview-first + per-page vision fallback
+- [ ] `30-03-PLAN.md` — add exactly-one summary pipelineLog + hardening
 
 ### Phase 31: Cache prompt prefixes, embeddings, and content hashes
 
