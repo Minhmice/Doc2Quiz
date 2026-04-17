@@ -44,6 +44,8 @@ export async function renderPdfPagesToImages(
   options: {
     signal: AbortSignal;
     maxPages?: number;
+    /** Optional 1-based page indices to rasterize (sorted asc after sanitization). */
+    pageIndices?: number[];
     maxWidth?: number;
     maxHeight?: number;
     jpegQuality?: number;
@@ -65,6 +67,7 @@ export async function renderPdfPagesToImages(
   const {
     signal,
     maxPages = VISION_MAX_PAGES_DEFAULT,
+    pageIndices,
     maxWidth = VISION_MAX_WIDTH_DEFAULT,
     maxHeight = VISION_MAX_HEIGHT_DEFAULT,
     jpegQuality = VISION_JPEG_QUALITY,
@@ -109,11 +112,26 @@ export async function renderPdfPagesToImages(
 
   try {
     const pageCount = pdf.numPages;
-    const limit = Math.min(pageCount, maxPages);
+    const indices =
+      Array.isArray(pageIndices) && pageIndices.length > 0
+        ? [...pageIndices]
+            .map((n) => Math.floor(n))
+            .filter((n) => n >= 1 && n <= pageCount)
+            .sort((a, b) => a - b)
+        : null;
+    const selectedIndices =
+      indices && indices.length > 0 ? indices.slice(0, maxPages) : null;
+    const limit = selectedIndices
+      ? selectedIndices.length
+      : Math.min(pageCount, maxPages);
     pipelineLog("PDF", "render-batch", "info", "PDF opened for rasterization", {
       ...meta,
       numPages: pageCount,
       pagesToRender: limit,
+      selectedPageIndices:
+        selectedIndices && selectedIndices.length > 0
+          ? selectedIndices
+          : undefined,
     });
     const out: PageImageResult[] = [];
     const previewFireAt =
@@ -123,19 +141,20 @@ export async function renderPdfPagesToImages(
     let previewFired = false;
     let workerOk = canUseImagePreprocessWorker();
 
-    for (let i = 1; i <= limit; i++) {
+    for (let rendered = 0; rendered < limit; rendered++) {
       if (signal.aborted) {
         throw new DOMException("Aborted", "AbortError");
       }
+      const pageIndex = selectedIndices ? selectedIndices[rendered] : rendered + 1;
       try {
         if (isPipelineVerbose()) {
           pipelineLog("PDF", "render-page", "info", "render page start", {
             ...meta,
-            pageIndex: i,
+            pageIndex,
             limit,
           });
         }
-        const page = await pdf.getPage(i);
+        const page = await pdf.getPage(pageIndex);
         const baseViewport = page.getViewport({ scale: 1 });
         const scale = Math.min(
           1,
@@ -177,7 +196,7 @@ export async function renderPdfPagesToImages(
                 "render-page",
                 "warn",
                 "worker JPEG encode failed; falling back to canvas.toDataURL for remaining pages",
-                { ...meta, pageIndex: i },
+                { ...meta, pageIndex },
               );
             }
             dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
@@ -188,13 +207,13 @@ export async function renderPdfPagesToImages(
         // Reduce peak memory pressure from large canvas backing stores.
         canvas.width = 0;
         canvas.height = 0;
-        const pageResult = { pageIndex: i, dataUrl };
+        const pageResult = { pageIndex, dataUrl };
         out.push(pageResult);
         onPageRendered?.(pageResult, { totalPages: limit });
         if (
           previewFireAt > 0 &&
           !previewFired &&
-          i === previewFireAt &&
+          rendered + 1 === previewFireAt &&
           onPreviewPagesAvailable
         ) {
           previewFired = true;
@@ -203,7 +222,7 @@ export async function renderPdfPagesToImages(
         if (isPipelineVerbose()) {
           pipelineLog("PDF", "render-page", "info", "render page success", {
             ...meta,
-            pageIndex: i,
+            pageIndex,
             canvasWidth: canvas.width,
             canvasHeight: canvas.height,
           });
@@ -212,7 +231,7 @@ export async function renderPdfPagesToImages(
         const norm = normalizeUnknownError(raw);
         pipelineLog("PDF", "render-page", "error", "render page failed", {
           ...meta,
-          pageIndex: i,
+          pageIndex,
           ...norm,
           raw,
         });
