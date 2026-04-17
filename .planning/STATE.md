@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Phase 27 context gathered
-last_updated: "2026-04-17T03:58:37.509Z"
+status: Executing Phase 26
+stopped_at: Completed 26-01-PLAN.md (direct-multipart-resumable-upload-to-object-storage)
+last_updated: "2026-04-17T12:00:00.000Z"
 progress:
   total_phases: 38
   completed_phases: 24
   total_plans: 56
-  completed_plans: 51
-  percent: 91
+  completed_plans: 52
+  percent: 93
 ---
 
 # Doc2Quiz — State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 25 — Skip rasterization for born-digital PDFs; extract text layer first
+**Current focus:** Phase 26 — direct-multipart-resumable-upload-to-object-storage
 
 ## Current Status
 
@@ -39,14 +39,15 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Phase 27 context gathered
-**Date:** 2026-04-13
-**Resume file:** .planning/phases/27-preview-first-parsing-while-full-upload-continues/27-CONTEXT.md
+**Stopped at:** Completed `26-01-PLAN.md` — PDF upload contracts + env-gated `/api/uploads/pdf/*` stubs (`26-01-SUMMARY.md`)
+**Date:** 2026-04-17
+**Resume file:** `.planning/phases/26-direct-multipart-resumable-upload-to-object-storage/26-02-PLAN.md` (UI wiring)
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- Phase 26 plan `26-01` execute (2026-04-17): UPLOAD-01..03,05,06 captured in requirements + roadmap; shipped `src/types/uploads.ts`, `src/lib/uploads/pdfUpload*.ts`, `/api/uploads/pdf/{init,part,complete,abort}` with HMAC finalize token + `uploadCapability` gating; `npm run lint` + `npm run build` green; `26-01-SUMMARY.md`. **UPLOAD-04** remains for `26-02` (progress/cancel UX).
 - Phase 24 execute (`/gsd-execute-phase 24`, 2026-04-13): shipped `planVisionBatches` + `runVisionBatchSequential` defaults + legacy fallback + strict `sourcePages` + `AiParseSection` `onBatchPlanResolved`; `npm run lint` + `npm run build` green; roadmap Phase 24 → **Complete**; `24-01-SUMMARY.md`, `24-02-SUMMARY.md`.
 - Phase 24 added + planned (`/gsd-add-phase`, 2026-04-13): **Vision parse: fewer round-trips — single request or max-window batches when within provider limits**; dir `.planning/phases/24-vision-parse-fewer-round-trips-single-request-or-max-window-/`; artifacts `24-CONTEXT.md`, `24-01-PLAN.md`, `24-02-PLAN.md`; roadmap Phase 24 → **Planned**; depends Phase 21.
 - Phase 25 added: Skip rasterization for born-digital PDFs; extract text layer first

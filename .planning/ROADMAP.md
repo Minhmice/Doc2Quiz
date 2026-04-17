@@ -614,10 +614,10 @@ Plans:
 
 **Requirements**: UPLOAD-01, UPLOAD-02, UPLOAD-03, UPLOAD-04, UPLOAD-05, UPLOAD-06
 **Depends on:** Phase 25
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] `26-01-PLAN.md` — Define requirements + ship provider-agnostic upload contracts, client helper, and env-gated API route stubs with finalize validations.
+- [x] `26-01-PLAN.md` — Define requirements + ship provider-agnostic upload contracts, client helper, and env-gated API route stubs with finalize validations.
 - [ ] `26-02-PLAN.md` — Wire optional upload into `NewStudySetPdfImportFlow` + `UploadBox` with bytes-based progress, cancel, and same-session retry/resume (local-only default preserved).
 
 ### Phase 27: Preview-first parsing while full upload continues

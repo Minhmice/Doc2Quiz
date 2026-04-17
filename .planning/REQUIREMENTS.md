@@ -73,12 +73,12 @@
 
 ### Direct multipart/resumable upload to object storage (Phase 26)
 
-- [ ] **UPLOAD-01**: Env-gated optional object-storage upload path; when not configured, local-only behavior is unchanged. (D-01)
-- [ ] **UPLOAD-02**: Direct upload of original PDF bytes supports resumable/multipart semantics through an adapter contract. (D-04, D-08)
-- [ ] **UPLOAD-03**: Upload uses presigned URLs with short TTL and requires a server finalize step; finalize failure is user-visible. (D-09, D-10, D-11)
+- [x] **UPLOAD-01**: Env-gated optional object-storage upload path; when not configured, local-only behavior is unchanged. (D-01)
+- [x] **UPLOAD-02**: Direct upload of original PDF bytes supports resumable/multipart semantics through an adapter contract. (D-04, D-08)
+- [x] **UPLOAD-03**: Upload uses presigned URLs with short TTL and requires a server finalize step; finalize failure is user-visible. (D-09, D-10, D-11)
 - [ ] **UPLOAD-04**: Upload UX supports bytes-based progress, cancel, and same-session auto-retry/resume on network drops. (D-07, D-13, D-14, D-15)
-- [ ] **UPLOAD-05**: Object keys are random uploadId + sanitized suffix; do not embed original filename/PII. (D-03)
-- [ ] **UPLOAD-06**: Storage retention uses short TTL and has a documented expiry/cleanup story (provider-agnostic). (D-05)
+- [x] **UPLOAD-05**: Object keys are random uploadId + sanitized suffix; do not embed original filename/PII. (D-03)
+- [x] **UPLOAD-06**: Storage retention uses short TTL and has a documented expiry/cleanup story (provider-agnostic). (D-05)
 
 ### Preview-first parsing while upload continues (Phase 27)
 
@@ -135,12 +135,12 @@
 | SCORE-02 | Phase 5 | Complete |
 | SCORE-03 | Phase 5 | Complete |
 | SCORE-04 | Phase 5 | Complete |
-| UPLOAD-01 | Phase 26 | Planned |
-| UPLOAD-02 | Phase 26 | Planned |
-| UPLOAD-03 | Phase 26 | Planned |
+| UPLOAD-01 | Phase 26 | Complete |
+| UPLOAD-02 | Phase 26 | Complete |
+| UPLOAD-03 | Phase 26 | Complete |
 | UPLOAD-04 | Phase 26 | Planned |
-| UPLOAD-05 | Phase 26 | Planned |
-| UPLOAD-06 | Phase 26 | Planned |
+| UPLOAD-05 | Phase 26 | Complete |
+| UPLOAD-06 | Phase 26 | Complete |
 | PREVIEW-01 | Phase 27 | Planned |
 | PREVIEW-02 | Phase 27 | Planned |
 | PREVIEW-03 | Phase 27 | Planned |
