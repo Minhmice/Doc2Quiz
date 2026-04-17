@@ -112,6 +112,7 @@ import {
 import { sampleTextLayerSignal } from "@/lib/pdf/sampleTextLayerSignal";
 import { extractPdfTextForPageRange } from "@/lib/pdf/extractPdfText";
 import { PREVIEW_FIRST_PAGE_BUDGET } from "@/lib/pdf/extractText";
+import { classifyPdfPages } from "@/lib/pdf/classifyPdfPages";
 import { chunkText } from "@/lib/ai/chunkText";
 import { runSequentialParse } from "@/lib/ai/runSequentialParse";
 import { isMcqComplete } from "@/lib/review/validateMcq";
@@ -663,12 +664,15 @@ export const AiParseSection = forwardRef<
       options?: {
         forceSkipOcr?: boolean;
         previewPageBudget?: number;
+        /** Optional 1-based page indices to rasterize (Phase 29 routing). */
+        pageIndices?: number[];
         onPreviewPagesAvailable?: (pages: PageImageResult[]) => void;
       },
     ): Promise<ParseRunResult | RenderOcrPrepared> => {
       const pages = await renderPdfPagesToImages(file, {
         signal: controller.signal,
         maxPages: VISION_MAX_PAGES_DEFAULT,
+        pageIndices: options?.pageIndices,
         previewPageBudget: options?.previewPageBudget,
         onPreviewPagesAvailable: options?.onPreviewPagesAvailable,
         onPageRendered: (pg, { totalPages }) => {
@@ -830,6 +834,43 @@ export const AiParseSection = forwardRef<
       urlInput,
       modelInput,
     ],
+  );
+
+  const extractTextForPageIndices = useCallback(
+    async (file: File, indices: number[], signal: AbortSignal): Promise<string> => {
+      if (indices.length === 0) {
+        return "";
+      }
+      const sorted = [...indices].sort((a, b) => a - b);
+      const runs: Array<{ start: number; end: number }> = [];
+      let start = sorted[0];
+      let end = sorted[0];
+      for (let i = 1; i < sorted.length; i++) {
+        const n = sorted[i];
+        if (n === end + 1) {
+          end = n;
+        } else {
+          runs.push({ start, end });
+          start = n;
+          end = n;
+        }
+      }
+      runs.push({ start, end });
+
+      let combined = "";
+      for (const r of runs) {
+        if (signal.aborted) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+        const part = await extractPdfTextForPageRange(file, r.start, r.end, signal);
+        if (part.trim().length === 0) {
+          continue;
+        }
+        combined += (combined ? "\n\n" : "") + part;
+      }
+      return combined;
+    },
+    [],
   );
 
   const runVisionSequentialWithUi = useCallback(
@@ -1025,6 +1066,7 @@ export const AiParseSection = forwardRef<
       controller: AbortController,
       ocrForMapping: OcrRunResult | null,
       file: File,
+      options?: { skipPersist?: boolean },
     ): Promise<ParseRunResult> => {
       let ocrSnapshot: OcrRunResult | null = ocrForMapping;
       if (studySetId.trim().length > 0) {
@@ -1150,7 +1192,8 @@ export const AiParseSection = forwardRef<
         );
       }
 
-      if (!aborted) {
+      const skipPersist = options?.skipPersist === true;
+      if (!aborted && !skipPersist) {
         setParseOverlay((p) => ({
           ...p,
           log: [
@@ -1474,6 +1517,33 @@ export const AiParseSection = forwardRef<
           ? Math.min(5, Math.max(3, previewFirstPageBudget))
           : 0;
 
+      // Phase 29 — quiz-only per-page routing before rasterization.
+      // Flashcards remain vision-batch-only (no page routing yet).
+      const routePlanRaw =
+        parseOutputMode === "quiz"
+          ? await classifyPdfPages(activePdfFile, {
+              signal: controller.signal,
+              previewFirstPageBudget:
+                previewBudgetClamped > 0
+                  ? previewBudgetClamped
+                  : previewFirstPageBudget,
+              visionMaxPages: VISION_MAX_PAGES_DEFAULT,
+            })
+          : null;
+      const routePlan =
+        routePlanRaw && routePlanRaw.pageCount > 0 ? routePlanRaw : null;
+      if (routePlan && !controller.signal.aborted) {
+        pipelineLog("PDF", "page-route", "info", "quiz page route plan", {
+          studySetId: studySetId.trim() || "(empty)",
+          pageCount: routePlan.pageCount,
+          plannedPages: routePlan.pages.length,
+          textPages: routePlan.textPageIndices.length,
+          bitmapPages: routePlan.bitmapPageIndicesAll.length,
+          bitmapForVision: routePlan.bitmapPageIndicesForVision.length,
+          droppedBitmapPages: routePlan.droppedBitmapPagesCount,
+        });
+      }
+
       async function runBatchesOnPages(
         pageSlice: PageImageResult[],
         segment: "preview" | "rest",
@@ -1549,11 +1619,7 @@ export const AiParseSection = forwardRef<
               const qs = items
                 .filter((it): it is QuizVisionItem => it.kind === "quiz")
                 .map((it) => quizVisionItemToQuestion(it));
-              setQuestions((prev) => {
-                const next = dedupeQuestionsByStem([...prev, ...qs]);
-                void persistQuestions(next);
-                return next;
-              });
+              setQuestions((prev) => dedupeQuestionsByStem([...prev, ...qs]));
             } else if (parseOutputMode === "flashcard") {
               const fc = items.filter(
                 (it): it is FlashcardVisionItem => it.kind === "flashcard",
@@ -1579,6 +1645,98 @@ export const AiParseSection = forwardRef<
         });
       }
 
+      // Quiz lane: if page routing says we have text pages, parse them without rasterization.
+      // Bitmap pages (if any) get rasterized/vision-parsed, capped by routePlan.bitmapPageIndicesForVision.
+      let routedTextQuestions: Question[] = [];
+      if (
+        parseOutputMode === "quiz" &&
+        routePlan &&
+        routePlan.textPageIndices.length > 0 &&
+        !controller.signal.aborted
+      ) {
+        setParseMode("chunk");
+        setVisionRendering(false);
+        setParseOverlay((p) => ({
+          ...p,
+          log: [
+            ...p.log,
+            `${timeStamp()} — Routing: parsing ${routePlan.textPageIndices.length} text page(s) without rasterization`,
+          ].slice(-16),
+        }));
+        const text = await extractTextForPageIndices(
+          activePdfFile,
+          routePlan.textPageIndices,
+          controller.signal,
+        );
+        if (!controller.signal.aborted && text.trim().length > 0) {
+          const chunks = chunkText(text);
+          setProgress({
+            current: 0,
+            total: Math.max(1, chunks.length),
+            status: "running",
+          });
+          const result = await runSequentialParse({
+            provider,
+            apiKey: keyInput.trim(),
+            apiUrl: urlInput,
+            model: modelInput,
+            chunks,
+            signal: controller.signal,
+            onProgress: ({ current, total }) => {
+              setProgress({ current, total, status: "running" });
+              setParseOverlay((p) => ({
+                ...p,
+                log: [
+                  ...p.log,
+                  `${formatTimeStamp()} — Text parse ${current}/${total}`,
+                ].slice(-16),
+              }));
+            },
+          });
+          if (result.fatalError) {
+            setError(result.fatalError);
+            return {
+              ok: false,
+              aborted: controller.signal.aborted,
+              fatalError: result.fatalError,
+              questions: result.questions,
+              parseOutputMode: "quiz",
+            };
+          }
+          routedTextQuestions = result.questions;
+        }
+      }
+
+      const bitmapIndicesForVision =
+        parseOutputMode === "quiz" && routePlan
+          ? routePlan.bitmapPageIndicesForVision
+          : null;
+
+      if (
+        parseOutputMode === "quiz" &&
+        routePlan &&
+        (!bitmapIndicesForVision || bitmapIndicesForVision.length === 0)
+      ) {
+        const merged = dedupeQuestionsByStem(routedTextQuestions);
+        setQuestions(merged);
+        if (!controller.signal.aborted) {
+          await persistQuestions(merged);
+          setSummary(`Routed (text-only): parsed ${merged.length} question${merged.length === 1 ? "" : "s"}.`);
+        } else {
+          setSummary(
+            `Routed (text-only): parsed ${merged.length} question${merged.length === 1 ? "" : "s"}. Parsing stopped.`,
+          );
+        }
+        return {
+          ok: !controller.signal.aborted && merged.length > 0,
+          aborted: controller.signal.aborted,
+          fatalError: null,
+          questions: merged,
+          parseOutputMode: "quiz",
+          usedVisionFallback: false,
+        };
+      }
+
       const prep = await runRenderPagesAndOptionalOcr(
         activePdfFile,
         controller,
@@ -1590,6 +1748,10 @@ export const AiParseSection = forwardRef<
           forceSkipOcr: isFlashcardParse || isQuizParse || isProductSurface,
           previewPageBudget:
             previewBudgetClamped > 0 ? previewBudgetClamped : undefined,
+          pageIndices:
+            bitmapIndicesForVision && bitmapIndicesForVision.length > 0
+              ? bitmapIndicesForVision
+              : undefined,
           onPreviewPagesAvailable:
             previewBudgetClamped > 0
               ? (early) => {
@@ -1655,12 +1817,28 @@ export const AiParseSection = forwardRef<
           ],
         }));
 
-        const finalResult = await finalizeVisionBatchParseResult(
+        const visionOnly = await finalizeVisionBatchParseResult(
           batchResult,
           controller,
           ocrForMapping,
           activePdfFile,
+          parseOutputMode === "quiz" && routePlan ? { skipPersist: true } : undefined,
         );
+        if (parseOutputMode === "quiz" && routePlan) {
+          const merged = dedupeQuestionsByStem([
+            ...routedTextQuestions,
+            ...visionOnly.questions,
+          ]);
+          setQuestions(merged);
+          if (!controller.signal.aborted) {
+            await persistQuestions(merged);
+          }
+          return {
+            ...visionOnly,
+            questions: merged,
+            ok: !controller.signal.aborted && merged.length > 0,
+          };
+        }
 
         // Progress: Completion stage
         if (!controller.signal.aborted) {
@@ -1673,7 +1851,7 @@ export const AiParseSection = forwardRef<
           }));
         }
 
-        return finalResult;
+        return visionOnly;
       }
 
       // Non-product surfaces may still support sequential attach parsing.
@@ -1759,6 +1937,7 @@ export const AiParseSection = forwardRef<
     previewFirstPageBudget,
     persistQuestions,
     persistFlashcardVisionItemsForImmediateUse,
+    extractTextForPageIndices,
   ]);
 
   const handleLayoutAwareParse =
