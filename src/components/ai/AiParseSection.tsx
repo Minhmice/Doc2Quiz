@@ -113,7 +113,9 @@ import { sampleTextLayerSignal } from "@/lib/pdf/sampleTextLayerSignal";
 import { extractPdfTextForPageRange } from "@/lib/pdf/extractPdfText";
 import { PREVIEW_FIRST_PAGE_BUDGET } from "@/lib/pdf/extractText";
 import { classifyPdfPages } from "@/lib/pdf/classifyPdfPages";
+import { extractPdfLayoutBlocksForPageIndices } from "@/lib/pdf/extractPdfLayoutBlocks";
 import { chunkText } from "@/lib/ai/chunkText";
+import { layoutBlocksToQuizChunks } from "@/lib/ai/layoutChunking";
 import { runSequentialParse } from "@/lib/ai/runSequentialParse";
 import { isMcqComplete } from "@/lib/review/validateMcq";
 import type { OcrRunResult } from "@/types/ocr";
@@ -1673,13 +1675,32 @@ export const AiParseSection = forwardRef<
             `${timeStamp()} — Routing: parsing ${routePlan.textPageIndices.length} text page(s) without rasterization`,
           ].slice(-16),
         }));
-        const text = await extractTextForPageIndices(
+        const layout = await extractPdfLayoutBlocksForPageIndices(
           activePdfFile,
           routePlan.textPageIndices,
-          controller.signal,
+          {
+            signal: controller.signal,
+            build: {
+              // Bounded work for adversarial PDFs; matches Phase 30 defaults but keeps the cap explicit here.
+              maxItemsPerPage: 20_000,
+            },
+          },
         );
-        if (!controller.signal.aborted && text.trim().length > 0) {
-          const chunks = chunkText(text);
+        const routedChunks = layoutBlocksToQuizChunks(layout.pages, {
+          // Quiz lane policy: keep chunks small enough for ~1–2 MCQs, but deterministic.
+          allowCrossPageMerge: false,
+        });
+        const chunks = routedChunks.map((c) => c.chunkText);
+        const blockCount = layout.pages.reduce((acc, p) => acc + p.blocks.length, 0);
+        setParseOverlay((p) => ({
+          ...p,
+          log: [
+            ...p.log,
+            `${timeStamp()} — Layout chunks: ${layout.pages.length} page(s) · ${blockCount} blocks · ${chunks.length} chunk(s)`,
+          ].slice(-16),
+        }));
+
+        if (!controller.signal.aborted && chunks.length > 0) {
           setProgress({
             current: 0,
             total: Math.max(1, chunks.length),
@@ -1947,7 +1968,6 @@ export const AiParseSection = forwardRef<
     previewFirstPageBudget,
     persistQuestions,
     persistFlashcardVisionItemsForImmediateUse,
-    extractTextForPageIndices,
   ]);
 
   const handleLayoutAwareParse =
