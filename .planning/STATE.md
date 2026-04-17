@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 29
-current_plan: Not started
+current_plan: 2
 status: Ready to execute
-stopped_at: Completed 28-02-PLAN.md
-last_updated: "2026-04-17T17:51:32.432Z"
+stopped_at: Completed 29-01-PLAN.md
+last_updated: "2026-04-17T17:56:02.170Z"
 progress:
   total_phases: 38
   completed_phases: 26
   total_plans: 61
-  completed_plans: 57
-  percent: 93
+  completed_plans: 58
+  percent: 95
 ---
 
 # Doc2Quiz — State
@@ -22,12 +22,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 **Core value:** The practice loop must feel faster and more effective than reading the PDF directly.
-**Current focus:** Phase 28 — move-image-preprocessing-into-web-workers
+**Current focus:** Phase 29 — route-by-page-type-text-page-vs-bitmap-page-vs-rich-layout-p
 
 ## Execution Progress
 
 **Current Phase:** 29
-**Current Plan:** Not started
+**Current Plan:** 2
 **Total Plans in Phase:** 3
 
 ## Current Status
@@ -48,7 +48,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 
 ## Last Session
 
-**Stopped at:** Completed 28-02-PLAN.md
+**Stopped at:** Completed 29-01-PLAN.md
 **Date:** 2026-04-17
 **Resume file:** None
 
@@ -120,6 +120,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-05)
 | Phase | Plan | Duration | Tasks | Files | Date |
 | ----: | ---: | -------- | ----: | ----: | ---- |
 | 28 | 02 | 20m | 2 | 1 | 2026-04-17 |
+| 29 | 01 | 30m | 2 | 4 | 2026-04-18 |
 
 ## Config
 
