@@ -104,6 +104,23 @@ function isStubObjectStorageFinalizeMessage(message: string | undefined): boolea
   );
 }
 
+/**
+ * D-07 / D-13: when direct-upload is in use, require a terminal successful transfer
+ * before study/play navigation; local-only (`skipped`) stays unrestricted.
+ * Stub finalize copy (pre-real-object-storage deployments) is treated as settled for navigation (27-02).
+ */
+function isUploadCompleteForStudyNavigation(
+  result: RunBackgroundStudySetPdfUploadResult,
+): boolean {
+  if (result.kind === "skipped" || result.kind === "completed") {
+    return true;
+  }
+  if (result.kind === "error") {
+    return isStubObjectStorageFinalizeMessage(result.message);
+  }
+  return false;
+}
+
 function parseRunHasUsableOutput(
   r: ParseRunResult,
   contentKind: StudyContentKind,
@@ -222,12 +239,13 @@ export function NewStudySetPdfImportFlow({
             return;
           }
           const ur = uploadEffectResultRef.current;
-          if (
-            ur?.kind === "error" &&
-            !isStubObjectStorageFinalizeMessage(ur.message)
-          ) {
-            toast.error("Transfer did not finish. Starting over.");
-            await resetAfterInlineParse();
+          const uploadComplete =
+            ur !== null && isUploadCompleteForStudyNavigation(ur);
+          if (!uploadComplete) {
+            if (ur?.kind !== "aborted") {
+              toast.error("Transfer did not finish. Starting over.");
+              await resetAfterInlineParse();
+            }
             return;
           }
           router.push(getPostParseHref(id));
