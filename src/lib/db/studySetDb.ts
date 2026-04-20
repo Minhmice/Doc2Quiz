@@ -1,3 +1,4 @@
+import { scheduleEmbeddingIndexAfterExtract } from "@/lib/ai/embeddingIndexScheduler";
 import { generateStudySetTitle } from "@/lib/ai/generateStudySetTitle";
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
@@ -66,18 +67,16 @@ type StudySetInsertRow = {
   updated_at: string;
 };
 
+/**
+ * Insert a study_sets row without `parse_progress` in the payload.
+ * - DB **with** `parse_progress` + default `'{}'::jsonb` (migration 000002): column gets the default.
+ * - DB **without** the column (migration not applied): insert succeeds; no schema-cache error.
+ */
 async function insertStudySetRowAllowLegacyDb(
   supabase: ReturnType<typeof createSupabaseBrowserClient>,
   row: StudySetInsertRow,
 ): Promise<void> {
-  let { error } = await supabase.from("study_sets").insert({
-    ...row,
-    parse_progress: {},
-  });
-  if (error && isMissingParseProgressColumnError(error)) {
-    const retry = await supabase.from("study_sets").insert(row);
-    error = retry.error;
-  }
+  const { error } = await supabase.from("study_sets").insert(row);
   assertNoError(error, "study_sets insert failed");
 }
 
@@ -560,6 +559,9 @@ export async function putDocument(doc: StudySetDocumentRecord): Promise<void> {
     pipelineLog("STUDY_SET", "document-put", "info", "putDocument success", {
       studySetId: doc.studySetId,
     });
+    if (doc.extractedText.trim().length > 0) {
+      scheduleEmbeddingIndexAfterExtract(doc.studySetId);
+    }
   } catch (raw) {
     pipelineLog("STUDY_SET", "document-put", "error", "putDocument failed", {
       studySetId: doc.studySetId,
@@ -907,7 +909,7 @@ export async function createStudySetEarlyMeta(input: {
   const id = newStudySetId();
   const now = new Date().toISOString();
 
-  const { error: metaErr } = await supabase.from("study_sets").insert({
+  await insertStudySetRowAllowLegacyDb(supabase, {
     id,
     user_id: userId,
     title: input.title,
@@ -916,11 +918,9 @@ export async function createStudySetEarlyMeta(input: {
     content_kind: input.contentKind ?? null,
     source_file_name: input.sourceFileName ?? null,
     page_count: input.pageCount ?? null,
-    parse_progress: {},
     created_at: now,
     updated_at: now,
   });
-  assertNoError(metaErr, "createStudySetEarlyMeta: study_sets insert failed");
 
   const docId = newStudySetId();
   const { error: docErr } = await supabase.from("study_set_documents").insert({
@@ -942,6 +942,10 @@ export async function createStudySetEarlyMeta(input: {
     sourceFileName: input.sourceFileName,
     contentKind: input.contentKind,
   });
+
+  if ((input.extractedText ?? "").trim().length > 0) {
+    scheduleEmbeddingIndexAfterExtract(id);
+  }
 
   return id;
 }
@@ -1107,6 +1111,9 @@ export async function createStudySet(input: {
         .eq("user_id", userId)
         .eq("id", docId);
       assertNoError(txtErr, "createStudySet: study_set_documents text update failed");
+      if (extractedTextForDoc.trim().length > 0) {
+        scheduleEmbeddingIndexAfterExtract(id);
+      }
     }
 
     pipelineLog("STUDY_SET", "create", "info", "createStudySet success", {

@@ -25,7 +25,83 @@ declare global {
   }
 }
 
+/** Keep in sync with package.json `mathjax` version (CDN fallback). */
+const MATHJAX_PKG_VERSION = "3.2.2";
+const MATHJAX_LOCAL_BASE = "/mathjax/es5";
+const MATHJAX_LOCAL_SCRIPT = `${MATHJAX_LOCAL_BASE}/tex-chtml.js`;
+const MATHJAX_CDN_BASE = `https://cdn.jsdelivr.net/npm/mathjax@${MATHJAX_PKG_VERSION}/es5`;
+const MATHJAX_CDN_SCRIPT = `${MATHJAX_CDN_BASE}/tex-chtml.js`;
+
 let mathJaxLoadPromise: Promise<void> | null = null;
+
+function configureMathJax(pathsBase: string): void {
+  window.MathJax = {
+    loader: {
+      paths: { mathjax: pathsBase },
+    },
+    tex: {
+      packages: { "[+]": ["noerrors", "noundefined"] },
+    },
+    options: {
+      enableMenu: false,
+    },
+  };
+}
+
+function resetMathJaxLoader(): void {
+  document
+    .querySelectorAll("script[data-doc2quiz-mathjax]")
+    .forEach((el) => el.remove());
+  delete (window as unknown as { MathJax?: unknown }).MathJax;
+}
+
+function injectMathJaxScript(scriptUrl: string, pathsBase: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    configureMathJax(pathsBase);
+    const script = document.createElement("script");
+    script.dataset.doc2quizMathjax = "1";
+    script.src = scriptUrl;
+    script.async = true;
+    script.onload = () => {
+      void waitForTypeset().then(resolve).catch(reject);
+    };
+    script.onerror = () => {
+      reject(new Error(`Failed to load MathJax script: ${scriptUrl}`));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Load MathJax (local → CDN on failure). If a stale script tag exists without a working
+ * `typesetPromise` (e.g. Fast Refresh), remove it and inject again.
+ */
+async function loadMathJaxWithRecovery(): Promise<void> {
+  const hasScript = () =>
+    document.querySelector("script[data-doc2quiz-mathjax]") !== null;
+
+  try {
+    if (!hasScript()) {
+      await injectMathJaxScript(MATHJAX_LOCAL_SCRIPT, MATHJAX_LOCAL_BASE);
+    } else {
+      await waitForTypeset();
+    }
+    if (!window.MathJax?.typesetPromise) {
+      throw new Error("MathJax API missing");
+    }
+  } catch {
+    resetMathJaxLoader();
+    try {
+      await injectMathJaxScript(MATHJAX_LOCAL_SCRIPT, MATHJAX_LOCAL_BASE);
+    } catch {
+      resetMathJaxLoader();
+      await injectMathJaxScript(MATHJAX_CDN_SCRIPT, MATHJAX_CDN_BASE);
+    }
+    if (!window.MathJax?.typesetPromise) {
+      throw new Error("MathJax did not initialize");
+    }
+  }
+}
 
 function loadMathJaxFromPublic(): Promise<void> {
   if (typeof window === "undefined") {
@@ -37,38 +113,16 @@ function loadMathJaxFromPublic(): Promise<void> {
   if (mathJaxLoadPromise) {
     return mathJaxLoadPromise;
   }
-  mathJaxLoadPromise = new Promise((resolve, reject) => {
-    if (document.querySelector("script[data-doc2quiz-mathjax]")) {
-      void waitForTypeset().then(resolve).catch(reject);
-      return;
-    }
-    window.MathJax = {
-      loader: {
-        paths: { mathjax: "/mathjax/es5" },
-      },
-      tex: {
-        packages: { "[+]": ["noerrors", "noundefined"] },
-      },
-      options: {
-        enableMenu: false,
-      },
-    };
-    const script = document.createElement("script");
-    script.dataset.doc2quizMathjax = "1";
-    script.src = "/mathjax/es5/tex-chtml.js";
-    script.async = true;
-    script.onload = () => {
-      void waitForTypeset().then(resolve).catch(reject);
-    };
-    script.onerror = () =>
-      reject(new Error("Failed to load MathJax from /mathjax/es5/tex-chtml.js"));
-    document.head.appendChild(script);
+  mathJaxLoadPromise = loadMathJaxWithRecovery().catch((e) => {
+    mathJaxLoadPromise = null;
+    throw e;
   });
   return mathJaxLoadPromise;
 }
 
+/** ~6.4s max — MathJax 3 can be slow on first paint after script onload. */
 async function waitForTypeset(): Promise<void> {
-  for (let i = 0; i < 200; i += 1) {
+  for (let i = 0; i < 400; i += 1) {
     if (window.MathJax?.typesetPromise) {
       if (window.MathJax.startup?.promise) {
         await window.MathJax.startup.promise;
@@ -106,10 +160,18 @@ export function MathText({ source, className, debounceMs = 0 }: MathTextProps) {
     () => splitMathSegments(debouncedSource),
     [debouncedSource],
   );
+  const needsMath = useMemo(
+    () => segments.some((s) => s.kind === "math"),
+    [segments],
+  );
   const rootRef = useRef<HTMLSpanElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!needsMath) {
+      setError(null);
+      return;
+    }
     let cancelled = false;
     const run = async () => {
       setError(null);
@@ -136,7 +198,7 @@ export function MathText({ source, className, debounceMs = 0 }: MathTextProps) {
     return () => {
       cancelled = true;
     };
-  }, [debouncedSource]);
+  }, [debouncedSource, needsMath]);
 
   return (
     <span className={cn("math-text-root inline-block max-w-full", className)}>
@@ -153,7 +215,7 @@ export function MathText({ source, className, debounceMs = 0 }: MathTextProps) {
           ),
         )}
       </span>
-      {error ? (
+      {error && needsMath ? (
         <span className="mt-1 block text-xs text-destructive/90">
           {error} — raw:{" "}
           <code className="rounded bg-muted px-1 font-mono text-[11px]">

@@ -66,3 +66,24 @@ export async function forwardAiGet(
     }),
   });
 }
+
+/** OpenAI-compatible embeddings via `POST /api/ai/embed` (Phase 33). */
+export async function forwardEmbeddingPost(params: {
+  apiKey: string;
+  targetUrl: string;
+  body: { model: string; input: string };
+  signal?: AbortSignal;
+}): Promise<Response> {
+  const { apiKey, targetUrl, body, signal } = params;
+  return fetch("/api/ai/embed", {
+    method: "POST",
+    ...(signal ? { signal } : {}),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: "openai",
+      targetUrl,
+      apiKey,
+      body,
+    }),
+  });
+}

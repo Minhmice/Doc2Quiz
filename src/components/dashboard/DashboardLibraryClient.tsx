@@ -326,16 +326,24 @@ export function DashboardLibraryClient({
       />
 
       {loadError ? (
-        <p className="text-sm font-medium text-destructive" role="alert">
-          {loadError}
-        </p>
+        <div className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-4" role="alert">
+          <p className="text-sm font-medium text-destructive">{loadError}</p>
+          {setsLength === 0 && !loading ? (
+            <p className="text-xs text-muted-foreground">
+              You can still create a set below. If the message mentions a missing database column, apply pending
+              Supabase migrations (for example{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-[0.7rem]">
+                supabase/migrations/20260418_000002_add_study_set_parse_progress.sql
+              </code>
+              ).
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
-      {setsLength === 0 && !loadError && loading ? (
-        <LibraryCardsSkeletonGrid />
-      ) : null}
+      {setsLength === 0 && loading ? <LibraryCardsSkeletonGrid /> : null}
 
-      {setsLength === 0 && !loadError && !loading ? <EmptyLibraryZeroState /> : null}
+      {setsLength === 0 && !loading ? <EmptyLibraryZeroState /> : null}
 
       {setsLength > 0 && !loadError ? (
         <>
@@ -370,6 +378,7 @@ export function DashboardLibraryClient({
                 return (
                   <motion.div
                     key={s.id}
+                    className="h-full"
                     variants={{
                       hidden: { opacity: 0, y: 14 },
                       show: {
@@ -400,6 +409,7 @@ export function DashboardLibraryClient({
               })}
 
               <motion.div
+                className="flex h-full min-h-0 flex-col"
                 variants={{
                   hidden: { opacity: 0, y: 14 },
                   show: {
@@ -417,7 +427,7 @@ export function DashboardLibraryClient({
                   aria-label="Add another study set. Import a PDF to build more quizzes."
                   className={cn(
                     dashboardPdfImportDashedLinkClassName,
-                    "flex min-h-68 w-full flex-col items-center justify-center self-stretch",
+                    "flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center",
                   )}
                 >
                   <div className="mx-auto flex max-w-md flex-col items-center px-2">

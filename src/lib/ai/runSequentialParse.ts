@@ -34,6 +34,8 @@ export async function runSequentialParse(options: {
     usedLlm: boolean;
     reasons: ValidatorReasonCode[];
   }) => void;
+  /** Phase 33 — optional semantic-search context prepended to each chunk. */
+  ragContextPrefix?: string;
 }): Promise<{
   questions: Question[];
   failedChunks: number;
@@ -50,6 +52,7 @@ export async function runSequentialParse(options: {
     onProgress,
     studySetId,
     onValidatorStage,
+    ragContextPrefix,
   } = options;
   const questions: Question[] = [];
   let failedChunks = 0;
@@ -76,6 +79,7 @@ export async function runSequentialParse(options: {
           apiUrl,
           model,
           chunkText: chunks[i]!,
+          ragContextPrefix,
           signal,
           studySetId,
           onValidatorStage,

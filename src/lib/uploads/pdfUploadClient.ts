@@ -9,6 +9,13 @@ import type {
   PdfUploadPartResponse,
 } from "@/types/uploads";
 
+/**
+ * Client uses **same-origin** `/api/uploads/pdf/*` routes only (Phase 26 contract).
+ * **EDGE-37-03:** For lowest upload latency, deploy the Next app and Supabase Storage
+ * in the **same region** as users; the server returns presigned URLs — no extra
+ * client “regional base URL” switch is required when API + bucket are co-located.
+ */
+
 function isLocalCapability(cap: PdfUploadCapability): boolean {
   return cap.mode === "local-only";
 }

@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { FlashcardsImportWorkbench } from "@/components/edit/new/flashcards/FlashcardsImportWorkbench";
-import { NewStudySetPdfImportFlow } from "@/app/(app)/edit/new/NewStudySetPdfImportFlow";
+import { NewStudySetPdfImportFlowDynamic } from "@/components/edit/new/NewStudySetPdfImportFlowDynamic";
 import { flashcardsPlay } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetFlashcardsPage() {
@@ -24,7 +24,7 @@ export default function NewStudySetFlashcardsPage() {
           </span>
         </Link>
       </div>
-      <NewStudySetPdfImportFlow
+      <NewStudySetPdfImportFlowDynamic
         contentKind="flashcards"
         pageHeading="Create flashcards from file"
         pageSubcopy="Upload a PDF. AI will generate flashcards and take you straight into study mode."

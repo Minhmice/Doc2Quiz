@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 type Body = {
   provider?: unknown;
   targetUrl?: unknown;
@@ -80,6 +82,14 @@ function isAllowedTargetUrl(href: string): { ok: true; url: URL } | { ok: false 
 }
 
 export async function POST(req: Request) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let parsed: Body;
   try {
     parsed = (await req.json()) as Body;

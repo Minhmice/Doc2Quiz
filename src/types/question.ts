@@ -71,7 +71,6 @@ export const LS_CUSTOM_URL = "doc2quiz:ai:customUrl";
 export const LS_OPENAI_MODEL = "doc2quiz:ai:openaiModel";
 export const LS_ANTHROPIC_MODEL = "doc2quiz:ai:anthropicModel";
 export const LS_CUSTOM_MODEL = "doc2quiz:ai:customModel";
-export const LS_DRAFT_QUESTIONS = "doc2quiz:ai:draftQuestions";
 export const LS_APPROVED_BANK = "doc2quiz:bank:approvedSet";
 
 /** Phase 19 — single OpenAI-compatible forward client (replaces multi-tab BYOK). */

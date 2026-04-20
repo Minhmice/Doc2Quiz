@@ -215,6 +215,19 @@ export function AppTopBar() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => {
+                  void (async () => {
+                    await fetch("/logout", { method: "POST" });
+                    router.replace("/login");
+                    router.refresh();
+                  })();
+                }}
+              >
+                Log out
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 className="md:hidden"
                 onClick={() => {
                   void import("@/lib/ai/aiReachability").then((m) =>

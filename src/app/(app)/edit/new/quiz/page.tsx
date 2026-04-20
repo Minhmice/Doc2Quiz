@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { QuizNewImportWorkbench } from "@/components/edit/new/quiz/QuizNewImportWorkbench";
-import { NewStudySetPdfImportFlow } from "@/app/(app)/edit/new/NewStudySetPdfImportFlow";
+import { NewStudySetPdfImportFlowDynamic } from "@/components/edit/new/NewStudySetPdfImportFlowDynamic";
 import { quizPlay } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetQuizPage() {
@@ -24,7 +24,7 @@ export default function NewStudySetQuizPage() {
           </span>
         </Link>
       </div>
-      <NewStudySetPdfImportFlow
+      <NewStudySetPdfImportFlowDynamic
         contentKind="quiz"
         pageHeading="Create quiz from file"
         pageSubcopy="Upload a PDF or supported document. AI will generate a quiz and take you straight into practice."

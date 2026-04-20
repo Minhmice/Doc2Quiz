@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
-  ensureStudySetDb,
   getApprovedBank,
   getStudySetMeta,
 } from "@/lib/db/studySetDb";
 import { editQuiz } from "@/lib/routes/studySetPaths";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type QuizSessionRecord = {
   id: string;
@@ -21,29 +21,38 @@ type QuizSessionRecord = {
 async function getLatestQuizSessionForStudySet(
   studySetId: string,
 ): Promise<QuizSessionRecord | null> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("quizSessions")) {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return null;
   }
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("quizSessions", "readonly");
-    const store = tx.objectStore("quizSessions");
-    const index = store.index("byStudySetId");
-    const req = index.getAll(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const rows = (req.result as QuizSessionRecord[]) ?? [];
-      if (rows.length === 0) {
-        resolve(null);
-        return;
-      }
-      rows.sort(
-        (a, b) =>
-          new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime(),
-      );
-      resolve(rows[0] ?? null);
-    };
-  });
+  const { data, error } = await supabase
+    .from("quiz_sessions")
+    .select("id,study_set_id,completed_at,total_questions,correct_count")
+    .eq("user_id", user.id)
+    .eq("study_set_id", studySetId)
+    .order("completed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) {
+    return null;
+  }
+  const row = data as {
+    id: string;
+    study_set_id: string;
+    completed_at: string;
+    total_questions: number;
+    correct_count: number;
+  };
+  return {
+    id: row.id,
+    studySetId: row.study_set_id,
+    completedAt: row.completed_at,
+    totalQuestions: row.total_questions,
+    correctCount: row.correct_count,
+  };
 }
 
 export default function QuizDonePage() {
@@ -66,7 +75,6 @@ export default function QuizDonePage() {
     }
     setLoadError(null);
     try {
-      await ensureStudySetDb();
       const meta = await getStudySetMeta(id);
       if (!meta) {
         setLoadError("Study set not found.");
@@ -128,7 +136,7 @@ export default function QuizDonePage() {
         ) : null}
         <p className="mt-1 text-sm text-[var(--d2q-muted)]">
           Study set ready. {approvedCount} approved question
-          {approvedCount === 1 ? "" : "s"} saved locally.
+          {approvedCount === 1 ? "" : "s"} saved to your account.
         </p>
       </header>
 

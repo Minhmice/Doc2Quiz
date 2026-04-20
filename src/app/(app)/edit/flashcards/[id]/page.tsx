@@ -8,10 +8,8 @@ import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
   ensureStudySetDb,
   getApprovedFlashcardBank,
-  getDraftFlashcardVisionItems,
   getStudySetMeta,
   putApprovedFlashcardBankForStudySet,
-  putDraftFlashcardVisionItems,
   touchStudySetMeta,
 } from "@/lib/db/studySetDb";
 import type { FlashcardVisionItem } from "@/types/visionParse";
@@ -39,13 +37,8 @@ export default function EditFlashcardsReviewPage() {
       const m = await getStudySetMeta(id);
       setMeta(m ?? null);
 
-      const [approvedFc, draftFc] = await Promise.all([
-        getApprovedFlashcardBank(id),
-        getDraftFlashcardVisionItems(id),
-      ]);
-      const fromApproved = approvedFc?.items ?? [];
-      const next: FlashcardVisionItem[] =
-        fromApproved.length > 0 ? fromApproved : draftFc;
+      const approvedFc = await getApprovedFlashcardBank(id);
+      const next: FlashcardVisionItem[] = approvedFc?.items ?? [];
       setCards(next);
       setInitialCards(
         next.map((c) => ({
@@ -84,7 +77,6 @@ export default function EditFlashcardsReviewPage() {
         savedAt,
         items: normalized,
       });
-      await putDraftFlashcardVisionItems(id, normalized);
 
       await touchStudySetMeta(id, {
         status: normalized.length > 0 ? "ready" : "draft",

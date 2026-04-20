@@ -1,4 +1,5 @@
 import { AiProviderForm } from "@/components/settings/AiProviderForm";
+import { ApprovedBankExportButton } from "@/components/settings/ApprovedBankExportButton";
 
 export default function SettingsPage() {
   return (
@@ -16,6 +17,17 @@ export default function SettingsPage() {
       </div>
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <AiProviderForm />
+      </div>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <p className="font-label text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Data export
+        </p>
+        <h2 className="font-heading mt-1 text-lg font-semibold text-[var(--d2q-text)]">
+          Training / evaluation
+        </h2>
+        <div className="mt-4">
+          <ApprovedBankExportButton />
+        </div>
       </div>
     </div>
   );

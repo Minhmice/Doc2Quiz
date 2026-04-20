@@ -1,6 +1,6 @@
 import { ACTIVITY_STATS_CHANGED_EVENT } from "@/lib/appEvents";
-import { ensureStudySetDb } from "@/lib/db/studySetDb";
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export type QuizSessionRecord = {
   id: string;
@@ -23,14 +23,6 @@ export type ActivityStats = {
   /** Local calendar dates YYYY-MM-DD, last 7 days including today */
   dailyAnsweredLast7Days: { date: string; count: number }[];
 };
-
-function txDone(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error ?? new Error("IDB transaction failed"));
-    tx.onabort = () => reject(tx.error ?? new Error("IDB transaction aborted"));
-  });
-}
 
 function localDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -85,10 +77,15 @@ export async function recordQuizCompletion(input: {
   correctCount: number;
   wrongQuestionIds: string[];
 }): Promise<void> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("quizSessions")) {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser();
+  if (userErr || !user) {
     return;
   }
+
   const id = createRandomUuid();
   const completedAt = new Date().toISOString();
   const session: QuizSessionRecord = {
@@ -99,44 +96,62 @@ export async function recordQuizCompletion(input: {
     correctCount: input.correctCount,
   };
 
-  const stores: string[] = ["quizSessions"];
-  if (db.objectStoreNames.contains("studyWrongHistory")) {
-    stores.push("studyWrongHistory");
+  const { error: sessErr } = await supabase.from("quiz_sessions").insert({
+    id: session.id,
+    user_id: user.id,
+    study_set_id: session.studySetId,
+    completed_at: session.completedAt,
+    total_questions: session.totalQuestions,
+    correct_count: session.correctCount,
+  });
+  if (sessErr) {
+    return;
   }
-  const tx = db.transaction(stores, "readwrite");
-  tx.objectStore("quizSessions").put(session);
-  if (db.objectStoreNames.contains("studyWrongHistory")) {
-    if (input.wrongQuestionIds.length > 0) {
-      const row: StudyWrongHistoryRecord = {
-        studySetId: input.studySetId,
-        questionIds: [...new Set(input.wrongQuestionIds)],
-        updatedAt: completedAt,
-      };
-      tx.objectStore("studyWrongHistory").put(row);
-    } else {
-      tx.objectStore("studyWrongHistory").delete(input.studySetId);
+
+  if (input.wrongQuestionIds.length > 0) {
+    const { error: whErr } = await supabase.from("study_wrong_history").upsert(
+      {
+        user_id: user.id,
+        study_set_id: input.studySetId,
+        question_ids: [...new Set(input.wrongQuestionIds)],
+        updated_at: completedAt,
+      },
+      { onConflict: "user_id,study_set_id" },
+    );
+    if (whErr) {
+      return;
     }
+  } else {
+    await supabase
+      .from("study_wrong_history")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("study_set_id", input.studySetId);
   }
-  await txDone(tx);
   dispatchStatsChanged();
 }
 
 export async function getMistakeQuestionIds(
   studySetId: string,
 ): Promise<string[]> {
-  const db = await ensureStudySetDb();
-  if (!db.objectStoreNames.contains("studyWrongHistory")) {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return [];
   }
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("studyWrongHistory", "readonly");
-    const req = tx.objectStore("studyWrongHistory").get(studySetId);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => {
-      const row = req.result as StudyWrongHistoryRecord | undefined;
-      resolve(Array.isArray(row?.questionIds) ? row.questionIds : []);
-    };
-  });
+  const { data, error } = await supabase
+    .from("study_wrong_history")
+    .select("question_ids")
+    .eq("user_id", user.id)
+    .eq("study_set_id", studySetId)
+    .maybeSingle();
+  if (error || !data) {
+    return [];
+  }
+  const ids = (data as { question_ids: string[] | null }).question_ids;
+  return Array.isArray(ids) ? ids : [];
 }
 
 export async function hasMistakesForStudySet(studySetId: string): Promise<boolean> {
@@ -144,25 +159,60 @@ export async function hasMistakesForStudySet(studySetId: string): Promise<boolea
   return ids.length > 0;
 }
 
-async function getAllQuizSessions(db: IDBDatabase): Promise<QuizSessionRecord[]> {
-  if (!db.objectStoreNames.contains("quizSessions")) {
-    return [];
+function last7DayBuckets(): { date: string; count: number }[] {
+  const dailyAnsweredLast7Days: { date: string; count: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = localDateKey(d);
+    dailyAnsweredLast7Days.push({ date: key, count: 0 });
   }
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("quizSessions", "readonly");
-    const req = tx.objectStore("quizSessions").getAll();
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () =>
-      resolve((req.result as QuizSessionRecord[]) ?? []);
-  });
+  return dailyAnsweredLast7Days;
 }
 
 /**
  * Aggregate stats for the dashboard widget.
  */
 export async function getActivityStats(): Promise<ActivityStats> {
-  const db = await ensureStudySetDb();
-  const sessions = await getAllQuizSessions(db);
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      totalQuizSessions: 0,
+      questionsAnsweredThisWeek: 0,
+      currentStreakDays: 0,
+      dailyAnsweredLast7Days: last7DayBuckets(),
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("quiz_sessions")
+    .select("id,study_set_id,completed_at,total_questions,correct_count")
+    .eq("user_id", user.id);
+  if (error || !data) {
+    return {
+      totalQuizSessions: 0,
+      questionsAnsweredThisWeek: 0,
+      currentStreakDays: 0,
+      dailyAnsweredLast7Days: last7DayBuckets(),
+    };
+  }
+
+  const sessions: QuizSessionRecord[] = (data as {
+    id: string;
+    study_set_id: string;
+    completed_at: string;
+    total_questions: number;
+    correct_count: number;
+  }[]).map((r) => ({
+    id: r.id,
+    studySetId: r.study_set_id,
+    completedAt: r.completed_at,
+    totalQuestions: r.total_questions,
+    correctCount: r.correct_count,
+  }));
   const totalQuizSessions = sessions.length;
 
   const weekStart = startOfWeekMonday(new Date());
@@ -186,13 +236,7 @@ export async function getActivityStats(): Promise<ActivityStats> {
   }
   const currentStreakDays = computeStreak(sessionDays);
 
-  const dailyAnsweredLast7Days: { date: string; count: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = localDateKey(d);
-    dailyAnsweredLast7Days.push({ date: key, count: 0 });
-  }
+  const dailyAnsweredLast7Days = last7DayBuckets();
   const dayIndex = new Map(dailyAnsweredLast7Days.map((x, i) => [x.date, i]));
   for (const s of sessions) {
     const d = new Date(s.completedAt);

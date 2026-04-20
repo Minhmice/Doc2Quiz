@@ -99,7 +99,21 @@ export type ParseChunkOnceParams = {
     usedLlm: boolean;
     reasons: ValidatorReasonCode[];
   }) => void;
+  /** Phase 33 — optional semantic-search context prepended for the model + parse-cache fingerprinting. */
+  ragContextPrefix?: string;
 };
+
+/** Phase 33 — combine optional RAG prefix with chunk text (single source for LLM + cache keys). */
+export function combineChunkWithRagPrefix(
+  chunkText: string,
+  ragContextPrefix?: string,
+): string {
+  const p = (ragContextPrefix ?? "").trim();
+  if (!p) {
+    return chunkText;
+  }
+  return `Retrieved context (semantic search):\n${p}\n\n---\n\n${chunkText}`;
+}
 
 function cloneQuestions(qs: Question[]): Question[] {
   return JSON.parse(JSON.stringify(qs)) as Question[];
@@ -377,11 +391,16 @@ export async function parseChunkOnce(
     apiUrl,
     model,
     chunkText,
+    ragContextPrefix,
     signal,
     onRawAssistantText,
     studySetId,
     onValidatorStage,
   } = params;
+  const effectiveChunkText = combineChunkWithRagPrefix(
+    chunkText,
+    ragContextPrefix,
+  );
   const { endpoint, modelId, forwardProvider } =
     resolveOpenAiCompatEndpointAndModel(apiUrl, model);
   const skipAllCache = Boolean(onRawAssistantText);
@@ -395,7 +414,7 @@ export async function parseChunkOnce(
         apiKey,
         endpoint,
         modelId,
-        chunkText,
+        effectiveChunkText,
         signal,
         forwardProvider,
         MCQ_EXTRACTION_SYSTEM_PROMPT,
@@ -404,7 +423,7 @@ export async function parseChunkOnce(
       ),
     );
   } else {
-    const contentFingerprint = await sha256Utf8Hex(chunkText);
+    const contentFingerprint = await sha256Utf8Hex(effectiveChunkText);
     const promptIdentity = formatPromptKeyComponent(
       PROMPTS_BUNDLE_VERSION,
       await hashPromptIdentity(MCQ_EXTRACTION_SYSTEM_PROMPT),
@@ -427,7 +446,7 @@ export async function parseChunkOnce(
           apiKey,
           endpoint,
           modelId,
-          chunkText,
+          effectiveChunkText,
           signal,
           forwardProvider,
           MCQ_EXTRACTION_SYSTEM_PROMPT,
@@ -438,7 +457,7 @@ export async function parseChunkOnce(
   }
 
   return finalizeChunkQuestions({
-    chunkText,
+    chunkText: effectiveChunkText,
     draftQuestions,
     draftCacheHit,
     skipAllCache,
@@ -469,11 +488,16 @@ export async function parseChunkSingleMcqOnce(
     apiUrl,
     model,
     chunkText,
+    ragContextPrefix,
     signal,
     onRawAssistantText,
     studySetId,
     onValidatorStage,
   } = params;
+  const effectiveChunkText = combineChunkWithRagPrefix(
+    chunkText,
+    ragContextPrefix,
+  );
   const { endpoint, modelId, forwardProvider } =
     resolveOpenAiCompatEndpointAndModel(apiUrl, model);
   const skipAllCache = Boolean(onRawAssistantText);
@@ -484,7 +508,7 @@ export async function parseChunkSingleMcqOnce(
         apiKey,
         endpoint,
         modelId,
-        chunkText,
+        effectiveChunkText,
         signal,
         forwardProvider,
         MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
@@ -503,7 +527,7 @@ export async function parseChunkSingleMcqOnce(
   if (skipAllCache) {
     draftQ = await runForward();
   } else {
-    const contentFingerprint = await sha256Utf8Hex(chunkText);
+    const contentFingerprint = await sha256Utf8Hex(effectiveChunkText);
     const promptIdentity = formatPromptKeyComponent(
       PROMPTS_BUNDLE_VERSION,
       await hashPromptIdentity(MCQ_SINGLE_CHUNK_SYSTEM_PROMPT),
@@ -533,7 +557,7 @@ export async function parseChunkSingleMcqOnce(
   }
 
   const finalized = await finalizeChunkQuestions({
-    chunkText,
+    chunkText: effectiveChunkText,
     draftQuestions: [draftQ],
     draftCacheHit,
     skipAllCache,

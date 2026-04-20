@@ -12,6 +12,13 @@ import {
   canUseImagePreprocessWorker,
   encodeJpegDataUrlInWorker,
 } from "@/lib/pdf/imagePreprocess/encodeJpegInWorker";
+import {
+  applyGrayscaleGlobalThreshold,
+  combineRasterScaleLimits,
+  shouldApplyBitmapThreshold,
+  type OcrPageRasterKind,
+  type OcrRasterBatchStats,
+} from "@/lib/pdf/ocrRasterPreprocess";
 
 export const VISION_MAX_PAGES_DEFAULT = 20;
 /** Max raster width (CSS px) before JPEG encode — keeps payloads bounded for vision APIs. */
@@ -28,6 +35,8 @@ export type PageImageResult = {
   pageIndex: number;
   dataUrl: string;
 };
+
+export type { OcrPageRasterKind };
 
 function isAbortError(err: unknown): boolean {
   if (!err) return false;
@@ -60,6 +69,10 @@ export async function renderPdfPagesToImages(
      */
     previewPageBudget?: number;
     onPreviewPagesAvailable?: (pages: PageImageResult[]) => void;
+    /**
+     * Phase 35 — optional per-page kind for bitmap-only thresholding (Phase 29 routing).
+     */
+    pageRasterKind?: (pageIndex: number) => OcrPageRasterKind | undefined;
   },
 ): Promise<PageImageResult[]> {
   const meta = fileSummary(file);
@@ -74,6 +87,7 @@ export async function renderPdfPagesToImages(
     onPageRendered,
     previewPageBudget,
     onPreviewPagesAvailable,
+    pageRasterKind,
   } = options;
 
   if (isPipelineVerbose()) {
@@ -140,6 +154,11 @@ export async function renderPdfPagesToImages(
         : 0;
     let previewFired = false;
     let workerOk = canUseImagePreprocessWorker();
+    const ocrRasterStats: OcrRasterBatchStats = {
+      pagesRendered: 0,
+      megapixelLimitedCount: 0,
+      thresholdAppliedCount: 0,
+    };
 
     for (let rendered = 0; rendered < limit; rendered++) {
       if (signal.aborted) {
@@ -156,11 +175,19 @@ export async function renderPdfPagesToImages(
         }
         const page = await pdf.getPage(pageIndex);
         const baseViewport = page.getViewport({ scale: 1 });
-        const scale = Math.min(
+        const initialScale = Math.min(
           1,
           maxWidth / baseViewport.width,
           maxHeight / baseViewport.height,
         );
+        const scale = combineRasterScaleLimits(
+          baseViewport.width,
+          baseViewport.height,
+          initialScale,
+        );
+        if (scale < initialScale - 1e-9) {
+          ocrRasterStats.megapixelLimitedCount += 1;
+        }
         const viewport = page.getViewport({ scale });
 
         const canvas = document.createElement("canvas");
@@ -174,6 +201,24 @@ export async function renderPdfPagesToImages(
         await page.render({ canvasContext, viewport }).promise;
         if (signal.aborted) {
           throw new DOMException("Aborted", "AbortError");
+        }
+
+        const rasterKind = pageRasterKind?.(pageIndex);
+        if (
+          rasterKind &&
+          shouldApplyBitmapThreshold(rasterKind) &&
+          canvas.width > 0 &&
+          canvas.height > 0
+        ) {
+          const imageData = canvasContext.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
+          applyGrayscaleGlobalThreshold(imageData);
+          canvasContext.putImageData(imageData, 0, 0);
+          ocrRasterStats.thresholdAppliedCount += 1;
         }
 
         let dataUrl: string;
@@ -210,6 +255,7 @@ export async function renderPdfPagesToImages(
         canvas.height = 0;
         const pageResult = { pageIndex, dataUrl };
         out.push(pageResult);
+        ocrRasterStats.pagesRendered += 1;
         onPageRendered?.(pageResult, { totalPages: limit });
         if (
           previewFireAt > 0 &&
@@ -243,6 +289,11 @@ export async function renderPdfPagesToImages(
     pipelineLog("PDF", "render-batch", "info", "renderPdfPagesToImages complete", {
       ...meta,
       renderedCount: out.length,
+      ocrRaster: {
+        pagesRendered: ocrRasterStats.pagesRendered,
+        megapixelLimitedCount: ocrRasterStats.megapixelLimitedCount,
+        thresholdAppliedCount: ocrRasterStats.thresholdAppliedCount,
+      },
     });
     return out;
   } finally {
@@ -292,10 +343,15 @@ export async function renderSinglePdfPageToDataUrl(
       }
       const page = await pdf.getPage(pageIndex);
       const baseViewport = page.getViewport({ scale: 1 });
-      const scale = Math.min(
+      const initialScale = Math.min(
         1,
         maxWidth / baseViewport.width,
         maxHeight / baseViewport.height,
+      );
+      const scale = combineRasterScaleLimits(
+        baseViewport.width,
+        baseViewport.height,
+        initialScale,
       );
       const viewport = page.getViewport({ scale });
 

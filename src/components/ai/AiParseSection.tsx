@@ -23,6 +23,21 @@ import {
   useRef,
   useState,
 } from "react";
+import { DEFAULT_EMBEDDING_MODEL } from "@/lib/ai/buildEmbeddingIndex";
+import { runEmbeddingIndexJob } from "@/lib/ai/embeddingIndexJob";
+import {
+  cancelUncertainFallbackForStudySet,
+  registerUncertainFallbackRunner,
+  reportUncertainParseSignals,
+} from "@/lib/ai/uncertainParseFallback";
+import {
+  cancelEmbeddingIndexForStudySet,
+  emitEmbeddingIndexStatus,
+  registerEmbeddingIndexRunner,
+  subscribeEmbeddingIndexStatus,
+  triggerEmbeddingIndexManual,
+  type EmbeddingIndexUiStatus,
+} from "@/lib/ai/embeddingIndexScheduler";
 import { dedupeQuestionsByStem } from "@/lib/ai/dedupeQuestions";
 import { FatalParseError } from "@/lib/ai/errors";
 import { getOcrResult, putOcrResult } from "@/lib/ai/ocrDb";
@@ -90,6 +105,7 @@ import {
 } from "@/components/ai/AiParseParseStrategyPanel";
 import { AiParsePreferenceToggles } from "@/components/ai/AiParsePreferenceToggles";
 import { AiParseSectionHeader } from "@/components/ai/AiParseSectionHeader";
+import { RagChunkSearchPanel } from "@/components/ai/RagChunkSearchPanel";
 import { useParseProgress } from "@/components/ai/ParseProgressContext";
 import {
   ensureStudySetDb,
@@ -110,6 +126,7 @@ import {
 } from "@/lib/logging/pipelineLogger";
 import {
   renderPdfPagesToImages,
+  type OcrPageRasterKind,
   type PageImageResult,
   VISION_MAX_PAGES_DEFAULT,
 } from "@/lib/pdf/renderPagesToImages";
@@ -321,6 +338,8 @@ export const AiParseSection = forwardRef<
   const [estimatePageCount, setEstimatePageCount] = useState<number | null>(
     null,
   );
+  /** Phase 33 — optional semantic context prepended to text MCQ chunks. */
+  const [ragContextPrefix, setRagContextPrefix] = useState("");
 
   /** Phase 32 — throttle “validator LLM” toasts (min 12s between toasts). */
   const validatorToastLastMsRef = useRef(0);
@@ -590,6 +609,111 @@ export const AiParseSection = forwardRef<
     isEmbedded,
   ]);
 
+  const [embeddingIndexStatus, setEmbeddingIndexStatus] =
+    useState<EmbeddingIndexUiStatus>({ status: "idle" });
+  const embeddingKeyRef = useRef(keyInput);
+  const embeddingUrlRef = useRef(urlInput);
+  embeddingKeyRef.current = keyInput;
+  embeddingUrlRef.current = urlInput;
+
+  useEffect(() => {
+    const sid = studySetId.trim();
+    if (!sid) {
+      return;
+    }
+    return subscribeEmbeddingIndexStatus(sid, setEmbeddingIndexStatus);
+  }, [studySetId]);
+
+  useEffect(() => {
+    const sid = studySetId.trim();
+    if (!sid) {
+      return;
+    }
+
+    registerEmbeddingIndexRunner(async ({ studySetId: id, signal }) => {
+      const apiKey = embeddingKeyRef.current.trim();
+      if (!apiKey) {
+        pipelineLog("PARSE", "embedding-rank", "info", "embedding_index_skip_no_key", {
+          studySetId: id,
+        });
+        emitEmbeddingIndexStatus(id, { status: "idle" });
+        return;
+      }
+      const doc = await getDocument(id);
+      const fullText = (doc?.extractedText ?? "").trim();
+      if (!fullText) {
+        emitEmbeddingIndexStatus(id, { status: "idle" });
+        return;
+      }
+      emitEmbeddingIndexStatus(id, {
+        status: "running",
+        current: 0,
+        total: undefined,
+      });
+      const r = await runEmbeddingIndexJob({
+        studySetId: id,
+        fullText,
+        apiKey,
+        forwardBaseUrl: embeddingUrlRef.current,
+        embeddingModel: DEFAULT_EMBEDDING_MODEL,
+        signal,
+        concurrency: 2,
+        onProgress: (p) =>
+          emitEmbeddingIndexStatus(id, {
+            status: "running",
+            current: p.current,
+            total: p.total,
+          }),
+      });
+      if (signal.aborted || r.cancelled) {
+        emitEmbeddingIndexStatus(id, {
+          status: "idle",
+          lastError: "Cancelled",
+        });
+        return;
+      }
+      if (r.error) {
+        emitEmbeddingIndexStatus(id, {
+          status: "error",
+          lastError: r.error,
+        });
+        return;
+      }
+      emitEmbeddingIndexStatus(id, {
+        status: "done",
+        current: r.chunksIndexed,
+        total: r.chunksIndexed,
+        lastError: null,
+      });
+    });
+
+    return () => {
+      cancelEmbeddingIndexForStudySet(sid);
+      registerEmbeddingIndexRunner(null);
+    };
+  }, [studySetId]);
+
+  useEffect(() => {
+    const sid = studySetId.trim();
+    if (!sid) {
+      return;
+    }
+    registerUncertainFallbackRunner(async ({ studySetId: id, signal, signals }) => {
+      if (signal.aborted) {
+        return;
+      }
+      pipelineLog("PARSE", "uncertain-fallback", "info", "second_pass_placeholder", {
+        studySetId: id,
+        codes: signals.map((s) => s.code),
+        note: "Full second-pass vision deferred; signals recorded for future refinement.",
+      });
+    });
+    return () => {
+      cancelUncertainFallbackForStudySet(sid);
+      registerUncertainFallbackRunner(null);
+    };
+  }, [studySetId]);
+
   const parseEstimate = useMemo(
     () =>
       estimateParseRun({
@@ -687,6 +811,8 @@ export const AiParseSection = forwardRef<
         /** Optional 1-based page indices to rasterize (Phase 29 routing). */
         pageIndices?: number[];
         onPreviewPagesAvailable?: (pages: PageImageResult[]) => void;
+        /** Phase 35 — bitmap pages may get grayscale threshold before JPEG. */
+        pageRasterKind?: (pageIndex: number) => OcrPageRasterKind | undefined;
       },
     ): Promise<ParseRunResult | RenderOcrPrepared> => {
       const pages = await renderPdfPagesToImages(file, {
@@ -695,6 +821,7 @@ export const AiParseSection = forwardRef<
         pageIndices: options?.pageIndices,
         previewPageBudget: options?.previewPageBudget,
         onPreviewPagesAvailable: options?.onPreviewPagesAvailable,
+        pageRasterKind: options?.pageRasterKind,
         onPageRendered: (pg, { totalPages }) => {
           setParseOverlay((p) => ({
             ...p,
@@ -1259,6 +1386,7 @@ export const AiParseSection = forwardRef<
             apiUrl: urlInput,
             model: modelInput,
             chunkText: userContent,
+            ragContextPrefix: ragContextPrefix.trim() || undefined,
             signal,
             studySetId: studySetId.trim() || undefined,
             onValidatorStage,
@@ -1412,6 +1540,7 @@ export const AiParseSection = forwardRef<
       runVisionSequentialWithUi,
       parseOutputMode,
       onValidatorStage,
+      ragContextPrefix,
     ],
   );
 
@@ -1848,6 +1977,7 @@ export const AiParseSection = forwardRef<
             apiUrl: urlInput,
             model: modelInput,
             chunks,
+            ragContextPrefix: ragContextPrefix.trim() || undefined,
             signal: controller.signal,
             studySetId: studySetId.trim() || undefined,
             onValidatorStage,
@@ -1982,6 +2112,9 @@ export const AiParseSection = forwardRef<
               fallbackDroppedByCapCount = orderedFallback.length - acceptedFallback.length;
               if (fallbackDroppedByCapCount > 0) {
                 layoutChunkingReasonCodes.add("vision_cap_dropped");
+                reportUncertainParseSignals(studySetId.trim(), [
+                  { code: "vision_cap_dropped", weight: 1 },
+                ]);
                 setParseOverlay((p) => ({
                   ...p,
                   log: [
@@ -2050,6 +2183,15 @@ export const AiParseSection = forwardRef<
                   previewVisionPromise = runBatchesOnPages(early, "preview");
                 }
               : undefined,
+          pageRasterKind: routePlan
+            ? (pageIndex: number) => {
+                const p = routePlan.pages.find((x) => x.pageIndex === pageIndex);
+                if (!p) {
+                  return "unknown";
+                }
+                return p.kind === "bitmap" ? "bitmap" : "text";
+              }
+            : undefined,
         },
       );
       if (!("kind" in prep) || prep.kind !== "prepared") {
@@ -2228,6 +2370,7 @@ export const AiParseSection = forwardRef<
     persistQuestions,
     persistFlashcardVisionItemsForImmediateUse,
     onValidatorStage,
+    ragContextPrefix,
   ]);
 
   const handleLayoutAwareParse =
@@ -2296,6 +2439,17 @@ export const AiParseSection = forwardRef<
       });
 
       try {
+        const routePlanRaw =
+          parseOutputMode === "quiz"
+            ? await classifyPdfPages(activePdfFile, {
+                signal: controller.signal,
+                previewFirstPageBudget,
+                visionMaxPages: VISION_MAX_PAGES_DEFAULT,
+              })
+            : null;
+        const routePlanForRaster =
+          routePlanRaw && routePlanRaw.pageCount > 0 ? routePlanRaw : null;
+
         const prep = await runRenderPagesAndOptionalOcr(
           activePdfFile,
           controller,
@@ -2303,6 +2457,19 @@ export const AiParseSection = forwardRef<
           forwardProvider,
           timeStamp,
           "none",
+          {
+            pageRasterKind: routePlanForRaster
+              ? (pageIndex: number) => {
+                  const p = routePlanForRaster.pages.find(
+                    (x) => x.pageIndex === pageIndex,
+                  );
+                  if (!p) {
+                    return "unknown";
+                  }
+                  return p.kind === "bitmap" ? "bitmap" : "text";
+                }
+              : undefined,
+          },
         );
         if (!("kind" in prep) || prep.kind !== "prepared") {
           return prep as ParseRunResult;
@@ -2412,6 +2579,7 @@ export const AiParseSection = forwardRef<
       finalizeVisionParseResult,
       runLayoutChunkPipelineFromPrepared,
       parseOutputMode,
+      previewFirstPageBudget,
     ]);
 
   const handleHybridParse = useCallback(async (): Promise<ParseRunResult> => {
@@ -2476,6 +2644,17 @@ export const AiParseSection = forwardRef<
     });
 
     try {
+      const routePlanRaw =
+        parseOutputMode === "quiz"
+          ? await classifyPdfPages(activePdfFile, {
+              signal: controller.signal,
+              previewFirstPageBudget,
+              visionMaxPages: VISION_MAX_PAGES_DEFAULT,
+            })
+          : null;
+      const routePlanForRaster =
+        routePlanRaw && routePlanRaw.pageCount > 0 ? routePlanRaw : null;
+
       const prep = await runRenderPagesAndOptionalOcr(
         activePdfFile,
         controller,
@@ -2483,6 +2662,19 @@ export const AiParseSection = forwardRef<
         forwardProvider,
         timeStamp,
         "none",
+        {
+          pageRasterKind: routePlanForRaster
+            ? (pageIndex: number) => {
+                const p = routePlanForRaster.pages.find(
+                  (x) => x.pageIndex === pageIndex,
+                );
+                if (!p) {
+                  return "unknown";
+                }
+                return p.kind === "bitmap" ? "bitmap" : "text";
+              }
+            : undefined,
+        },
       );
       if (!("kind" in prep) || prep.kind !== "prepared") {
         return prep as ParseRunResult;
@@ -2619,6 +2811,7 @@ export const AiParseSection = forwardRef<
     finalizeVisionParseResult,
     runLayoutChunkPipelineFromPrepared,
     parseOutputMode,
+    previewFirstPageBudget,
   ]);
 
   const runUnifiedParseInternal =
@@ -2887,6 +3080,7 @@ export const AiParseSection = forwardRef<
                 apiUrl: urlInput,
                 model: modelInput,
                 chunks,
+                ragContextPrefix: ragContextPrefix.trim() || undefined,
                 signal: controller.signal,
                 studySetId: studySetId.trim() || undefined,
                 onValidatorStage,
@@ -2958,6 +3152,7 @@ export const AiParseSection = forwardRef<
               apiUrl: urlInput,
               model: modelInput,
               chunks,
+              ragContextPrefix: ragContextPrefix.trim() || undefined,
               signal: controller.signal,
               studySetId: studySetId.trim() || undefined,
               onValidatorStage,
@@ -3119,6 +3314,7 @@ export const AiParseSection = forwardRef<
       isQuizParse,
       previewFirstPageBudget,
       onValidatorStage,
+      ragContextPrefix,
     ]);
 
   useImperativeHandle(
@@ -3339,6 +3535,24 @@ export const AiParseSection = forwardRef<
       ) : null}
       {hintMessage ? (
         <p className="text-sm text-muted-foreground">{hintMessage}</p>
+      ) : null}
+
+      {!isFlashcardParse && hasKey ? (
+        <RagChunkSearchPanel
+          studySetId={studySetId}
+          apiKey={keyInput.trim()}
+          forwardBaseUrl={urlInput}
+          ragContextPrefix={ragContextPrefix}
+          onRagPrefixChange={setRagContextPrefix}
+          disabled={isRunning}
+          indexingStatus={embeddingIndexStatus}
+          onCancelIndexing={() =>
+            cancelEmbeddingIndexForStudySet(studySetId.trim())
+          }
+          onManualBuildIndex={() =>
+            triggerEmbeddingIndexManual(studySetId.trim())
+          }
+        />
       ) : null}
 
       {hybridOcrGateNote ? (

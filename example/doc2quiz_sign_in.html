@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Doc2Quiz — Sign in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ["Manrope"], label: ["Space Grotesk"] } } } };</script>
+  <style>
+    .ghost-grid {
+      background-image:
+        linear-gradient(to right, rgba(192, 201, 195, 0.22) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(192, 201, 195, 0.22) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#f7faf8] text-[#181c1b] font-sans">
+  <div class="grid min-h-screen md:grid-cols-2">
+    <aside class="relative hidden md:flex flex-col justify-between px-10 py-12 bg-[#f1f4f2]/80">
+      <div class="absolute inset-0 ghost-grid pointer-events-none opacity-60"></div>
+      <div class="relative z-10 space-y-8">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 items-center justify-center rounded-sm bg-[#5f0f00] text-sm font-extrabold text-white">D2</span>
+          <div>
+            <div class="font-extrabold text-lg text-[#376757] tracking-tight">Doc2Quiz</div>
+            <div class="font-label text-[10px] uppercase tracking-[0.2em] text-[#404945] font-bold mt-0.5">PDF → quiz bank</div>
+          </div>
+        </div>
+        <div class="max-w-md space-y-3">
+          <h2 class="text-3xl font-extrabold tracking-tight text-[#00352d]">Sign in,<br/><span class="text-[#ff967d]">same blueprint.</span></h2>
+          <p class="text-sm text-[#404945] leading-relaxed">Static mock for <code class="text-xs">/(auth)/login</code> — real app uses <code class="text-xs">AuthShell</code> + Supabase.</p>
+        </div>
+      </div>
+      <p class="relative z-10 font-label text-[10px] uppercase tracking-widest text-[#707974]">Doc2Quiz</p>
+    </aside>
+    <div class="flex flex-col min-h-screen">
+      <header class="md:hidden flex items-center justify-between px-4 py-3 border-b border-[#c0c9c3]/50 bg-[#f7faf8]/90 backdrop-blur">
+        <span class="font-extrabold text-[#376757]">Doc2Quiz</span>
+      </header>
+      <main class="flex-1 flex items-center justify-center p-6">
+        <div class="w-full max-w-[420px] rounded-sm bg-white p-8 shadow-[0_24px_48px_-18px_rgba(24,28,27,0.12)]">
+          <p class="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-[#404945] text-center">Welcome back</p>
+          <h1 class="mt-2 text-center text-2xl font-extrabold tracking-tight text-[#181c1b]">Sign in</h1>
+          <p class="mt-1 text-center text-sm text-[#404945]">Email + password</p>
+          <form class="mt-6 space-y-4">
+            <div>
+              <label class="font-label text-xs font-semibold uppercase tracking-wide text-[#404945]">Email</label>
+              <input type="email" class="mt-1 w-full rounded-sm border-0 border-b-2 border-transparent bg-[#f1f4f2] px-3 py-2.5 focus:border-[#ff967d] outline-none"/>
+            </div>
+            <div>
+              <label class="font-label text-xs font-semibold uppercase tracking-wide text-[#404945]">Password</label>
+              <input type="password" class="mt-1 w-full rounded-sm border-0 border-b-2 border-transparent bg-[#f1f4f2] px-3 py-2.5 focus:border-[#ff967d] outline-none"/>
+            </div>
+            <button type="button" class="w-full h-11 rounded-sm bg-[#5f0f00] text-white font-semibold tracking-tight">Sign in</button>
+          </form>
+          <p class="mt-6 text-center text-sm text-[#404945]">No account? <a class="font-semibold text-[#841f06] underline" href="./doc2quiz_sign_up.html">Create one</a></p>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
