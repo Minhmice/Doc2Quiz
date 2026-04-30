@@ -1,61 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { FlashcardSession } from "@/components/flashcards/FlashcardSession";
-import { ensureStudySetDb, getStudySetMeta } from "@/lib/db/studySetDb";
+import { useStudySetProductSurfaceRedirect } from "@/hooks/useStudySetProductSurfaceRedirect";
 
 function FlashcardsPlayPageInner() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
-
-  const [metaReady, setMetaReady] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const loadMeta = useCallback(async () => {
-    if (!id) {
-      return;
-    }
-    setLoadError(null);
-    try {
-      await ensureStudySetDb();
-      const meta = await getStudySetMeta(id);
-      if (!meta) {
-        setLoadError("Study set not found.");
-        return;
-      }
-      setMetaReady(true);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load study set.",
-      );
-    }
-  }, [id]);
-
-  useEffect(() => {
-    void loadMeta();
-  }, [loadMeta]);
+  const routeReady = useStudySetProductSurfaceRedirect(
+    id || undefined,
+    "play-flashcards",
+  );
 
   if (!id) {
     return null;
   }
 
-  if (loadError) {
-    return (
-      <div>
-        <p className="text-red-400">{loadError}</p>
-        <Link
-          href="/dashboard"
-          className="mt-4 inline-block text-(--d2q-accent-hover)"
-        >
-          ← Library
-        </Link>
-      </div>
-    );
-  }
-
-  if (!metaReady) {
+  if (!routeReady) {
     return (
       <p className="text-xs font-semibold text-muted-foreground" role="status">
         Loading…

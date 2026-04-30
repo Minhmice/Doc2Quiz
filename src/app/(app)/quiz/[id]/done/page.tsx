@@ -7,6 +7,7 @@ import {
   getApprovedBank,
   getStudySetMeta,
 } from "@/lib/db/studySetDb";
+import { useStudySetProductSurfaceRedirect } from "@/hooks/useStudySetProductSurfaceRedirect";
 import { editQuiz } from "@/lib/routes/studySetPaths";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -58,6 +59,10 @@ async function getLatestQuizSessionForStudySet(
 export default function QuizDonePage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
+  const routeReady = useStudySetProductSurfaceRedirect(
+    id || undefined,
+    "done-quiz",
+  );
 
   const [headline, setHeadline] = useState("");
   const [subtitle, setSubtitle] = useState<string | undefined>();
@@ -70,7 +75,7 @@ export default function QuizDonePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!id) {
+    if (!id || !routeReady) {
       return;
     }
     setLoadError(null);
@@ -94,7 +99,7 @@ export default function QuizDonePage() {
         e instanceof Error ? e.message : "Failed to load study set.",
       );
     }
-  }, [id]);
+  }, [id, routeReady]);
 
   useEffect(() => {
     void load();
@@ -102,6 +107,14 @@ export default function QuizDonePage() {
 
   if (!id) {
     return null;
+  }
+
+  if (!routeReady) {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Loading…
+      </p>
+    );
   }
 
   if (loadError) {
@@ -135,15 +148,15 @@ export default function QuizDonePage() {
           <p className="text-xs text-[var(--d2q-muted)]">Source: {sourceName}</p>
         ) : null}
         <p className="mt-1 text-sm text-[var(--d2q-muted)]">
-          Study set ready. {approvedCount} approved question
+          Study set ready. {approvedCount} approved item
           {approvedCount === 1 ? "" : "s"} saved to your account.
         </p>
       </header>
 
       <div className="rounded-lg border border-[var(--d2q-accent)]/35 bg-[var(--d2q-accent-muted)] p-4 text-sm text-[var(--d2q-text)]">
         <p className="font-medium">
-          You can return to Review to edit questions, or open another set from
-          the library.
+          You can return to Review to edit content, or open another set from the
+          library.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link

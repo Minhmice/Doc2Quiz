@@ -68,7 +68,7 @@ export function FlashcardSession({ studySetId }: FlashcardSessionProps) {
       setFlipped(false);
     } catch (e) {
       setLoadError(
-        e instanceof Error ? e.message : "Could not load flashcards.",
+        e instanceof Error ? e.message : "Could not load study content.",
       );
       setCards([]);
     } finally {
@@ -174,11 +174,11 @@ export function FlashcardSession({ studySetId }: FlashcardSessionProps) {
       <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-12 text-center">
         <Layers className="mx-auto mb-4 h-12 w-12 text-orange-500/40" />
         <h3 className="mb-2 font-headline text-xl font-bold text-orange-600">
-          No Cards Found
+          No items yet
         </h3>
         <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground">
-          You haven&apos;t approved any flashcards for this set yet. Head over to the
-          editor to review and approve your generated cards.
+          You haven&apos;t approved any items for this set yet. Open the editor to
+          review and approve generated content.
         </p>
         <Link href={editFlashcards(studySetId)}>
           <Button variant="default" className="bg-orange-600 hover:bg-orange-700">
@@ -196,7 +196,7 @@ export function FlashcardSession({ studySetId }: FlashcardSessionProps) {
       ref={sessionRootRef}
       tabIndex={0}
       role="region"
-      aria-label="Flashcard study"
+      aria-label="Flip study session"
       onPointerDownCapture={(e) => {
         if (shouldSkipSessionRefocus(e.target)) {
           return;
@@ -216,7 +216,7 @@ export function FlashcardSession({ studySetId }: FlashcardSessionProps) {
       <section className="mb-8 sm:mb-12 lg:mb-16 w-full max-w-[900px] xl:max-w-[1100px] px-4">
         <div className="mb-3 flex items-baseline justify-between">
           <span className="font-label text-xs sm:text-sm lg:text-base font-bold tracking-tight text-[color:var(--qp-tertiary)]">
-            CARD {index + 1} <span className="text-[color:var(--qp-outline-variant)]">/ {total}</span>
+            ITEM {index + 1} <span className="text-[color:var(--qp-outline-variant)]">/ {total}</span>
           </span>
           <span className="font-label text-[9px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-widest text-[color:var(--qp-secondary)]/60">
             {progressPct}% COMPLETE

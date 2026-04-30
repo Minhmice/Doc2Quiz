@@ -1,14 +1,14 @@
 ---
-name: orchestrator-details
+name: detailer
 description: Detailed operating procedures for the orchestrator (referenced by SKILL.md).
 ---
 
 ## Mandatory flow (for any task that involves code/implementation)
 
-0. **Decompose the request (orchestrator — automatic, not the user)**  
-   - Read the full user request and relevant thread context.  
-   - Infer goal, constraints, regressions vs new work, and dependencies (what must run before what).  
-   - Produce an **Execution Plan** (see format below): phases, parallel agents, file scopes, merge owner.  
+0. **Decompose the request (orchestrator — automatic, not the user)**
+   - Read the full user request and relevant thread context.
+   - Infer goal, constraints, regressions vs new work, and dependencies (what must run before what).
+   - Produce an **Execution Plan** (see format below): phases, parallel agents, file scopes, merge owner.
    - **Do not** require or expect the user to supply this plan. Only ask clarifying questions if the task is truly underspecified.
 
 1. Classify the task (UI, API, schema, docs, etc.)
@@ -22,7 +22,7 @@ description: Detailed operating procedures for the orchestrator (referenced by S
 
 Registry names (`frontend-developer`, `backend-developer`, …) are the **logical** roles. If the IDE only offers a generic sub-agent (e.g. `generalPurpose` / `Task`), the orchestrator still:
 
-1. Performs **step 0 decomposition** alone.  
+1. Performs **step 0 decomposition** alone.
 2. Spawns **one sub-agent per slice**, each with an opening line such as:  
    `Act as frontend-developer per .cursor/agents/specialists/frontend-developer/SKILL.md`  
    plus objective, scope paths, constraints, and expected artifacts.
@@ -54,6 +54,7 @@ The user never has to map “which Task type equals which specialist”; **you**
 After implementation is merged, run **code-reviewer** and **qa-tester** in parallel before declaring the task complete.
 
 Skip this gate only if:
+
 - the user explicitly says "skip review" or "skip QA", or
 - the task is non-code (routing advice / orchestration policy only).
 
@@ -67,12 +68,13 @@ Skip this gate only if:
 **Code scope**: <files/modules touched>
 
 **Parallel agents** (run at the same time):
-1) <agent-name>
+
+1. <agent-name>
    Task: <what this agent must achieve>
    Inputs: <docs, diffs, constraints>
    Output required: <exact artifact format>
 
-2) <agent-name>
+2. <agent-name>
    Task: <what this agent must achieve>
    Inputs: <docs, diffs, constraints>
    Output required: <exact artifact format>
@@ -93,6 +95,7 @@ Act as [specialist-name] per .cursor/agents/specialists/[specialist-name]/SKILL.
 ```
 
 Attach:
+
 - Objective
 - Scope (paths/modules)
 - Constraints
@@ -135,17 +138,18 @@ When a task is **large** (many independent files or components in a single domai
 **Fan-out**: <specialist-id> × <N> instances (parallel, independent artifacts)
 
 **Parallel agents** (run at the same time):
-1) <specialist-id> [instance-1]
+
+1. <specialist-id> [instance-1]
    Task: <slice 1: e.g. components/Header, Sidebar, Nav>
    ScopeIn: <paths for this instance>
    Output required: <exact artifact format>
 
-2) <specialist-id> [instance-2]
+2. <specialist-id> [instance-2]
    Task: <slice 2: e.g. components/Card, Button, Input>
    ScopeIn: <paths for this instance>
    Output required: <exact artifact format>
 
-3) <specialist-id> [instance-3]  (optional)
+3. <specialist-id> [instance-3] (optional)
    Task: <slice 3: e.g. pages/Dashboard, Settings>
    ScopeIn: <paths for this instance>
    Output required: <exact artifact format>
@@ -181,12 +185,14 @@ Use this when the user gives you **one large “phase”** (or a single giant re
 ### Function: `expand_heavy_phase(phase)`
 
 **Inputs**:
+
 - `phase.goal`: one-line objective
 - `phase.scope`: paths/modules likely touched (can be coarse; can be “unknown yet”)
 - `phase.risk`: high if touches auth, billing, data integrity, migrations, permissions, contracts, or many files
 - `phase.domains`: inferred lanes (frontend/backend/typescript/database/etc.)
 
 **Output**:
+
 - `subphases[]` where each subphase includes:
   - `subphase_id`
   - `goal`
@@ -236,19 +242,21 @@ Create **3–8** sub-phases using the first matching strategy:
 **Subphases** (run sequentially; parallel agents within each subphase):
 
 ### Subphase 1 — <title>
+
 ScopeIn: <paths/modules>
 Parallel agents:
-1) <agent-name>
+
+1. <agent-name>
    Task: ...
    Output required: ...
-2) <agent-name>
-   Task: ...
-   Output required: ...
-Final merge: <merge owner>
+2. <agent-name>
+      Task: ...
+      Output required: ...
+   Final merge: <merge owner>
 
 ### Subphase 2 — <title>
+
 ...
 
 **Final quality gate**: After all subphases merged, run **code-reviewer** + **qa-tester** in parallel.
 ```
-

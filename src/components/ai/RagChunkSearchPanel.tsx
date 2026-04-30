@@ -7,10 +7,7 @@
  */
 
 import { useCallback, useState } from "react";
-import {
-  DEFAULT_EMBEDDING_MODEL,
-  searchSimilarChunks,
-} from "@/lib/ai/buildEmbeddingIndex";
+import { searchSimilarChunks } from "@/lib/ai/buildEmbeddingIndex";
 import type { EmbeddingIndexUiStatus } from "@/lib/ai/embeddingIndexScheduler";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +31,6 @@ function truncateForUi(s: string, max: number): string {
 
 export type RagChunkSearchPanelProps = {
   studySetId: string;
-  apiKey: string;
-  /** Forward settings base URL (same as chat); empty → OpenAI default host for embeddings. */
-  forwardBaseUrl: string;
   ragContextPrefix: string;
   onRagPrefixChange: (next: string) => void;
   disabled?: boolean;
@@ -47,8 +41,6 @@ export type RagChunkSearchPanelProps = {
 
 export function RagChunkSearchPanel({
   studySetId,
-  apiKey,
-  forwardBaseUrl,
   ragContextPrefix,
   onRagPrefixChange,
   disabled = false,
@@ -63,7 +55,7 @@ export function RagChunkSearchPanel({
     { id: string; text: string; score: number; sourceLabel?: string }[]
   >([]);
 
-  const canAct = !disabled && apiKey.trim().length > 0 && studySetId.trim().length > 0;
+  const canAct = !disabled && studySetId.trim().length > 0;
   const indexRunning = indexingStatus.status === "running";
 
   const handleBuildIndex = useCallback(() => {
@@ -84,9 +76,6 @@ export function RagChunkSearchPanel({
       const list = await searchSimilarChunks({
         studySetId: studySetId.trim(),
         query: query.trim(),
-        apiKey: apiKey.trim(),
-        forwardBaseUrl,
-        embeddingModel: DEFAULT_EMBEDDING_MODEL,
         topK: 8,
       });
       setHits(list);
@@ -101,7 +90,7 @@ export function RagChunkSearchPanel({
     } finally {
       setSearchBusy(false);
     }
-  }, [canAct, studySetId, apiKey, forwardBaseUrl, query]);
+  }, [canAct, studySetId, query]);
 
   const addHitToPrefix = useCallback(
     (text: string) => {

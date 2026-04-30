@@ -1,9 +1,0 @@
-rule_id,rule_file,owner_field_id,owner_specialist_id,status,ingest_mode,tags,notes
-agents-orchestrator,always-orchestrator-skill.mdc,orchestrator,orchestrator,orchestrator,direct,"workflow,quality-gate",Always-on orchestrator workflow rule
-frontend-developer,frontend-developer.mdc,frontend,frontend-developer,active,curated,"ui,implementation",Primary frontend implementation rule
-backend-developer,backend-developer.mdc,backend,backend-developer,active,curated,"api,backend",Primary backend implementation rule
-i18n,i18n.mdc,frontend,frontend-developer,active,curated,"i18n,translation,locale",i18n and react-i18next; attach skills/i18n.md when delegating
-minimalist-monochrome,minimalist-monochrome.mdc,frontend,frontend-developer,active,curated,"theme,monochrome,editorial,bw",Globs monochrome theme folder; attach skills/minimalist-monochrome.md for full spec
-theme-instructions,theme-instructions.mdc,frontend,frontend-developer,active,curated,"theme,preset,ThemeProvider",Globs theme-provider and themes/index; attach skills/theme-instructions.md
-bauhaus-theme,bauhaus-theme.mdc,frontend,frontend-developer,active,curated,"bauhaus,constructivist,primary",Globs bauhaus theme folder; attach skills/bauhaus-theme.md
-linear-modern-dark,linear-modern-dark.mdc,frontend,frontend-developer,active,curated,"linear,cinematic,dark",Globs linear theme folder; attach skills/linear-modern-dark.md

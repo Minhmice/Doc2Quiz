@@ -41,10 +41,10 @@ export function AiParsePreferenceToggles({
                 htmlFor={attachCheckboxId}
                 className="cursor-pointer text-sm font-medium leading-none text-foreground"
               >
-                Attach page image to parsed questions
+                Attach page image to parsed items
               </Label>
               <p className="text-sm text-muted-foreground">
-                Each parsed question will keep a reference image from its source PDF
+                Each parsed item will keep a reference image from its source PDF
                 page.
               </p>
             </div>

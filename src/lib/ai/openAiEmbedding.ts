@@ -6,11 +6,14 @@ import {
   forwardEmbeddingPost,
   parseProxyForwardErrorBody,
 } from "@/lib/ai/sameOriginForward";
-import { resolveEmbeddingsTargetUrl } from "@/lib/ai/openAiEndpoint";
 import {
   describeBadAiResponse,
   responseLooksLikeHtml,
 } from "@/lib/ai/upstreamErrors";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
+
+/** Opaque key stored in local index rows — not the upstream vendor model id. */
+export const EMBEDDING_INDEX_MODEL_KEY = "doc2quiz-embed-v1";
 
 export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 
@@ -32,24 +35,16 @@ export function parseOpenAiEmbeddingResponse(text: string): number[] {
 }
 
 export async function embedText(params: {
-  apiKey: string;
-  forwardBaseUrl: string;
   text: string;
-  model?: string;
   signal?: AbortSignal;
 }): Promise<{ vector: number[]; dimensions: number; model: string }> {
-  const model =
-    (params.model ?? DEFAULT_EMBEDDING_MODEL).trim() || DEFAULT_EMBEDDING_MODEL;
-  const targetUrl = resolveEmbeddingsTargetUrl(params.forwardBaseUrl);
   const res = await forwardEmbeddingPost({
-    apiKey: params.apiKey,
-    targetUrl,
-    body: { model, input: params.text },
+    body: { input: params.text },
     signal: params.signal,
   });
   const text = await res.text();
-  if (res.status === 401) {
-    throw new Error("Invalid API key. Please check and try again.");
+  if (res.status === 401 || res.status === 503) {
+    throw new Error(AI_PROCESSING_UNAVAILABLE_MESSAGE);
   }
   if (res.status === 429) {
     throw new Error("Too many requests. Please wait and try again.");
@@ -63,5 +58,9 @@ export async function embedText(params: {
     throw new Error(describeBadAiResponse(res.status, text));
   }
   const vector = parseOpenAiEmbeddingResponse(text);
-  return { vector, dimensions: vector.length, model };
+  return {
+    vector,
+    dimensions: vector.length,
+    model: EMBEDDING_INDEX_MODEL_KEY,
+  };
 }

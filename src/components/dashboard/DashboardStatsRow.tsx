@@ -10,7 +10,7 @@ export type DashboardStatsRowProps = Readonly<{
   totalSets: number;
   streakDays: number;
   streakRingPercent: number;
-  weeklyQuestions: number;
+  weeklyItems: number;
 }>;
 
 /** Shared stat card chrome: subtle lift + border/bg on hover (motion-safe). */
@@ -130,7 +130,7 @@ export function DashboardStatsRow({
   totalSets,
   streakDays,
   streakRingPercent,
-  weeklyQuestions,
+  weeklyItems,
 }: DashboardStatsRowProps) {
   const reduceMotion = useReducedMotion();
   const reduceMotionBool = reduceMotion === true;
@@ -161,7 +161,7 @@ export function DashboardStatsRow({
     reduceMotion: reduceMotionBool,
     round: true,
   });
-  const animatedWeeklyQuestions = useRafCountUp(weeklyQuestions, {
+  const animatedWeeklyItems = useRafCountUp(weeklyItems, {
     durationMs: 1600,
     reduceMotion: reduceMotionBool,
     round: true,
@@ -239,9 +239,9 @@ export function DashboardStatsRow({
             Weekly activity
           </p>
           <p className="text-lg font-bold leading-none text-accent-foreground">
-            {animatedWeeklyQuestions}{" "}
+            {animatedWeeklyItems}{" "}
             <span className="text-[10px] font-medium text-[color:var(--d2q-blue)]">
-              Qs this week
+              Items this week
             </span>
           </p>
         </div>

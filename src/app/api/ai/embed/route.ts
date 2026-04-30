@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 
+import {
+  getAiProcessingConfig,
+  getEmbeddingsUrl,
+  getServerEmbeddingModel,
+  isAiProcessingConfigured,
+} from "@/lib/server/ai-processing-config";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
+import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type Body = {
+  /** Ignored — auth uses server env. */
   provider?: unknown;
-  targetUrl?: unknown;
-  apiKey?: unknown;
-  /** OpenAI-compatible: `{ model, input: string }` */
+  /** Partial embeddings body; `model` is always overridden server-side. */
   body?: unknown;
 };
 
@@ -31,7 +38,7 @@ function isAllowedTargetUrl(href: string): { ok: true; url: URL } | { ok: false 
 
 /**
  * Same-origin proxy for OpenAI-compatible `POST /v1/embeddings`.
- * Keys are never stored server-side (see `/api/ai/forward`).
+ * URL and key come from server env only.
  */
 export async function POST(req: Request) {
   const supabase = await createSupabaseServerClient();
@@ -42,6 +49,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAiProcessingConfigured()) {
+    return NextResponse.json(
+      { error: AI_PROCESSING_UNAVAILABLE_MESSAGE },
+      { status: 503 },
+    );
+  }
+
   let parsed: Body;
   try {
     parsed = (await req.json()) as Body;
@@ -49,33 +63,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const provider = parsed.provider;
-  if (
-    provider !== "openai" &&
-    provider !== "anthropic" &&
-    provider !== "custom"
-  ) {
-    return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
-  }
-
-  const targetUrl =
-    typeof parsed.targetUrl === "string" ? parsed.targetUrl.trim() : "";
-  const apiKey = typeof parsed.apiKey === "string" ? parsed.apiKey.trim() : "";
-  if (!targetUrl || !apiKey) {
+  const tier = resolveUserAiTier(user);
+  let cfg;
+  try {
+    cfg = getAiProcessingConfig(tier);
+  } catch {
     return NextResponse.json(
-      { error: "targetUrl and apiKey are required" },
-      { status: 400 },
+      { error: AI_PROCESSING_UNAVAILABLE_MESSAGE },
+      { status: 503 },
     );
   }
 
+  const targetUrl = getEmbeddingsUrl(cfg.url);
   const allowed = isAllowedTargetUrl(targetUrl);
   if (!allowed.ok) {
     return NextResponse.json(
-      {
-        error:
-          "URL must be https, or http://localhost / http://127.0.0.1 for a local proxy",
-      },
-      { status: 400 },
+      { error: AI_PROCESSING_UNAVAILABLE_MESSAGE },
+      { status: 503 },
     );
   }
 
@@ -88,27 +92,33 @@ export async function POST(req: Request) {
   })();
   if (!pathLower.includes("embedding")) {
     return NextResponse.json(
-      { error: "targetUrl must be an embeddings endpoint" },
+      { error: "Embeddings URL could not be resolved from AI_PROVIDER_URL." },
       { status: 400 },
     );
   }
 
+  const partial =
+    typeof parsed.body === "object" && parsed.body !== null && !Array.isArray(parsed.body)
+      ? (parsed.body as Record<string, unknown>)
+      : {};
+
+  const embeddingModel = getServerEmbeddingModel();
+  const merged = {
+    ...partial,
+    model: embeddingModel,
+  };
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Authorization: `Bearer ${cfg.key}`,
   };
-  if (provider === "openai" || provider === "custom") {
-    headers.Authorization = `Bearer ${apiKey}`;
-  } else {
-    headers["x-api-key"] = apiKey;
-    headers["anthropic-version"] = "2023-06-01";
-  }
 
   let upstream: Response;
   try {
     upstream = await fetch(targetUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify(parsed.body ?? {}),
+      body: JSON.stringify(merged),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upstream request failed";

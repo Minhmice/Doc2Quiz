@@ -4,7 +4,10 @@
  * **Chunk unit:** `chunkText()` from extracted plain text (same as MCQ sequential parse).
  */
 
-import { DEFAULT_EMBEDDING_MODEL, embedText } from "@/lib/ai/openAiEmbedding";
+import {
+  EMBEDDING_INDEX_MODEL_KEY,
+  embedText,
+} from "@/lib/ai/openAiEmbedding";
 import { runEmbeddingIndexJob } from "@/lib/ai/embeddingIndexJob";
 import { EMBEDDING_INDEX_SCHEMA_VERSION } from "@/lib/ai/embeddingIndexTypes";
 import { rankByCosineSimilarity } from "@/lib/ai/cosineSimilarity";
@@ -31,9 +34,6 @@ export type BuildEmbeddingIndexResult = {
 export async function buildEmbeddingIndexFromPlainText(options: {
   studySetId: string;
   fullText: string;
-  apiKey: string;
-  forwardBaseUrl: string;
-  embeddingModel?: string;
   signal?: AbortSignal;
 }): Promise<BuildEmbeddingIndexResult> {
   const r = await runEmbeddingIndexJob({
@@ -56,14 +56,10 @@ export type SearchHit = {
 export async function searchSimilarChunks(options: {
   studySetId: string;
   query: string;
-  apiKey: string;
-  forwardBaseUrl: string;
-  embeddingModel?: string;
   topK?: number;
   signal?: AbortSignal;
 }): Promise<SearchHit[]> {
-  const { studySetId, query, apiKey, forwardBaseUrl, embeddingModel, signal } =
-    options;
+  const { studySetId, query, signal } = options;
   const topK = options.topK ?? 8;
   const q = query.trim();
   if (q.length === 0) {
@@ -75,8 +71,7 @@ export async function searchSimilarChunks(options: {
     return [];
   }
 
-  const model =
-    (embeddingModel ?? DEFAULT_EMBEDDING_MODEL).trim() || DEFAULT_EMBEDDING_MODEL;
+  const model = EMBEDDING_INDEX_MODEL_KEY;
   const compatible = rows.filter(
     (r) =>
       r.embeddingModel === model &&
@@ -87,10 +82,7 @@ export async function searchSimilarChunks(options: {
   }
 
   const { vector: queryVec } = await embedText({
-    apiKey,
-    forwardBaseUrl,
     text: q,
-    model,
     signal,
   });
 

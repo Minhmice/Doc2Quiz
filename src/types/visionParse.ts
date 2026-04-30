@@ -71,6 +71,8 @@ export type FlashcardVisionItem = {
   back: string;
   confidence: number;
   sourcePages?: number[];
+  /** Canonical extraction unit ids this card was generated from. */
+  sourceUnitIds: string[];
 };
 
 /**

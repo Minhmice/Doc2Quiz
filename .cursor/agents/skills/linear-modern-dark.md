@@ -3,11 +3,11 @@
 ## When to use this skill
 
 - User asks for **Linear-style**, **modern dark**, **cinematic**, **ambient glow**, **indigo accent**, **glass cards**, **spotlight hover**.
-- Task touches **`components/themes/linear/**`**, **LinearButton / LinearCard / LinearInput**, or full-page layouts that rely on **blobs + grid + noise** background.
+- Task touches **`components/themes/linear/**`**, **LinearButton / LinearCard / LinearInput**, or full-page layouts that rely on **blobs + grid + noise\*\* background.
 - Building **bento grids**, **gradient headlines**, **parallax hero**, or **premium dev-tool** marketing.
 
 **Handoff:**  
-*Act as frontend-developer per `.cursor/agents/specialists/frontend-developer/SKILL.md`. Apply `.cursor/agents/skills/linear-modern-dark.md`. Scope: [files].*
+_Act as frontend-developer per `.cursor/agents/specialists/frontend-developer/SKILL.md`. Apply `.cursor/agents/skills/linear-modern-dark.md`. Scope: [files]._
 
 ---
 
@@ -23,13 +23,13 @@ Expert FE + UI/UX + motion. **Before code:**
 
 ## Design philosophy
 
-| Principle | Meaning |
-|-----------|---------|
-| Near-black, not pure black | `#050506` canvas, `#020203` deepest layer |
-| Off-white text | `#EDEDEF` primary; `#8A8F98` muted |
-| One accent | Indigo `#5E6AD2` → hover `#6872D9`; glow via `color-mix` / low-opacity radial |
-| Atmospheric BG | Grid + radial depth + noise + **animated blobs** (`::before`, `.bg-blob-2`) — see `globals.css` |
-| Software feel | Precise hover/focus; spotlight on cards; optional scroll parallax on hero |
+| Principle                  | Meaning                                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| Near-black, not pure black | `#050506` canvas, `#020203` deepest layer                                                       |
+| Off-white text             | `#EDEDEF` primary; `#8A8F98` muted                                                              |
+| One accent                 | Indigo `#5E6AD2` → hover `#6872D9`; glow via `color-mix` / low-opacity radial                   |
+| Atmospheric BG             | Grid + radial depth + noise + **animated blobs** (`::before`, `.bg-blob-2`) — see `globals.css` |
+| Software feel              | Precise hover/focus; spotlight on cards; optional scroll parallax on hero                       |
 
 **Differentiation from Bauhaus / Monochrome:** Soft depth, blur, gradients OK; **rounded-2xl** cards; **no** hard 4px offset shadows as default.
 
@@ -39,16 +39,16 @@ Expert FE + UI/UX + motion. **Before code:**
 
 **File:** `app/globals.css` → `:root[data-theme="linear-dark"]` & `linear-light` (identical block).
 
-| Spec token | Repo |
-|------------|------|
-| background-base | `--rv-bg` `#050506`, `--background` oklch ~0.18 |
-| background-deep | `body` base `#020203` on `:root` linear |
-| surface | `--rv-surface` `rgba(255,255,255,0.05)` |
-| surface-hover | `--rv-surface-hover` 0.08 |
-| foreground | `--rv-text` `#EDEDEF` |
-| muted | `--rv-text-muted` `#8A8F98` |
-| accent | `--rv-primary` `#5E6AD2`, `--rv-primary-hover` `#6872D9` |
-| border | `--rv-border` `rgba(255,255,255,0.06)` |
+| Spec token      | Repo                                                     |
+| --------------- | -------------------------------------------------------- |
+| background-base | `--rv-bg` `#050506`, `--background` oklch ~0.18          |
+| background-deep | `body` base `#020203` on `:root` linear                  |
+| surface         | `--rv-surface` `rgba(255,255,255,0.05)`                  |
+| surface-hover   | `--rv-surface-hover` 0.08                                |
+| foreground      | `--rv-text` `#EDEDEF`                                    |
+| muted           | `--rv-text-muted` `#8A8F98`                              |
+| accent          | `--rv-primary` `#5E6AD2`, `--rv-primary-hover` `#6872D9` |
+| border          | `--rv-border` `rgba(255,255,255,0.06)`                   |
 
 **Typography (spec):** Inter + Geist. **Repo:** **Inter** on `--font-heading` / `--font-sans`; JetBrains Mono for mono. Add Geist in layout if spec requires.
 
@@ -119,12 +119,12 @@ Primary CTA: accent-tinted outer ring + inset white top edge (see `LinearButton`
 
 ## Animation cheatsheet
 
-| Use | Timing | Easing |
-|-----|--------|--------|
-| Hover UI | 200–300ms | `cubic-bezier(0.16,1,0.3,1)` |
-| Blob float | 8–12s | ease-in-out infinite |
-| Entrance | ~600ms stagger 80ms | expo-out |
-| Hero parallax | scroll-driven | reduce if `prefers-reduced-motion` |
+| Use           | Timing              | Easing                             |
+| ------------- | ------------------- | ---------------------------------- |
+| Hover UI      | 200–300ms           | `cubic-bezier(0.16,1,0.3,1)`       |
+| Blob float    | 8–12s               | ease-in-out infinite               |
+| Entrance      | ~600ms stagger 80ms | expo-out                           |
+| Hero parallax | scroll-driven       | reduce if `prefers-reduced-motion` |
 
 ---
 
@@ -158,11 +158,11 @@ Primary CTA: accent-tinted outer ring + inset white top edge (see `LinearButton`
 
 ## Repo paths
 
-| Area | Path |
-|------|------|
-| Shells | `components/themes/linear/{Button,Card,Input}.tsx` |
+| Area                | Path                                                  |
+| ------------------- | ----------------------------------------------------- |
+| Shells              | `components/themes/linear/{Button,Card,Input}.tsx`    |
 | Tokens + BG + blobs | `app/globals.css` (THEME: LINEAR), `@keyframes float` |
-| Theme switch | `components/themes/index.tsx` → `case "linear"` |
+| Theme switch        | `components/themes/index.tsx` → `case "linear"`       |
 
 ---
 

@@ -13,6 +13,7 @@ export function quizVisionItemToQuestion(
     correctIndex: item.correctIndex,
     parseConfidence: item.confidence,
     parseStructureValid: true,
+    sourceUnitIds: [],
     sourcePageIndex: item.sourcePages?.[0] ?? defaultSourcePage,
     ...(item.includePageImage === false ? { includePageImage: false } : {}),
   };

@@ -8,6 +8,8 @@
     "build": "node scripts/copy-mathjax-assets.mjs && next build",
     "start": "next start",
     "lint": "eslint",
+    "verify:redirects": "npx --yes tsx scripts/verify-study-set-redirects.ts",
+    "verify:import-validate": "npx --yes tsx scripts/verify-import-validate.ts",
     "example:serve": "npx --yes serve@14 example -l 5050",
     "copy-mathjax": "node scripts/copy-mathjax-assets.mjs",
     "eval-export-smoke": "node scripts/eval-export-smoke.mjs",

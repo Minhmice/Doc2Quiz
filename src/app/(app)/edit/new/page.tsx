@@ -29,30 +29,30 @@ export default function NewStudySetChooserPage() {
         <FormatSelectionCardsGrid>
           <FormatSelectionCard
             href={newQuiz()}
-            ariaLabel="Create quiz: multiple-choice questions for practice from a PDF"
-            title="Create Quiz"
+            ariaLabel="Create a multiple-choice study set from a PDF for practice"
+            title="Multiple choice"
             eyebrow="Best for testing knowledge"
             features={[
-              "Multiple-choice questions",
-              "4 options per question",
+              "Multiple-choice items",
+              "Four options per item",
               "Active recall testing",
             ]}
-            outputHint="Output Hint: 12 MCQ questions with answers"
-            ctaLabel="Choose Quiz"
+            outputHint="Output hint: ~12 MCQ items with answers"
+            ctaLabel="Choose multiple choice"
             variant="quiz"
           />
           <FormatSelectionCard
             href={newFlashcards()}
-            ariaLabel="Create flashcards: flip cards for quick review from a PDF"
-            title="Create Flashcards"
+            ariaLabel="Create flip study content from a PDF for quick review"
+            title="Flip study"
             eyebrow="Best for quick memorization"
             features={[
-              "Front & back study cards",
+              "Front & back sides",
               "Key terms & definitions",
               "Fast review sessions",
             ]}
-            outputHint="Output Hint: Concise card deck for recall"
-            ctaLabel="Choose Flashcards"
+            outputHint="Output hint: concise items for recall"
+            ctaLabel="Choose flip study"
             variant="flashcards"
           />
         </FormatSelectionCardsGrid>

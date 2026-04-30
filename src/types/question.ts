@@ -47,6 +47,8 @@ export type Question = {
   parseConfidence?: number;
   /** True when structure passed validation (four options, correctIndex in range). */
   parseStructureValid?: boolean;
+  /** Canonical extraction unit ids this MCQ was generated from (same PDF → shared coverage map). */
+  sourceUnitIds: string[];
   /**
    * When false, skip attaching a source page image for this MCQ (plain text only).
    * Omitted or true: attach when user enables page image attach and `sourcePageIndex` is set.

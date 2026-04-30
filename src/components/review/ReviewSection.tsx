@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/studySetDb";
 import { countUncertainMappings } from "@/lib/learning";
 import { allMcqsComplete, isMcqComplete } from "@/lib/review/validateMcq";
+import { newRoot } from "@/lib/routes/studySetPaths";
 import { QuestionReviewNavigator } from "@/components/review/QuestionReviewNavigator";
 import { ReviewList } from "@/components/review/ReviewList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -371,7 +372,7 @@ export function ReviewSection({
             <AlertDescription>
               {uncertainMappingCount} question
               {uncertainMappingCount === 1 ? "" : "s"} have uncertain or missing
-              page mapping. Check each card below.
+              page mapping. Check each question below.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -386,12 +387,12 @@ export function ReviewSection({
         {questions.length === 0 ? (
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              No questions yet. Complete import and AI parse on{" "}
+              No questions yet. Complete import and AI parse when you{" "}
               <Link
-                href="/edit/new/quiz"
+                href={newRoot()}
                 className="font-medium text-primary underline-offset-2 hover:underline"
               >
-                New quiz
+                create a study set
               </Link>{" "}
               to generate a question bank.
             </p>

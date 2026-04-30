@@ -8,7 +8,7 @@
 
 import { chunkText } from "@/lib/ai/chunkText";
 import {
-  DEFAULT_EMBEDDING_MODEL,
+  EMBEDDING_INDEX_MODEL_KEY,
   embedText,
 } from "@/lib/ai/openAiEmbedding";
 import {
@@ -55,10 +55,7 @@ function isRetryableEmbeddingError(e: unknown): boolean {
 }
 
 async function embedTextWithRetries(params: {
-  apiKey: string;
-  forwardBaseUrl: string;
   text: string;
-  model: string;
   signal?: AbortSignal;
 }): Promise<{ vector: number[]; dimensions: number; model: string }> {
   let last: unknown;
@@ -97,9 +94,6 @@ async function needsClearForIncompatibleRows(
 export async function runEmbeddingIndexJob(options: {
   studySetId: string;
   fullText: string;
-  apiKey: string;
-  forwardBaseUrl: string;
-  embeddingModel?: string;
   signal?: AbortSignal;
   /** Default 2 — bounded parallel embed calls. */
   concurrency?: number;
@@ -108,16 +102,12 @@ export async function runEmbeddingIndexJob(options: {
   const {
     studySetId,
     fullText,
-    apiKey,
-    forwardBaseUrl,
-    embeddingModel,
     signal,
     onProgress,
   } = options;
   const concurrency = Math.max(1, options.concurrency ?? 2);
 
-  const modelResolved =
-    (embeddingModel ?? DEFAULT_EMBEDDING_MODEL).trim() || DEFAULT_EMBEDDING_MODEL;
+  const modelResolved = EMBEDDING_INDEX_MODEL_KEY;
   const trimmed = fullText.trim();
 
   if (trimmed.length === 0) {
@@ -182,10 +172,7 @@ export async function runEmbeddingIndexJob(options: {
     }
     const piece = chunks[i]!;
     const { vector, dimensions, model } = await embedTextWithRetries({
-      apiKey,
-      forwardBaseUrl,
       text: piece,
-      model: modelResolved,
       signal,
     });
     const contentHash = await sha256Utf8Hex(piece);

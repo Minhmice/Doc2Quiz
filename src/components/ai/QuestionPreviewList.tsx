@@ -25,7 +25,7 @@ export function QuestionPreviewCard({
   cardClassName,
   variant = "default",
 }: QuestionPreviewCardProps) {
-  const label = `Question: ${q.question.slice(0, 80)}${q.question.length > 80 ? "…" : ""}`;
+  const label = `Item: ${q.question.slice(0, 80)}${q.question.length > 80 ? "…" : ""}`;
 
   if (variant === "import") {
     const displayIndex = i + 1;
@@ -99,7 +99,7 @@ export function QuestionPreviewCard({
       <CardContent className="space-y-2 pt-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            Question {i + 1}
+            Item {i + 1}
           </Badge>
           <MappingQualityBadge question={q} />
         </div>
@@ -146,7 +146,7 @@ export function QuestionPreviewList({
   }
 
   return (
-    <ul className="mt-4 space-y-3" aria-label="Parsed questions preview">
+    <ul className="mt-4 space-y-3" aria-label="Parsed items preview">
       {questions.map((q, i) => (
         <li key={q.id}>
           <QuestionPreviewCard

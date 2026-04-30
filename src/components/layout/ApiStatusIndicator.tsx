@@ -9,7 +9,6 @@ import {
   runAiReachabilityCheck,
   type AiReachabilitySnapshot,
 } from "@/lib/ai/aiReachability";
-import type { AiProvider } from "@/types/question";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/buttons/button";
 import { cn } from "@/lib/utils";
@@ -30,17 +29,6 @@ function formatShortTime(iso: string): string {
     });
   } catch {
     return iso;
-  }
-}
-
-function formatProviderLabel(provider: AiProvider): string {
-  switch (provider) {
-    case "openai":
-      return "OpenAI";
-    case "anthropic":
-      return "Anthropic";
-    case "custom":
-      return "Custom";
   }
 }
 
@@ -125,7 +113,7 @@ export function ApiStatusIndicator() {
   const ok = reach?.ok === true;
   const hasReach = reach != null;
   const label =
-    checking && !hasReach ? "Checking" : ok ? "API OK" : "API Down";
+    checking && !hasReach ? "Checking" : ok ? "Processing OK" : "Unavailable";
 
   return (
     <TooltipProvider delay={200}>
@@ -200,7 +188,7 @@ export function ApiStatusIndicator() {
               {ok ? (
                 <>
                   <p className="font-medium leading-snug text-background">
-                    {formatProviderLabel(reach.provider)} reachable
+                    Document processing is available
                   </p>
                   <p className="text-[11px] leading-snug text-background/90">
                     Last checked {formatShortTime(reach.checkedAt)}
@@ -218,8 +206,7 @@ export function ApiStatusIndicator() {
                 </>
               )}
               <p className="border-t border-background/20 pt-1.5 text-[11px] leading-snug text-background/80">
-                Click to run a fresh connection test. You can also review keys in
-                Settings.
+                Click to run a fresh availability check.
               </p>
             </>
           ) : (
@@ -228,7 +215,7 @@ export function ApiStatusIndicator() {
                 No connection check yet
               </p>
               <p className="text-[11px] leading-snug text-background/90">
-                Open Settings or click here to test your AI configuration.
+                Click here to check whether document processing is available.
               </p>
             </>
           )}

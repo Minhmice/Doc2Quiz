@@ -23,16 +23,12 @@ export async function runOcrSequential(opts: {
   signal: AbortSignal;
   onProgress?: (p: OcrParseProgress) => void;
   provider: OcrProvider;
-  endpoint: string;
-  apiKey: string;
-  model: string;
 }): Promise<OcrRunResult | null> {
-  const { pages, signal, onProgress, provider, endpoint, apiKey, model } = opts;
+  const { pages, signal, onProgress, provider } = opts;
 
   pipelineLog("OCR", "sequential", "info", "runOcrSequential invoked", {
     pageCount: pages.length,
     provider,
-    model,
   });
 
   if (pages.length === 0) {
@@ -103,9 +99,6 @@ export async function runOcrSequential(opts: {
           pageIndex: page.pageIndex,
           totalPages: pages.length,
           signal,
-          endpoint,
-          apiKey,
-          model,
         });
         if ("ocrResult" in r) {
           return r;

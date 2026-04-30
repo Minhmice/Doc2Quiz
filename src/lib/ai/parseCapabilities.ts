@@ -1,9 +1,6 @@
 /**
- * Phase 19 — declarative v1: which parse surfaces are allowed for the current forward BYOK config.
- * Rows are stable `reasonKey`s for UI; matrix rules may grow (e.g. modality probes) in later phases.
+ * Declarative v1: which parse surfaces are allowed given server AI availability.
  */
-
-import type { ForwardClientSettings } from "@/lib/ai/forwardSettings";
 
 export const REASON_FORWARD_MISSING_API_KEY = "forward.missing_api_key";
 export const REASON_FORWARD_MISSING_MODEL = "forward.missing_model";
@@ -23,40 +20,19 @@ export type SurfaceAvailability = {
   reasonKey?: string;
 };
 
-function isPlausibleHttpUrl(baseUrl: string): boolean {
-  const t = baseUrl.trim();
-  if (!t) {
-    return true;
-  }
-  try {
-    const u = new URL(t);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 /**
- * v1 rules: require non-empty API key for any LLM/OCR forward surface; require model id when a custom base URL is set.
- * `idb_bank_persist` is always allowed (local-only; failures are IDB errors, not “missing key”).
+ * v1 rules: LLM/OCR forward surfaces require server-side AI processing to be configured
+ * (`/api/ai/processing-status` → available).
  */
 export function getSurfaceAvailability(args: {
-  settings: ForwardClientSettings;
+  serverProcessingAvailable: boolean;
   attachPageImages: boolean;
 }): SurfaceAvailability[] {
-  const { settings, attachPageImages } = args;
-  const keyOk = settings.apiKey.trim().length > 0;
-  const urlOk = isPlausibleHttpUrl(settings.baseUrl);
-  const hasCustomBase = settings.baseUrl.trim().length > 0;
-  const modelOk = !hasCustomBase || settings.modelId.trim().length > 0;
+  const { serverProcessingAvailable, attachPageImages } = args;
 
-  const llmBlocked = !keyOk
-    ? REASON_FORWARD_MISSING_API_KEY
-    : !urlOk
-      ? REASON_FORWARD_INVALID_BASE_URL
-      : !modelOk
-        ? REASON_FORWARD_MISSING_MODEL
-        : undefined;
+  const llmBlocked = serverProcessingAvailable
+    ? undefined
+    : REASON_FORWARD_MISSING_API_KEY;
 
   void attachPageImages;
 

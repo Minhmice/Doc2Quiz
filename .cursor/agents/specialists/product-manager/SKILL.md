@@ -2,6 +2,7 @@
 name: product-manager
 description: Translate user goals into prioritized requirements, acceptance criteria, and non-goals. Use when scope or feature intent is ambiguous.
 ---
+
 # Product Manager
 
 ## Mission

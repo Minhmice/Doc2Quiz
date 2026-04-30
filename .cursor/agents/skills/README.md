@@ -20,31 +20,31 @@ When you assign a task to a field, use the skill file below so the executor know
 
 ## Index: field → skill file → specialist
 
-| Field | Skill file | Specialist (agent) |
-|-------|------------|---------------------|
-| Frontend | [frontend.md](frontend.md) | `frontend-developer` |
-| Backend | [backend.md](backend.md) | `backend-developer` |
-| TypeScript / contracts | [typescript.md](typescript.md) | `typescript-specialist` |
-| Database / schema / RLS | [database.md](database.md) | `database-specialist` |
-| DevOps / deploy / CI | [devops.md](devops.md) | `devops-engineer` |
-| Documentation | [documentation.md](documentation.md) | `documentation-writer` |
-| QA / testing | [qa.md](qa.md) | `qa-tester` |
-| Code review | [code-review.md](code-review.md) | `code-reviewer` |
-| Planning | [planner.md](planner.md) | `planner` |
-| Product / scope | [product-manager.md](product-manager.md) | `product-manager` |
-| Research | [research.md](research.md) | `research-analyst` |
-| Debug | [debugger.md](debugger.md) | `debugger` |
-| Google CLI (gws) | [google-cli.md](google-cli.md) | `google-cli-specialist` |
-| i18n | [i18n.md](i18n.md) | `frontend-developer` |
-| shadcn/ui | In [frontend.md](frontend.md) § Shadcn/ui; optional [shadcn.md](shadcn.md) | `frontend-developer` |
-| Responsive | [frontend.md](frontend.md) § Responsive design; search `-d responsive` | `frontend-developer` |
-| Stitch MCP | [stitch.md](stitch.md) — **only when user asks for Stitch** | `frontend-developer` |
-| Minimalist Monochrome | [minimalist-monochrome.md](minimalist-monochrome.md) | `frontend-developer` |
-| Theme system (presets, tokens, wiring) | [theme-instructions.md](theme-instructions.md) | `frontend-developer` |
-| Bauhaus (constructivist) | [bauhaus-theme.md](bauhaus-theme.md) | `frontend-developer` |
-| Linear / modern dark (cinematic) | [linear-modern-dark.md](linear-modern-dark.md) | `frontend-developer` |
-| **Orchestrator** | — | See `.cursor/agents/orchestrator/SKILL.md` |
-| **Expo + React Native** (Thuocare `.agents` pack) | [expo-react-native.md](expo-react-native.md) | Usually `frontend-developer`; `devops-engineer` / `typescript-specialist` / `backend-developer` per task (see that file) |
+| Field                                             | Skill file                                                                 | Specialist (agent)                                                                                                       |
+| ------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Frontend                                          | [frontend.md](frontend.md)                                                 | `frontend-developer`                                                                                                     |
+| Backend                                           | [backend.md](backend.md)                                                   | `backend-developer`                                                                                                      |
+| TypeScript / contracts                            | [typescript.md](typescript.md)                                             | `typescript-specialist`                                                                                                  |
+| Database / schema / RLS                           | [database.md](database.md)                                                 | `database-specialist`                                                                                                    |
+| DevOps / deploy / CI                              | [devops.md](devops.md)                                                     | `devops-engineer`                                                                                                        |
+| Documentation                                     | [documentation.md](documentation.md)                                       | `documentation-writer`                                                                                                   |
+| QA / testing                                      | [qa.md](qa.md)                                                             | `qa-tester`                                                                                                              |
+| Code review                                       | [code-review.md](code-review.md)                                           | `code-reviewer`                                                                                                          |
+| Planning                                          | [planner.md](planner.md)                                                   | `planner`                                                                                                                |
+| Product / scope                                   | [product-manager.md](product-manager.md)                                   | `product-manager`                                                                                                        |
+| Research                                          | [research.md](research.md)                                                 | `research-analyst`                                                                                                       |
+| Debug                                             | [debugger.md](debugger.md)                                                 | `debugger`                                                                                                               |
+| Google CLI (gws)                                  | [google-cli.md](google-cli.md)                                             | `google-cli-specialist`                                                                                                  |
+| i18n                                              | [i18n.md](i18n.md)                                                         | `frontend-developer`                                                                                                     |
+| shadcn/ui                                         | In [frontend.md](frontend.md) § Shadcn/ui; optional [shadcn.md](shadcn.md) | `frontend-developer`                                                                                                     |
+| Responsive                                        | [frontend.md](frontend.md) § Responsive design; search `-d responsive`     | `frontend-developer`                                                                                                     |
+| Stitch MCP                                        | [stitch.md](stitch.md) — **only when user asks for Stitch**                | `frontend-developer`                                                                                                     |
+| Minimalist Monochrome                             | [minimalist-monochrome.md](minimalist-monochrome.md)                       | `frontend-developer`                                                                                                     |
+| Theme system (presets, tokens, wiring)            | [theme-instructions.md](theme-instructions.md)                             | `frontend-developer`                                                                                                     |
+| Bauhaus (constructivist)                          | [bauhaus-theme.md](bauhaus-theme.md)                                       | `frontend-developer`                                                                                                     |
+| Linear / modern dark (cinematic)                  | [linear-modern-dark.md](linear-modern-dark.md)                             | `frontend-developer`                                                                                                     |
+| **Orchestrator**                                  | —                                                                          | See `.cursor/agents/orchestrator/SKILL.md`                                                                               |
+| **Expo + React Native** (Thuocare `.agents` pack) | [expo-react-native.md](expo-react-native.md)                               | Usually `frontend-developer`; `devops-engineer` / `typescript-specialist` / `backend-developer` per task (see that file) |
 
 ## Using a skill in a handoff
 

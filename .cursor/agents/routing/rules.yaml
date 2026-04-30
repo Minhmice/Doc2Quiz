@@ -17,13 +17,48 @@ sequential_delegation:
     - deployment_dependency_chain
 signals:
   product-manager:
-    keywords: ["requirements", "scope", "priority", "acceptance", "mvp", "non-goal"]
+    keywords:
+      ["requirements", "scope", "priority", "acceptance", "mvp", "non-goal"]
   planner:
-    keywords: ["plan", "roadmap", "decompose", "sequence", "milestone"]
+    keywords:
+      [
+        "plan",
+        "roadmap",
+        "decompose",
+        "sequence",
+        "milestone",
+        "documentation plan"
+      ]
   research-analyst:
-    keywords: ["compare", "evaluate", "unknown", "best practice", "tradeoff"]
+    keywords:
+      [
+        "compare",
+        "evaluate",
+        "unknown",
+        "best practice",
+        "tradeoff",
+        "analyze docs",
+        "review docs"
+      ]
   frontend-developer:
-    keywords: ["ui", "component", "page", "layout", "a11y", "render", "translation", "i18n", "locale", "localized", "shadcn", "components.json", "radix", "add button", "add dialog"]
+    keywords:
+      [
+        "ui",
+        "component",
+        "page",
+        "layout",
+        "a11y",
+        "render",
+        "translation",
+        "i18n",
+        "locale",
+        "localized",
+        "shadcn",
+        "components.json",
+        "radix",
+        "add button",
+        "add dialog"
+      ]
   backend-developer:
     keywords: ["api", "route", "auth", "service", "server", "endpoint"]
   typescript-specialist:
@@ -35,15 +70,49 @@ signals:
   code-reviewer:
     keywords: ["review", "risk", "security", "maintainability", "correctness"]
   security-specialist:
-    keywords: ["security", "vulnerability", "audit", "risk", "xss", "sql injection", "auth", "access control", "secret", "csp"]
+    keywords:
+      [
+        "security",
+        "vulnerability",
+        "audit",
+        "risk",
+        "xss",
+        "sql injection",
+        "auth",
+        "access control",
+        "secret",
+        "csp"
+      ]
   qa-tester:
     keywords: ["test plan", "verify", "pass/fail", "edge case", "coverage"]
   documentation-writer:
-    keywords: ["readme", "docs", "runbook", "how-to", "changelog"]
+    keywords:
+      [
+        "readme",
+        "update readme",
+        "write docs",
+        "update docs",
+        "add runbook",
+        "write how-to",
+        "changelog"
+      ]
   devops-engineer:
     keywords: ["deploy", "pipeline", "rollback", "slo", "monitoring", "ci/cd"]
   google-cli-specialist:
-    keywords: ["gws", "google workspace", "google-cli", "cli", "discovery", "auth", "commands", "validate"]
+    keywords:
+      [
+        "gws",
+        "google workspace",
+        "google-cli",
+        "gws auth",
+        "google workspace auth",
+        "gws discovery",
+        "google workspace discovery",
+        "drive cli",
+        "gmail cli",
+        "calendar cli",
+        "gws validate"
+      ]
 quality_gates:
   mandatory_before_done:
     - code-reviewer

@@ -80,11 +80,17 @@ export function validateVisionFlashcardItems(
     if (opts?.requireSourcePages && sourcePages === null) {
       continue;
     }
+    const suRaw = rec.sourceUnitIds;
+    const sourceUnitIds =
+      Array.isArray(suRaw) && suRaw.every((x) => typeof x === "string")
+        ? suRaw.map((s) => String(s).trim()).filter((s) => s.length > 0)
+        : [];
     out.push({
       kind: "flashcard",
       front: front.trim(),
       back: back.trim(),
       confidence: 0,
+      sourceUnitIds,
       ...(sourcePages !== null ? { sourcePages } : {}),
     });
   }

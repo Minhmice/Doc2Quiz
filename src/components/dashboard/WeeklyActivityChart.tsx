@@ -15,7 +15,7 @@ export function WeeklyActivityChart({ daily, totalAnswered }: WeeklyActivityChar
       <Card className="p-6">
         <h3 className="text-sm font-medium mb-4">Weekly Activity</h3>
         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-          No activity this week — answer questions to see your progress
+          No activity this week — complete study sessions to see your progress
         </div>
       </Card>
     )
@@ -48,7 +48,7 @@ export function WeeklyActivityChart({ daily, totalAnswered }: WeeklyActivityChar
                       : "bg-primary/70 hover:bg-primary"
                   }`}
                   style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                  title={`${day.date}: ${day.count} question${day.count !== 1 ? "s" : ""}`}
+                  title={`${day.date}: ${day.count} item${day.count !== 1 ? "s" : ""}`}
                 >
                   {showNumbers && day.count > 0 && (
                     <div className="text-[10px] text-primary-foreground font-medium text-center pt-1">

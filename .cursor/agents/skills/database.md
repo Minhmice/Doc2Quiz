@@ -14,7 +14,7 @@ Design and change schema, migrations, RLS policies, and data integrity. Own SQL 
 
 - **Invoke when**: Schema changes, new migrations, RLS updates, data integrity; query optimization, indexing, N+1 prevention; ownership or row-level security; data consolidation.
 - **Do not invoke when**: API route logic only (use backend); UI only (use frontend); infra/CI (use devops).
-- **Critical rules**: (1) Always check query plans (EXPLAIN ANALYZE) before deploying. (2) Index foreign keys for joins. (3) Avoid SELECT *; fetch only needed columns. (4) Use connection pooling; never open connections per request. (5) Migrations must be reversible (DOWN migrations). (6) Never lock tables in production—use CONCURRENTLY for indexes. (7) Prevent N+1: JOINs or batch loading. (8) Coordinate with backend for service-layer alignment.
+- **Critical rules**: (1) Always check query plans (EXPLAIN ANALYZE) before deploying. (2) Index foreign keys for joins. (3) Avoid SELECT \*; fetch only needed columns. (4) Use connection pooling; never open connections per request. (5) Migrations must be reversible (DOWN migrations). (6) Never lock tables in production—use CONCURRENTLY for indexes. (7) Prevent N+1: JOINs or batch loading. (8) Coordinate with backend for service-layer alignment.
 - **Boundaries**: Own schema/RLS/migrations; backend owns route and service logic.
 
 ## When to use this skill

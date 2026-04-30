@@ -149,7 +149,7 @@ export function FlashcardReviewWorkspace({
         </p>
         <p className="text-sm text-muted-foreground">
           Run <span className="font-medium text-foreground">Parse with AI</span>{" "}
-          on the Source step to generate flashcards from your PDF.
+          on the Source step to generate cards from your PDF.
         </p>
         <Link
           href={editFlashcards(studySetId)}
@@ -174,10 +174,10 @@ export function FlashcardReviewWorkspace({
           >
             <span className="text-[color:var(--d2q-blue)]">Doc2Quiz</span>
             <ChevronRight className="size-3 opacity-50" aria-hidden />
-            <span className="opacity-80">Step 2 · Edit flashcards</span>
+            <span className="opacity-80">Step 2 · Edit cards</span>
           </nav>
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-accent-foreground sm:text-4xl">
-            Edit your flashcards
+            Edit your cards
           </h1>
           {title ? (
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -187,7 +187,7 @@ export function FlashcardReviewWorkspace({
           ) : null}
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Refine the front and back of each card before studying. Mark cards you
-            are happy with, then save and open the deck to study.
+            are happy with, then save and open flip study.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export function FlashcardReviewWorkspace({
                 Total volume
               </span>
               <span className="font-heading text-xl font-bold tabular-nums text-accent-foreground">
-                {total} flashcard{total === 1 ? "" : "s"}
+                {total} card{total === 1 ? "" : "s"}
               </span>
             </div>
             <div className="flex flex-col gap-0.5">
@@ -244,7 +244,7 @@ export function FlashcardReviewWorkspace({
                 "inline-flex items-center gap-2 font-label text-xs uppercase tracking-widest",
               )}
             >
-              Study deck
+              Open flip study
               <Play className="size-4" aria-hidden />
             </Link>
           </div>
@@ -366,7 +366,7 @@ export function FlashcardReviewWorkspace({
               <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="font-label text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Front (question)
+                    Card front
                   </label>
                   <Textarea
                     value={activeCard.front}

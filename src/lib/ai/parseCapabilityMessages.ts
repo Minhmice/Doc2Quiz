@@ -3,17 +3,18 @@ import {
   REASON_FORWARD_MISSING_API_KEY,
   REASON_FORWARD_MISSING_MODEL,
 } from "@/lib/ai/parseCapabilities";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
 
 /** Short English copy for parse UI when a surface is blocked. */
 export function parseCapabilityUserMessage(reasonKey: string | undefined): string {
   switch (reasonKey) {
     case REASON_FORWARD_MISSING_API_KEY:
-      return "Add an API key in Settings to run OCR, layout parse, or vision.";
+      return AI_PROCESSING_UNAVAILABLE_MESSAGE;
     case REASON_FORWARD_MISSING_MODEL:
-      return "Enter a model id in Settings when using a custom API base URL.";
+      return AI_PROCESSING_UNAVAILABLE_MESSAGE;
     case REASON_FORWARD_INVALID_BASE_URL:
-      return "Fix the API base URL in Settings (must be http or https).";
+      return AI_PROCESSING_UNAVAILABLE_MESSAGE;
     default:
-      return "Check AI settings before parsing.";
+      return AI_PROCESSING_UNAVAILABLE_MESSAGE;
   }
 }

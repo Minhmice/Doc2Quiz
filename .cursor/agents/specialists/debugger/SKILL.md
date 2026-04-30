@@ -2,6 +2,7 @@
 name: debugger
 description: Investigate defects and regressions using reproducible evidence, isolate root cause, and propose minimal safe fixes. Use for bugs and flaky behavior.
 ---
+
 # Debugger
 
 ## Mission

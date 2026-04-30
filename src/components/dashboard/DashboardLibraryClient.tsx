@@ -80,7 +80,7 @@ function LibraryCardsSkeletonGrid() {
   );
 }
 
-/** Dashed “import PDF” CTA — empty library + trailing “more quiz” grid tile */
+/** Dashed “import PDF” CTA — empty library + trailing “add study set” grid tile */
 const dashboardPdfImportDashedLinkClassName = cn(
   "block rounded-lg border-[3px] border-dashed border-border/90 bg-muted/25 p-10 text-center",
   "box-border cursor-pointer outline-none transition-[color,background-color,border-color,box-shadow,transform] duration-300 ease-out",
@@ -424,7 +424,7 @@ export function DashboardLibraryClient({
               >
                 <Link
                   href={newRoot()}
-                  aria-label="Add another study set. Import a PDF to build more quizzes."
+                  aria-label="Add another study set. Import a PDF to add more content."
                   className={cn(
                     dashboardPdfImportDashedLinkClassName,
                     "flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center",
@@ -432,7 +432,7 @@ export function DashboardLibraryClient({
                 >
                   <div className="mx-auto flex max-w-md flex-col items-center px-2">
                     <p className="text-lg font-semibold text-foreground sm:text-xl">
-                      More quiz
+                      Add another set
                     </p>
                     <p className="mt-2 text-pretty text-sm text-muted-foreground">
                       Import a PDF to add another study set.
@@ -473,7 +473,7 @@ export function DashboardLibraryClient({
               This will remove &ldquo;{deleteTarget?.meta.title ?? ""}&rdquo; and
               all of its data
               {deleteTarget && deleteTarget.approvedCount > 0
-                ? `, including ${deleteTarget.approvedCount} approved question${deleteTarget.approvedCount === 1 ? "" : "s"}.`
+                ? `, including ${deleteTarget.approvedCount} approved item${deleteTarget.approvedCount === 1 ? "" : "s"}.`
                 : "."}{" "}
               This cannot be undone.
             </AlertDialogDescription>

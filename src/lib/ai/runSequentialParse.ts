@@ -19,11 +19,7 @@ export type ParseProgress = {
 
 export async function runSequentialParse(options: {
   provider: AiProvider;
-  apiKey: string;
-  /** Full chat/messages URL; omit or empty for vendor default (Custom requires URL). */
-  apiUrl?: string;
-  /** Model id; empty uses defaults for OpenAI/Anthropic; required for Custom. */
-  model?: string;
+  processingLabel: string;
   chunks: string[];
   signal: AbortSignal;
   onProgress?: (p: { current: number; total: number }) => void;
@@ -44,9 +40,7 @@ export async function runSequentialParse(options: {
 }> {
   const {
     provider,
-    apiKey,
-    apiUrl,
-    model,
+    processingLabel,
     chunks,
     signal,
     onProgress,
@@ -75,9 +69,7 @@ export async function runSequentialParse(options: {
       try {
         const { questions: qs, cacheHit } = await parseChunkOnce({
           provider,
-          apiKey,
-          apiUrl,
-          model,
+          processingLabel,
           chunkText: chunks[i]!,
           ragContextPrefix,
           signal,

@@ -7,16 +7,30 @@ import {
   QuizPlayNavigator,
   type QuizSessionMetrics,
 } from "@/components/quiz/QuizSession";
+import { useStudySetProductSurfaceRedirect } from "@/hooks/useStudySetProductSurfaceRedirect";
 
 function QuizPlayPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const id = typeof params.id === "string" ? params.id : "";
+  const routeReady = useStudySetProductSurfaceRedirect(
+    id || undefined,
+    "play-quiz",
+  );
+
   const reviewMistakesOnly = searchParams.get("review") === "mistakes";
 
   const [sessionMetrics, setSessionMetrics] = useState<QuizSessionMetrics | null>(
     null,
   );
+
+  if (!routeReady) {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Loading…
+      </p>
+    );
+  }
 
   if (!id) {
     return null;

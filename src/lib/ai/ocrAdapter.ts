@@ -2,6 +2,7 @@ import {
   forwardAiPost,
   parseProxyForwardErrorBody,
 } from "@/lib/ai/sameOriginForward";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
 import { normalizeUnknownError, pipelineLog } from "@/lib/logging/pipelineLogger";
 import {
   DEFAULT_OCR_COORD_REF,
@@ -20,9 +21,6 @@ export interface RunOcrPageOptions {
   pageIndex: number;
   totalPages: number;
   signal: AbortSignal;
-  endpoint: string;
-  apiKey: string;
-  model: string;
 }
 
 type RunOcrPageResult = { ocrResult: OcrPageResult } | { ok: false; error: string };
@@ -49,10 +47,6 @@ export function buildOcrSystemPrompt(): string {
 
 export function buildOcrUserPrompt(pageIndex: number, totalPages: number): string {
   return `Extract all readable text from this PDF page image. Page ${pageIndex} of ${totalPages}. Return structured JSON only.`;
-}
-
-function resolveForwardProvider(endpoint: string): "openai" | "custom" {
-  return /api\.openai\.com/i.test(endpoint) ? "openai" : "custom";
 }
 
 async function imageTransportUrls(dataUrl: string, signal: AbortSignal): Promise<string[]> {
@@ -202,7 +196,8 @@ function parseOcrContent(content: string, pageIndex: number): OcrPageResult {
 }
 
 export async function runOcrPage(opts: RunOcrPageOptions): Promise<RunOcrPageResult> {
-  const { imageDataUrl, pageIndex, totalPages, signal, endpoint, apiKey, model } = opts;
+  const { imageDataUrl, pageIndex, totalPages, signal } = opts;
+  const model = "server";
   const imageUrls = await imageTransportUrls(imageDataUrl, signal);
   let lastError: string | null = null;
 
@@ -227,9 +222,6 @@ export async function runOcrPage(opts: RunOcrPageOptions): Promise<RunOcrPageRes
       };
 
       let res = await forwardAiPost({
-        provider: resolveForwardProvider(endpoint),
-        targetUrl: endpoint,
-        apiKey,
         signal,
         body,
       });
@@ -240,9 +232,6 @@ export async function runOcrPage(opts: RunOcrPageOptions): Promise<RunOcrPageRes
         delete fallbackBody.response_format;
         body = fallbackBody;
         res = await forwardAiPost({
-          provider: resolveForwardProvider(endpoint),
-          targetUrl: endpoint,
-          apiKey,
           signal,
           body,
         });
@@ -255,7 +244,10 @@ export async function runOcrPage(opts: RunOcrPageOptions): Promise<RunOcrPageRes
           totalPages,
           status: res.status,
         });
-        return { ok: false, error: "Invalid API key. Please check and try again." };
+        return { ok: false, error: AI_PROCESSING_UNAVAILABLE_MESSAGE };
+      }
+      if (res.status === 503) {
+        return { ok: false, error: AI_PROCESSING_UNAVAILABLE_MESSAGE };
       }
       if (res.status === 429) {
         pipelineLog("OCR", "request", "warn", "OCR API 429 (handled)", {

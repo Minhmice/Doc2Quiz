@@ -1,5 +1,3 @@
-import type { AiProvider } from "@/types/question";
-
 /** JSON body from `/api/ai/forward` when upstream fetch throws (502). */
 export function parseProxyForwardErrorBody(text: string): string | null {
   try {
@@ -13,76 +11,53 @@ export function parseProxyForwardErrorBody(text: string): string | null {
   return null;
 }
 
-export type ForwardAiPostParams = {
-  provider: AiProvider;
-  targetUrl: string;
-  apiKey: string;
+/**
+ * Browser-only: POST through Next.js `/api/ai/forward`. Upstream URL, key, and model
+ * are applied server-side from environment variables.
+ */
+export async function forwardAiPost(params: {
   body: unknown;
   signal?: AbortSignal;
-};
-
-/**
- * Browser-only: POST through Next.js `/api/ai/forward` so the real request runs
- * server-side (avoids vendor CORS blocks on direct browser → OpenAI/Anthropic).
- */
-export async function forwardAiPost(
-  params: ForwardAiPostParams,
-): Promise<Response> {
-  const { provider, targetUrl, apiKey, body, signal } = params;
+  method?: "GET" | "POST";
+}): Promise<Response> {
+  const { body, signal, method } = params;
   return fetch("/api/ai/forward", {
     method: "POST",
     ...(signal ? { signal } : {}),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      provider,
-      targetUrl,
-      apiKey,
       body,
+      method: method ?? "POST",
     }),
   });
 }
 
-export type ForwardAiGetParams = {
-  provider: AiProvider;
-  targetUrl: string;
-  apiKey: string;
+/** Same-origin proxy GET (e.g. OpenAI-compatible `/v1/models`) — server resolves URL. */
+export async function forwardAiGet(params: {
   signal?: AbortSignal;
-};
-
-/** Same-origin proxy GET (e.g. OpenAI-compatible `/v1/models` key probe). */
-export async function forwardAiGet(
-  params: ForwardAiGetParams,
-): Promise<Response> {
-  const { provider, targetUrl, apiKey, signal } = params;
+}): Promise<Response> {
+  const { signal } = params;
   return fetch("/api/ai/forward", {
     method: "POST",
     ...(signal ? { signal } : {}),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      provider,
-      targetUrl,
-      apiKey,
       method: "GET",
     }),
   });
 }
 
-/** OpenAI-compatible embeddings via `POST /api/ai/embed` (Phase 33). */
+/** OpenAI-compatible embeddings via `POST /api/ai/embed`. */
 export async function forwardEmbeddingPost(params: {
-  apiKey: string;
-  targetUrl: string;
-  body: { model: string; input: string };
+  body: { input: string | string[] | number[][] };
   signal?: AbortSignal;
 }): Promise<Response> {
-  const { apiKey, targetUrl, body, signal } = params;
+  const { body, signal } = params;
   return fetch("/api/ai/embed", {
     method: "POST",
     ...(signal ? { signal } : {}),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      provider: "openai",
-      targetUrl,
-      apiKey,
       body,
     }),
   });

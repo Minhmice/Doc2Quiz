@@ -15,6 +15,12 @@ import {
   dashboardHeroFirstSetLinkClassName,
   dashboardHeroOutlineCreateLinkClassName,
 } from "@/lib/dashboard/createSetCtaLinks";
+import {
+  DASHBOARD_CREATE_FIRST_SET_LABEL,
+  DASHBOARD_CREATE_NEW_SET_LABEL,
+  DASHBOARD_HERO_PRACTICE_LABEL,
+  DASHBOARD_HERO_REVIEW_LATEST_LABEL,
+} from "@/lib/ui/studySetActionLabels";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { cn } from "@/lib/utils";
 
@@ -207,7 +213,7 @@ export function DashboardHero({
             href={createHref}
             className={cn(dashboardHeroFirstSetLinkClassName, "text-center")}
           >
-            Create your first set
+            {DASHBOARD_CREATE_FIRST_SET_LABEL}
           </Link>
         ) : (
           <>
@@ -216,7 +222,7 @@ export function DashboardHero({
                 href={resumePlayHref}
                 className={dashboardHeroAccentPrimaryLinkClassName}
               >
-                Resume latest
+                {DASHBOARD_HERO_PRACTICE_LABEL}
               </Link>
             ) : null}
             {editSetHref ? (
@@ -224,14 +230,14 @@ export function DashboardHero({
                 href={editSetHref}
                 className={dashboardHeroBluePrimaryLinkClassName}
               >
-                Edit latest set
+                {DASHBOARD_HERO_REVIEW_LATEST_LABEL}
               </Link>
             ) : null}
             <Link
               href={createHref}
               className={dashboardHeroOutlineCreateLinkClassName}
             >
-              Create new set
+              {DASHBOARD_CREATE_NEW_SET_LABEL}
             </Link>
           </>
         )}

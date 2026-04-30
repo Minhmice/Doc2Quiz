@@ -17,4 +17,3 @@ Ingest new Cursor rules and skills into the repository’s agent system so routi
 - **Invoke when**: adding/updating Cursor rules (`.mdc`) or agent skills (`.md`); updating mappings/catalogs for routing/search.
 - **Critical rules**: keep CSV headers unchanged; keep catalogs non-empty; keep rule-map aligned to `.cursor/rules/*.mdc`.
 - **Boundaries**: do not add external dependencies; do not delete existing rules/mappings without explicit instruction.
-

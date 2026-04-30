@@ -1,8 +1,9 @@
 ---
 name: frontend-developer
-model: inherit
+model: claude-4.6-sonnet-medium-thinking
 description: Implement frontend UI behavior, state, accessibility, and performance for web applications. Use for pages, components, and client-side user flows. Uses ui-ux-pro-max for design system and UX guidelines.
 ---
+
 # Frontend Developer
 
 ## Mission
@@ -53,6 +54,7 @@ When the task involves **UI/UX work** (design, build, create, implement, review,
 ### Step 1: Analyze Requirements
 
 Extract from the task or handoff:
+
 - **Product type**: SaaS, e-commerce, portfolio, dashboard, landing page, etc.
 - **Style keywords**: minimal, playful, professional, elegant, dark mode, etc.
 - **Industry**: healthcare, fintech, gaming, education, etc.
@@ -81,13 +83,13 @@ python3 .cursor/agents/specialists/frontend-developer/scripts/search.py "<query>
 python3 .cursor/agents/specialists/frontend-developer/scripts/search.py "<keyword>" --domain <domain> [-n <max_results>]
 ```
 
-| Need | Domain | Example |
-|------|--------|---------|
-| More style options | `style` | `--domain style "glassmorphism dark"` |
-| Chart recommendations | `chart` | `--domain chart "real-time dashboard"` |
-| UX best practices | `ux` | `--domain ux "animation accessibility"` |
-| Typography | `typography` | `--domain typography "elegant luxury"` |
-| Landing structure | `landing` | `--domain landing "hero social-proof"` |
+| Need                  | Domain       | Example                                 |
+| --------------------- | ------------ | --------------------------------------- |
+| More style options    | `style`      | `--domain style "glassmorphism dark"`   |
+| Chart recommendations | `chart`      | `--domain chart "real-time dashboard"`  |
+| UX best practices     | `ux`         | `--domain ux "animation accessibility"` |
+| Typography            | `typography` | `--domain typography "elegant luxury"`  |
+| Landing structure     | `landing`    | `--domain landing "hero social-proof"`  |
 
 ### Step 4: Stack Guidelines
 
@@ -107,37 +109,37 @@ Apply these in all UI deliverables:
 
 ### Icons & Visual
 
-| Rule | Do | Don't |
-|------|----|----- |
-| No emoji icons | SVG (Heroicons, Lucide, Simple Icons) | Emojis as UI icons |
-| Stable hover | Color/opacity transitions | Scale transforms that shift layout |
-| Brand logos | Official SVG from Simple Icons | Guess or wrong paths |
-| Icon sizing | Fixed viewBox (24x24), e.g. w-6 h-6 | Random sizes |
+| Rule           | Do                                    | Don't                              |
+| -------------- | ------------------------------------- | ---------------------------------- |
+| No emoji icons | SVG (Heroicons, Lucide, Simple Icons) | Emojis as UI icons                 |
+| Stable hover   | Color/opacity transitions             | Scale transforms that shift layout |
+| Brand logos    | Official SVG from Simple Icons        | Guess or wrong paths               |
+| Icon sizing    | Fixed viewBox (24x24), e.g. w-6 h-6   | Random sizes                       |
 
 ### Interaction & Cursor
 
-| Rule | Do | Don't |
-|------|----|----- |
-| Cursor | `cursor-pointer` on all clickable/hoverable cards | Default cursor on interactive elements |
-| Hover feedback | Color, shadow, or border change | No feedback |
-| Transitions | `transition-colors duration-200` (150–300ms) | Instant or >500ms |
+| Rule           | Do                                                | Don't                                  |
+| -------------- | ------------------------------------------------- | -------------------------------------- |
+| Cursor         | `cursor-pointer` on all clickable/hoverable cards | Default cursor on interactive elements |
+| Hover feedback | Color, shadow, or border change                   | No feedback                            |
+| Transitions    | `transition-colors duration-200` (150–300ms)      | Instant or >500ms                      |
 
 ### Light/Dark Contrast
 
-| Rule | Do | Don't |
-|------|----|----- |
-| Glass light | `bg-white/80` or higher | `bg-white/10` |
-| Text light | `#0F172A` (slate-900) for text | slate-400 for body |
-| Muted light | `#475569` (slate-600) min | gray-400 or lighter for body |
-| Borders light | `border-gray-200` | `border-white/10` |
+| Rule          | Do                             | Don't                        |
+| ------------- | ------------------------------ | ---------------------------- |
+| Glass light   | `bg-white/80` or higher        | `bg-white/10`                |
+| Text light    | `#0F172A` (slate-900) for text | slate-400 for body           |
+| Muted light   | `#475569` (slate-600) min      | gray-400 or lighter for body |
+| Borders light | `border-gray-200`              | `border-white/10`            |
 
 ### Layout & Spacing
 
-| Rule | Do | Don't |
-|------|----|----- |
+| Rule            | Do                                  | Don't                                |
+| --------------- | ----------------------------------- | ------------------------------------ |
 | Floating navbar | `top-4 left-4 right-4` (or similar) | Stick to `top-0 left-0 right-0` only |
-| Content padding | Account for fixed navbar height | Content under fixed elements |
-| Max-width | Same `max-w-6xl` or `max-w-7xl` | Mixed container widths |
+| Content padding | Account for fixed navbar height     | Content under fixed elements         |
+| Max-width       | Same `max-w-6xl` or `max-w-7xl`     | Mixed container widths               |
 
 ---
 
@@ -146,26 +148,31 @@ Apply these in all UI deliverables:
 Before delivering UI code, verify:
 
 ### Visual
+
 - [ ] No emojis as icons (use SVG).
 - [ ] Icons from one set (Heroicons/Lucide); brand logos from Simple Icons.
 - [ ] Hover states do not cause layout shift.
 - [ ] Theme colors used directly (e.g. `bg-primary`), not unnecessary `var()` wrappers.
 
 ### Interaction
+
 - [ ] All clickable elements have `cursor-pointer`.
 - [ ] Hover gives clear visual feedback.
 - [ ] Transitions 150–300ms; focus states visible for keyboard.
 
 ### Light/Dark
+
 - [ ] Light mode text contrast ≥ 4.5:1.
 - [ ] Glass/transparent elements visible in light mode.
 - [ ] Borders visible in both modes.
 
 ### Layout
+
 - [ ] Floating elements spaced from edges; no content under fixed navbars.
 - [ ] Responsive at 375px, 768px, 1024px, 1440px; no horizontal scroll on mobile.
 
 ### Accessibility
+
 - [ ] Images have alt text; form inputs have labels.
 - [ ] Color not the only indicator; `prefers-reduced-motion` respected.
 

@@ -4,11 +4,12 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { FlashcardsImportWorkbench } from "@/components/edit/new/flashcards/FlashcardsImportWorkbench";
+import { ImportStepTabStrip } from "@/components/edit/new/import/StudySetNewImportStepContext";
 import { NewStudySetPdfImportFlowDynamic } from "@/components/edit/new/NewStudySetPdfImportFlowDynamic";
-import { flashcardsPlay } from "@/lib/routes/studySetPaths";
+import { editFlashcards } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetFlashcardsPage() {
-  const getPostParseHref = useCallback((id: string) => flashcardsPlay(id), []);
+  const getPostParseHref = useCallback((id: string) => editFlashcards(id), []);
 
   return (
     <FlashcardsImportWorkbench>
@@ -23,11 +24,14 @@ export default function NewStudySetFlashcardsPage() {
             Back
           </span>
         </Link>
+        <div className="mt-4 max-w-xl border-t border-border/40 pt-4">
+          <ImportStepTabStrip />
+        </div>
       </div>
       <NewStudySetPdfImportFlowDynamic
         contentKind="flashcards"
-        pageHeading="Create flashcards from file"
-        pageSubcopy="Upload a PDF. AI will generate flashcards and take you straight into study mode."
+        pageHeading="Create flip study from file"
+        pageSubcopy="Upload a PDF. We will create flashcards you can review before studying."
         getPostParseHref={getPostParseHref}
       />
     </FlashcardsImportWorkbench>

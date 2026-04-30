@@ -9,7 +9,7 @@
 - User asks **how themes work** in this repo or **which file to touch** for a theme change.
 
 **Handoff:**  
-*Act as frontend-developer. Use `.cursor/agents/skills/theme-instructions.md` for theme architecture. For Minimalist Monochrome visuals only, also attach `minimalist-monochrome.md`.*
+_Act as frontend-developer. Use `.cursor/agents/skills/theme-instructions.md` for theme architecture. For Minimalist Monochrome visuals only, also attach `minimalist-monochrome.md`._
 
 ---
 
@@ -26,12 +26,12 @@
 
 ## Preset matrix (quick reference)
 
-| `themeName` | `data-theme` examples | Fonts (headline / body) | Radius (preset) | Personality |
-|-------------|------------------------|-------------------------|-----------------|-------------|
-| **vivid** | `vivid-light`, `vivid-dark` | Outfit / Inter | shadcn default | Modern SaaS, blue sidebar accent, soft UI |
-| **monochrome** | `monochrome-light`, `monochrome-dark` | Playfair / Source Serif | **0** | Editorial B&W, inversion, lines — see **`minimalist-monochrome.md`** |
-| **bauhaus** | `bauhaus-light`, `bauhaus-dark` | Space Grotesk | **0** | R/Y/B primaries, **hard shadow** buttons (4px offset), mechanical hover/active |
-| **linear** | `linear-light`, `linear-dark`* | Inter | **8–16px** | Cinematic dark glass, purple primary, ambient blobs in CSS |
+| `themeName`    | `data-theme` examples                 | Fonts (headline / body) | Radius (preset) | Personality                                                                    |
+| -------------- | ------------------------------------- | ----------------------- | --------------- | ------------------------------------------------------------------------------ |
+| **vivid**      | `vivid-light`, `vivid-dark`           | Outfit / Inter          | shadcn default  | Modern SaaS, blue sidebar accent, soft UI                                      |
+| **monochrome** | `monochrome-light`, `monochrome-dark` | Playfair / Source Serif | **0**           | Editorial B&W, inversion, lines — see **`minimalist-monochrome.md`**           |
+| **bauhaus**    | `bauhaus-light`, `bauhaus-dark`       | Space Grotesk           | **0**           | R/Y/B primaries, **hard shadow** buttons (4px offset), mechanical hover/active |
+| **linear**     | `linear-light`, `linear-dark`\*       | Inter                   | **8–16px**      | Cinematic dark glass, purple primary, ambient blobs in CSS                     |
 
 \*Linear light/dark share one token block in CSS; both keys exist for next-themes.
 
@@ -39,11 +39,11 @@
 
 ## Token layers (what to use in code)
 
-| Layer | Where | Use when |
-|-------|--------|----------|
-| **shadcn semantic** | `bg-background`, `text-foreground`, `border-border`, `bg-primary`, `text-primary-foreground`, `bg-card`, `text-muted-foreground` | Default styling; works across presets if tokens are set in globals for that `data-theme`. |
-| **`--rv-*` (Tailwind `rv-*`)** | `bg-rv-bg`, `text-rv-text`, `border-rv-border`, `bg-rv-primary`, `bg-rv-surface` | Bauhaus/Monochrome/Linear shells often use these for **preset-specific** layout (file grid, cards). |
-| **ThemeProvider state** | `useTheme().primaryColor`, `borderRadius` | User overrides from **ThemePanel**; may differ from pure CSS preset — respect when building custom controls. |
+| Layer                          | Where                                                                                                                            | Use when                                                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **shadcn semantic**            | `bg-background`, `text-foreground`, `border-border`, `bg-primary`, `text-primary-foreground`, `bg-card`, `text-muted-foreground` | Default styling; works across presets if tokens are set in globals for that `data-theme`.                    |
+| **`--rv-*` (Tailwind `rv-*`)** | `bg-rv-bg`, `text-rv-text`, `border-rv-border`, `bg-rv-primary`, `bg-rv-surface`                                                 | Bauhaus/Monochrome/Linear shells often use these for **preset-specific** layout (file grid, cards).          |
+| **ThemeProvider state**        | `useTheme().primaryColor`, `borderRadius`                                                                                        | User overrides from **ThemePanel**; may differ from pure CSS preset — respect when building custom controls. |
 
 **Rule:** Prefer semantic tokens for portable UI; use `--rv-*` when matching an existing theme shell (e.g. Bauhaus buttons already use `rv-border` for shadow).
 
@@ -99,12 +99,12 @@
 
 ## Key file paths
 
-| Concern | Path |
-|---------|------|
-| Theme resolution + knobs | `components/theme-provider/ThemeProvider.tsx` |
-| next-themes wiring | `components/theme-provider/NextThemesProvider.tsx` |
-| Component switch | `components/themes/index.tsx` |
-| Token definitions | `app/globals.css` (search `THEME:` section comments) |
+| Concern                    | Path                                                     |
+| -------------------------- | -------------------------------------------------------- |
+| Theme resolution + knobs   | `components/theme-provider/ThemeProvider.tsx`            |
+| next-themes wiring         | `components/theme-provider/NextThemesProvider.tsx`       |
+| Component switch           | `components/themes/index.tsx`                            |
+| Token definitions          | `app/globals.css` (search `THEME:` section comments)     |
 | Theme picker / preset list | `components/theme-editor/` or panel using `setThemeName` |
 
 ---

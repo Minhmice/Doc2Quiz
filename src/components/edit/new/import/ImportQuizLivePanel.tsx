@@ -158,7 +158,7 @@ export function ImportQuizLivePanel({
   }
 
   const importList = (
-    <ul className="space-y-4" aria-label="Imported questions loading">
+    <ul className="space-y-4" aria-label="Imported items loading">
       {questions.map((q, i) => (
         <motion.li
           key={q.id}
@@ -203,7 +203,7 @@ export function ImportQuizLivePanel({
       <div className="min-w-0 space-y-4 lg:col-span-8">{importList}</div>
       <aside
         className="min-h-0 lg:col-span-4"
-        aria-label="Question navigator"
+        aria-label="Item navigator"
       >
         <div className="lg:sticky lg:top-24 lg:z-10 lg:flex lg:min-h-0 lg:max-h-[min(70vh,calc(100dvh-7rem),calc(100vh-7rem))] lg:flex-col lg:gap-0">
           <QuestionReviewNavigator

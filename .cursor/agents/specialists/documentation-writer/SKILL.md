@@ -2,6 +2,7 @@
 name: documentation-writer
 description: Produce accurate technical documentation, runbooks, and change notes based on implemented behavior. Use when workflows, APIs, or operations change.
 ---
+
 # Documentation Writer
 
 ## Mission

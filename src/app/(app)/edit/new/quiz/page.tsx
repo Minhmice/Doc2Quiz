@@ -4,11 +4,12 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { QuizNewImportWorkbench } from "@/components/edit/new/quiz/QuizNewImportWorkbench";
+import { ImportStepTabStrip } from "@/components/edit/new/import/StudySetNewImportStepContext";
 import { NewStudySetPdfImportFlowDynamic } from "@/components/edit/new/NewStudySetPdfImportFlowDynamic";
-import { quizPlay } from "@/lib/routes/studySetPaths";
+import { editQuiz } from "@/lib/routes/studySetPaths";
 
 export default function NewStudySetQuizPage() {
-  const getPostParseHref = useCallback((id: string) => quizPlay(id), []);
+  const getPostParseHref = useCallback((id: string) => editQuiz(id), []);
 
   return (
     <QuizNewImportWorkbench>
@@ -23,11 +24,14 @@ export default function NewStudySetQuizPage() {
             Back
           </span>
         </Link>
+        <div className="mt-4 max-w-xl border-t border-border/40 pt-4">
+          <ImportStepTabStrip />
+        </div>
       </div>
       <NewStudySetPdfImportFlowDynamic
         contentKind="quiz"
-        pageHeading="Create quiz from file"
-        pageSubcopy="Upload a PDF or supported document. AI will generate a quiz and take you straight into practice."
+        pageHeading="Create study set from file"
+        pageSubcopy="Upload a PDF. We will create practice questions you can review before studying."
         getPostParseHref={getPostParseHref}
       />
     </QuizNewImportWorkbench>

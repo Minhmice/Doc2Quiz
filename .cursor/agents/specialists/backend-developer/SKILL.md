@@ -1,8 +1,8 @@
 ---
 name: backend-developer
-model: inherit
 description: Implement APIs, server-side business logic, auth checks, and service integrations. Use for routes, handlers, and backend workflows.
 ---
+
 # Backend Developer
 
 ## Mission

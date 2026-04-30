@@ -3,11 +3,11 @@
 ## When to use this skill
 
 - User asks for **Bauhaus**, **constructivist**, **primary colors** (red/blue/yellow), **hard shadows**, **geometric** UI.
-- Task touches **`components/themes/bauhaus/**`**, **BauhausButton / BauhausCard / BauhausInput**, or marketing/layout that must match this preset.
+- Task touches **`components/themes/bauhaus/**`**, **BauhausButton / BauhausCard / BauhausInput\*\*, or marketing/layout that must match this preset.
 - Refactoring components to **color blocks**, **thick black borders**, **mechanical press** interactions.
 
 **Handoff:**  
-*Act as frontend-developer per `.cursor/agents/specialists/frontend-developer/SKILL.md`. Apply `.cursor/agents/skills/bauhaus-theme.md`. Scope: [files].*
+_Act as frontend-developer per `.cursor/agents/specialists/frontend-developer/SKILL.md`. Apply `.cursor/agents/skills/bauhaus-theme.md`. Scope: [files]._
 
 ---
 
@@ -23,14 +23,14 @@ Expert FE + UI/UX + typography. **Before code:**
 
 ## Design philosophy
 
-| Idea | Implementation |
-|------|----------------|
-| Form follows function | Clear hierarchy; geometric decoration with purpose |
-| Primary triad | Red `#D02020`, Blue `#1040C0`, Yellow `#F0C020` + black `#121212` / off-white canvas |
-| Hard depth | `4px_4px_0px_0px` style shadows—layering, not blur |
-| Thick structure | `border-2`–`border-4` black (light) / light border (dark mode tokens) |
-| Constructivist type | Uppercase headlines, **black (900)** / **bold (700)** display; tight leading on display |
-| Radius binary | **`rounded-none`** OR **`rounded-full`**—avoid `rounded-md` for Bauhaus-branded surfaces |
+| Idea                  | Implementation                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| Form follows function | Clear hierarchy; geometric decoration with purpose                                       |
+| Primary triad         | Red `#D02020`, Blue `#1040C0`, Yellow `#F0C020` + black `#121212` / off-white canvas     |
+| Hard depth            | `4px_4px_0px_0px` style shadows—layering, not blur                                       |
+| Thick structure       | `border-2`–`border-4` black (light) / light border (dark mode tokens)                    |
+| Constructivist type   | Uppercase headlines, **black (900)** / **bold (700)** display; tight leading on display  |
+| Radius binary         | **`rounded-none`** OR **`rounded-full`**—avoid `rounded-md` for Bauhaus-branded surfaces |
 
 **Vibe:** Constructivist, geometric, modernist, bold, architectural—not generic Bootstrap cards.
 
@@ -40,20 +40,20 @@ Expert FE + UI/UX + typography. **Before code:**
 
 Defined in **`app/globals.css`** under `:root[data-theme="bauhaus-light"]` and `bauhaus-dark`.
 
-| Spec / concept | Light (CSS) | Tailwind / var |
-|----------------|-------------|----------------|
-| Canvas | `#F0F0F0` | `bg-background` |
-| Foreground / border | `#121212` | `foreground`, `border`, `--rv-text`, `--rv-border` |
-| Red | `#D02020` | `primary`, `bg-rv-primary` |
-| Blue | `#1040C0` | `secondary` |
-| Yellow | `#F0C020` | `accent`, `accent-foreground` on yellow |
-| Muted surface | `#E0E0E0` | `muted`, `bg-rv-surface-muted` |
+| Spec / concept      | Light (CSS) | Tailwind / var                                     |
+| ------------------- | ----------- | -------------------------------------------------- |
+| Canvas              | `#F0F0F0`   | `bg-background`                                    |
+| Foreground / border | `#121212`   | `foreground`, `border`, `--rv-text`, `--rv-border` |
+| Red                 | `#D02020`   | `primary`, `bg-rv-primary`                         |
+| Blue                | `#1040C0`   | `secondary`                                        |
+| Yellow              | `#F0C020`   | `accent`, `accent-foreground` on yellow            |
+| Muted surface       | `#E0E0E0`   | `muted`, `bg-rv-surface-muted`                     |
 
 **Dark mode:** Surfaces invert; primaries stay red/blue/yellow; borders/text flip to light on dark—test both `bauhaus-light` and `bauhaus-dark`.
 
 ### Typography (spec vs repo)
 
-- **Spec:** Outfit (geometric sans).  
+- **Spec:** Outfit (geometric sans).
 - **This repo:** **Space Grotesk** on `--font-heading` / `--font-sans` for Bauhaus blocks. To match spec exactly, switch Bauhaus font vars to Outfit in `globals.css` + layout fonts. Until then, treat **Space Grotesk** as the implemented Bauhaus face (still geometric).
 
 **Scale (marketing):** `text-4xl` → `sm:text-6xl` → `lg:text-8xl` display; labels **uppercase**, **tracking-widest** / **tracking-tighter** on huge type.
@@ -144,11 +144,11 @@ Defined in **`app/globals.css`** under `:root[data-theme="bauhaus-light"]` and `
 
 ## Repo paths
 
-| Area | Path |
-|------|------|
-| Shells | `components/themes/bauhaus/{Button,Card,Input}.tsx` |
-| Tokens | `app/globals.css` → `THEME: BAUHAUS` |
-| Switch | `components/themes/index.tsx` → `case "bauhaus"` |
+| Area    | Path                                                   |
+| ------- | ------------------------------------------------------ |
+| Shells  | `components/themes/bauhaus/{Button,Card,Input}.tsx`    |
+| Tokens  | `app/globals.css` → `THEME: BAUHAUS`                   |
+| Switch  | `components/themes/index.tsx` → `case "bauhaus"`       |
 | Texture | `.texture-bauhaus-dots` in globals (optional sections) |
 
 ---

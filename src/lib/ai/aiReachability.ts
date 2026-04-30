@@ -1,49 +1,21 @@
-import { testAiConnection } from "@/lib/ai/testConnection";
-import {
-  getKeyForProvider,
-  getModelForProvider,
-  getProvider,
-  getUrlForProvider,
-} from "@/lib/ai/storage";
-import type { AiProvider } from "@/types/question";
-
 /**
- * In-flight dedupe: concurrent `runAiReachabilityCheck` calls with the same
- * provider + key + base URL + model share one probe. A secondary caller's
- * `AbortSignal` does not cancel the shared request (acceptable for this UI probe).
+ * Lightweight probe: server-side AI processing availability (`/api/ai/processing-status`).
  */
-const inflightReachabilityByConfigKey = new Map<
-  string,
-  Promise<AiReachabilitySnapshot>
->();
-
-function reachabilityConfigDedupeKey(
-  provider: AiProvider,
-  apiKey: string,
-  apiUrl: string,
-  model: string,
-): string {
-  return JSON.stringify([provider, apiKey, apiUrl, model]);
-}
 
 export const LS_LAST_AI_REACHABILITY = "doc2quiz:ai:lastReachability";
 
-/** Same-tab signal when Settings changes credentials */
+/** Same-tab signal when processing availability may have changed */
 export const AI_CONFIG_CHANGED_EVENT = "doc2quiz:ai-config-changed";
 
 export type AiReachabilitySnapshot = {
   ok: boolean;
   message?: string;
   checkedAt: string;
-  provider: AiProvider;
 };
 
-const LOG_PREFIX = "[Doc2Quiz][AI-reachability]";
-
 function logSnapshot(s: AiReachabilitySnapshot): void {
-  console.info(LOG_PREFIX, {
+  console.info("[Doc2Quiz][AI-reachability]", {
     ok: s.ok,
-    provider: s.provider,
     checkedAt: s.checkedAt,
     message: s.message ?? null,
   });
@@ -63,20 +35,13 @@ export function readReachabilityFromStorage(): AiReachabilitySnapshot | null {
       return null;
     }
     const rec = o as Record<string, unknown>;
-    if (
-      typeof rec.checkedAt !== "string" ||
-      typeof rec.ok !== "boolean" ||
-      (rec.provider !== "openai" &&
-        rec.provider !== "anthropic" &&
-        rec.provider !== "custom")
-    ) {
+    if (typeof rec.checkedAt !== "string" || typeof rec.ok !== "boolean") {
       return null;
     }
     return {
       ok: rec.ok,
       message: typeof rec.message === "string" ? rec.message : undefined,
       checkedAt: rec.checkedAt,
-      provider: rec.provider,
     };
   } catch {
     return null;
@@ -90,96 +55,56 @@ export function writeReachabilityToStorage(s: AiReachabilitySnapshot): void {
   try {
     localStorage.setItem(LS_LAST_AI_REACHABILITY, JSON.stringify(s));
   } catch {
-    /* quota / private mode */
+    /* quota */
   }
   logSnapshot(s);
 }
 
-/**
- * Probes whether the configured AI can be used from this browser (same rules as Settings test).
- */
 export async function runAiReachabilityCheck(
   signal?: AbortSignal,
 ): Promise<AiReachabilitySnapshot> {
-  const provider = getProvider();
-  const apiKey = getKeyForProvider(provider).trim();
-  const apiUrl = getUrlForProvider(provider);
-  const model = getModelForProvider(provider);
-
   const checkedAt = new Date().toISOString();
-
-  if (!apiKey) {
+  try {
+    const res = await fetch("/api/ai/processing-status", {
+      signal,
+      credentials: "same-origin",
+    });
+    if (res.status === 401) {
+      const s: AiReachabilitySnapshot = {
+        ok: false,
+        message: "Sign in to check processing status.",
+        checkedAt,
+      };
+      writeReachabilityToStorage(s);
+      return s;
+    }
+    if (!res.ok) {
+      const s: AiReachabilitySnapshot = {
+        ok: false,
+        message: "Could not reach processing status.",
+        checkedAt,
+      };
+      writeReachabilityToStorage(s);
+      return s;
+    }
+    const data = (await res.json()) as { available?: unknown };
+    const ok = data.available === true;
+    const s: AiReachabilitySnapshot = {
+      ok,
+      message: ok ? undefined : "Document processing is temporarily unavailable.",
+      checkedAt,
+    };
+    writeReachabilityToStorage(s);
+    return s;
+  } catch {
     const s: AiReachabilitySnapshot = {
       ok: false,
-      message: "No API key configured",
+      message: "Reachability check failed",
       checkedAt,
-      provider,
     };
     writeReachabilityToStorage(s);
     return s;
   }
-
-  if (apiUrl.trim()) {
-    if (!model.trim()) {
-      const s: AiReachabilitySnapshot = {
-        ok: false,
-        message: "Model id required when API base URL is set",
-        checkedAt,
-        provider,
-      };
-      writeReachabilityToStorage(s);
-      return s;
-    }
-  }
-
-  const dedupeKey = reachabilityConfigDedupeKey(
-    provider,
-    apiKey,
-    apiUrl,
-    model,
-  );
-  const existing = inflightReachabilityByConfigKey.get(dedupeKey);
-  if (existing) {
-    return existing;
-  }
-
-  const run = async (): Promise<AiReachabilitySnapshot> => {
-    let result: Awaited<ReturnType<typeof testAiConnection>>;
-    try {
-      result = await testAiConnection({
-        baseUrl: apiUrl,
-        apiKey,
-        modelId: model,
-        signal,
-      });
-    } catch {
-      const s: AiReachabilitySnapshot = {
-        ok: false,
-        message: "Reachability check failed",
-        checkedAt,
-        provider,
-      };
-      writeReachabilityToStorage(s);
-      return s;
-    }
-
-    const s: AiReachabilitySnapshot = result.ok
-      ? { ok: true, checkedAt, provider }
-      : {
-          ok: false,
-          message: result.message,
-          checkedAt,
-          provider,
-        };
-    writeReachabilityToStorage(s);
-    return s;
-  };
-
-  const p = run().finally(() => {
-    inflightReachabilityByConfigKey.delete(dedupeKey);
-  });
-  inflightReachabilityByConfigKey.set(dedupeKey, p);
-  return p;
 }
 
 export function dispatchAiConfigChanged(): void {

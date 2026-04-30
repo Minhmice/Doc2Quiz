@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 
+import { deriveOpenAiModelsListUrlFromChatCompletions } from "@/lib/ai/openAiEndpoint";
+import {
+  getAiProcessingConfig,
+  getChatCompletionsUrl,
+  isAiProcessingConfigured,
+} from "@/lib/server/ai-processing-config";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
+import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type Body = {
+  /** Ignored — routing uses server env. Kept for backward-compatible clients. */
   provider?: unknown;
-  targetUrl?: unknown;
-  apiKey?: unknown;
   body?: unknown;
   /** Default POST. GET sends no JSON body upstream (e.g. OpenAI-compatible `/v1/models`). */
   method?: unknown;
@@ -13,11 +20,6 @@ type Body = {
 
 const DEFAULT_OPENAI_CHAT_MAX_TOKENS = 16384;
 
-/**
- * OpenAI-compatible `chat/completions` bodies sometimes omit `max_tokens` (older
- * client bundles, alternate call sites). Proxies still wait on huge completions;
- * ensure a cap so upstream + logs reflect the same shape.
- */
 function serializeUpstreamPostBody(
   targetUrl: string,
   body: unknown,
@@ -81,6 +83,13 @@ function isAllowedTargetUrl(href: string): { ok: true; url: URL } | { ok: false 
   return { ok: false };
 }
 
+function mergeChatModel(body: unknown, model: string): unknown {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return body;
+  }
+  return { ...(body as Record<string, unknown>), model };
+}
+
 export async function POST(req: Request) {
   const supabase = await createSupabaseServerClient();
   const {
@@ -90,6 +99,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAiProcessingConfigured()) {
+    return NextResponse.json(
+      { error: AI_PROCESSING_UNAVAILABLE_MESSAGE },
+      { status: 503 },
+    );
+  }
+
   let parsed: Body;
   try {
     parsed = (await req.json()) as Body;
@@ -97,53 +113,65 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const provider = parsed.provider;
-  if (
-    provider !== "openai" &&
-    provider !== "anthropic" &&
-    provider !== "custom"
-  ) {
-    return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
-  }
-
-  const targetUrl =
-    typeof parsed.targetUrl === "string" ? parsed.targetUrl.trim() : "";
-  const apiKey = typeof parsed.apiKey === "string" ? parsed.apiKey.trim() : "";
-  if (!targetUrl || !apiKey) {
+  const tier = resolveUserAiTier(user);
+  let cfg;
+  try {
+    cfg = getAiProcessingConfig(tier);
+  } catch {
     return NextResponse.json(
-      { error: "targetUrl and apiKey are required" },
-      { status: 400 },
+      { error: AI_PROCESSING_UNAVAILABLE_MESSAGE },
+      { status: 503 },
     );
   }
 
-  const allowed = isAllowedTargetUrl(targetUrl);
-  if (!allowed.ok) {
+  const chatBase = getChatCompletionsUrl(cfg.url);
+  const allowedBase = isAllowedTargetUrl(chatBase);
+  if (!allowedBase.ok) {
     return NextResponse.json(
-      {
-        error:
-          "URL must be https, or http://localhost / http://127.0.0.1 for a local proxy",
-      },
-      { status: 400 },
+      { error: AI_PROCESSING_UNAVAILABLE_MESSAGE },
+      { status: 503 },
     );
   }
 
   const method = parsed.method === "GET" ? "GET" : "POST";
-  const headers: Record<string, string> = {};
+
+  let targetUrl = chatBase;
+  if (method === "GET") {
+    const modelsUrl = deriveOpenAiModelsListUrlFromChatCompletions(chatBase);
+    if (!modelsUrl) {
+      return NextResponse.json(
+        { error: "Models probe is not available for this upstream URL." },
+        { status: 400 },
+      );
+    }
+    const allowedModels = isAllowedTargetUrl(modelsUrl);
+    if (!allowedModels.ok) {
+      return NextResponse.json(
+        { error: AI_PROCESSING_UNAVAILABLE_MESSAGE },
+        { status: 503 },
+      );
+    }
+    targetUrl = modelsUrl;
+  }
+
+  const mergedBody =
+    method === "POST"
+      ? mergeChatModel(parsed.body ?? {}, cfg.model)
+      : parsed.body;
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${cfg.key}`,
+  };
+
   const upstreamPost =
     method === "POST"
-      ? serializeUpstreamPostBody(targetUrl, parsed.body)
+      ? serializeUpstreamPostBody(targetUrl, mergedBody)
       : null;
 
   if (method === "POST") {
     headers["Content-Type"] = "application/json";
   } else {
     headers.Accept = "application/json";
-  }
-  if (provider === "openai" || provider === "custom") {
-    headers.Authorization = `Bearer ${apiKey}`;
-  } else {
-    headers["x-api-key"] = apiKey;
-    headers["anthropic-version"] = "2023-06-01";
   }
 
   let upstream: Response;
@@ -155,7 +183,7 @@ export async function POST(req: Request) {
         : {
             method: "POST",
             headers,
-            body: upstreamPost?.serialized ?? JSON.stringify(parsed.body ?? {}),
+            body: upstreamPost?.serialized ?? JSON.stringify(mergedBody ?? {}),
           },
     );
   } catch (e) {

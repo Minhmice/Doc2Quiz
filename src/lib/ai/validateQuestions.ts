@@ -174,11 +174,18 @@ export function validateQuestionsFromJson(
     const includePageImage =
       typeof ipiRaw === "boolean" ? ipiRaw : undefined;
 
+    const suRaw = rec.sourceUnitIds;
+    const sourceUnitIds =
+      Array.isArray(suRaw) && suRaw.every((x) => typeof x === "string")
+        ? suRaw.map((s) => String(s).trim()).filter((s) => s.length > 0)
+        : [];
+
     out.push({
       id,
       question: question.trim(),
       options: strippedOptions,
       correctIndex: correctIndex as 0 | 1 | 2 | 3,
+      sourceUnitIds,
       ...(questionImageId ? { questionImageId } : {}),
       ...(optionImageIds ? { optionImageIds } : {}),
       ...(sourcePageIndex !== undefined ? { sourcePageIndex } : {}),

@@ -26,9 +26,13 @@ export const PARSE_PHASE_MESSAGES: Record<ParseProgressPhase, string> = {
   idle: "Preparing…",
   rendering_pdf: "Rendering PDF pages…",
   ocr_extract: "Running OCR on page images…",
-  vision_pages: "Extracting questions with vision…",
-  text_chunks: "Extracting questions…",
+  vision_pages: "Extracting content with vision…",
+  text_chunks: "Extracting content…",
 };
+
+export function formatEtaRangeFull(live: LiveParseReport): string | null {
+  return estimateRangeSeconds(live);
+}
 
 function estimateRangeSeconds(live: LiveParseReport): string | null {
   if (!live.running) {
@@ -206,6 +210,11 @@ export type ParseProgressWorkbenchPanelProps = Readonly<{
    * (`UnifiedImportStatusCard`) owns the top band so ingest and live parse share one shell.
    */
   embeddedBodyOnly?: boolean;
+  /**
+   * New-set import: collapse metrics, thumbnails, and log behind &quot;Technical details&quot;.
+   * Typically used with `embeddedBodyOnly`.
+   */
+  simplifiedImportFlow?: boolean;
 }>;
 
 export function ParseProgressWorkbenchPanel({
@@ -214,6 +223,7 @@ export function ParseProgressWorkbenchPanel({
   variant = "standalone",
   className,
   embeddedBodyOnly = false,
+  simplifiedImportFlow = false,
 }: ParseProgressWorkbenchPanelProps) {
   const { live } = useParseProgress();
 
@@ -298,32 +308,69 @@ export function ParseProgressWorkbenchPanel({
               className="h-3 transition-all duration-500 ease-out"
             />
           )}
-          <div className="flex justify-between px-1 font-label text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-            <span className="text-chart-2">Pipeline</span>
+          <div
+            className={`flex justify-between px-1 font-label text-[9px] font-black uppercase tracking-widest text-muted-foreground ${
+              simplifiedImportFlow ? "opacity-90" : ""
+            }`}
+          >
+            <span className="text-chart-2">
+              {simplifiedImportFlow ? "Progress" : "Pipeline"}
+            </span>
             <span className="text-chart-3">
               {pct !== null ? `${pct}%` : "Running"}
             </span>
-            <span>Assembly</span>
+            <span>{simplifiedImportFlow ? "Study set" : "Assembly"}</span>
           </div>
         </div>
 
-        <ParsingWorkbenchMetricsRow
-          extractedLabel="Extracted items"
-          extractedValue={String(extracted)}
-          extractedHint={
-            phase === "vision_pages" && extracted > 0 ? "Items so far" : null
-          }
-          currentLabel={metrics.currentLabel}
-          currentValue={metrics.currentValue}
-          currentHint={metrics.currentHint}
-          emphasizeCurrent={metrics.emphasizeCurrent}
-          elapsedLabel="—"
-          elapsedHint={null}
-        />
+        {simplifiedImportFlow ? (
+          <details className="rounded-lg border border-border bg-muted/25 px-3 py-2">
+            <summary className="cursor-pointer font-label text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+              Technical details
+            </summary>
+            <div className="mt-6 space-y-8 pb-2">
+              <ParsingWorkbenchMetricsRow
+                extractedLabel="Extracted items"
+                extractedValue={String(extracted)}
+                extractedHint={
+                  phase === "vision_pages" && extracted > 0
+                    ? "Items so far"
+                    : null
+                }
+                currentLabel={metrics.currentLabel}
+                currentValue={metrics.currentValue}
+                currentHint={metrics.currentHint}
+                emphasizeCurrent={metrics.emphasizeCurrent}
+                elapsedLabel="—"
+                elapsedHint={null}
+              />
 
-        <ParsingWorkbenchThumbStrip slots={thumbSlots} />
+              <ParsingWorkbenchThumbStrip slots={thumbSlots} />
 
-        <ParsingWorkbenchLog lines={logLines} />
+              <ParsingWorkbenchLog lines={logLines} />
+            </div>
+          </details>
+        ) : (
+          <>
+            <ParsingWorkbenchMetricsRow
+              extractedLabel="Extracted items"
+              extractedValue={String(extracted)}
+              extractedHint={
+                phase === "vision_pages" && extracted > 0 ? "Items so far" : null
+              }
+              currentLabel={metrics.currentLabel}
+              currentValue={metrics.currentValue}
+              currentHint={metrics.currentHint}
+              emphasizeCurrent={metrics.emphasizeCurrent}
+              elapsedLabel="—"
+              elapsedHint={null}
+            />
+
+            <ParsingWorkbenchThumbStrip slots={thumbSlots} />
+
+            <ParsingWorkbenchLog lines={logLines} />
+          </>
+        )}
       </CardContent>
     </>
   );

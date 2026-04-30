@@ -23,7 +23,7 @@ export function AuthBrandAside() {
               Doc2Quiz
             </span>
             <span className="font-label mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              PDF → quiz bank
+              PDF → study content
             </span>
           </div>
         </Link>

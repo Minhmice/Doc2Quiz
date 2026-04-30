@@ -59,14 +59,14 @@ export function FlashcardsGenerationControls({
       )}
     >
       <p className="text-sm text-muted-foreground">
-        Flashcards capture <span className="font-medium text-foreground">theory</span>{" "}
-        (concepts, definitions, relationships). The quiz flow is for{" "}
-        <span className="font-medium text-foreground">multiple-choice questions</span>.
+        This path emphasizes <span className="font-medium text-foreground">theory</span>{" "}
+        (concepts, definitions, relationships). The multiple-choice path is for{" "}
+        <span className="font-medium text-foreground">exam-style practice</span>.
       </p>
 
       <div className="space-y-2">
         <Label id={targetModeId} className="text-sm font-medium text-foreground">
-          Card count target
+          Item count target
         </Label>
         <RadioGroup
           className="flex flex-wrap gap-4"
@@ -106,7 +106,7 @@ export function FlashcardsGenerationControls({
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between gap-3">
               <Label id={sliderId} className="text-sm text-muted-foreground">
-                Target cards (approx.)
+                Target items (approx.)
               </Label>
               <span className="tabular-nums text-sm font-medium text-foreground">
                 {countNumber}

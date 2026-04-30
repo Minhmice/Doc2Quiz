@@ -25,6 +25,7 @@ import {
   responseLooksLikeHtml,
 } from "@/lib/ai/upstreamErrors";
 import { forwardAiPost, parseProxyForwardErrorBody } from "@/lib/ai/sameOriginForward";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
 import type { ValidateVisionFlashcardOptions } from "@/lib/ai/validateVisionFlashcardItems";
 import type { ValidateVisionQuizOptions } from "@/lib/ai/validateVisionQuizItems";
 import {
@@ -54,7 +55,6 @@ import {
   primaryVisionImageUrlForUpstream,
   stageVisionDataUrlsBatch,
 } from "@/lib/ai/stageVisionDataUrl";
-import { resolveChatApiUrl, resolveModelId } from "@/lib/ai/parseChunk";
 import {
   isPipelineVerbose,
   visionPipelineEvent,
@@ -103,9 +103,6 @@ function estimateBatchTokens(
 }
 
 async function postVisionBatchCompletion(options: {
-  forwardProvider: VisionForwardProvider;
-  endpoint: string;
-  apiKey: string;
   model: string;
   systemText: string;
   userText: string;
@@ -114,9 +111,6 @@ async function postVisionBatchCompletion(options: {
   useJsonObjectFormat: boolean;
 }): Promise<Response> {
   const {
-    forwardProvider,
-    endpoint,
-    apiKey,
     model,
     systemText,
     userText,
@@ -148,9 +142,6 @@ async function postVisionBatchCompletion(options: {
   }
 
   return forwardAiPost({
-    provider: forwardProvider,
-    targetUrl: endpoint,
-    apiKey,
     signal,
     body,
   });
@@ -160,10 +151,8 @@ export type RunVisionBatchSequentialOptions = {
   pages: PageImageResult[];
   mode: ParseOutputMode;
   signal: AbortSignal;
-  forwardProvider: VisionForwardProvider;
-  apiKey: string;
-  apiUrl?: string;
-  model?: string;
+  /** Processing lane label (from `/api/ai/processing-status`) for caches + logs. */
+  processingLabel: string;
   /** Default `min_requests` — one window per up-to-20 pages, overlap 0 (strict `sourcePages`). */
   batchingPreset?: VisionBatchingPreset;
   onItemsExtracted?: (
@@ -224,10 +213,7 @@ export async function runVisionBatchSequential(
     pages,
     mode,
     signal,
-    forwardProvider,
-    apiKey,
-    apiUrl,
-    model,
+    processingLabel,
     onItemsExtracted,
     onBatchPlanResolved,
     flashcardGeneration: flashcardGenerationInput,
@@ -260,14 +246,8 @@ export async function runVisionBatchSequential(
     reason: "initial",
   });
 
-  const endpoint = resolveChatApiUrl(
-    forwardProvider === "custom" ? "custom" : "openai",
-    apiUrl,
-  );
-  const modelId = resolveModelId(
-    forwardProvider === "custom" ? "custom" : "openai",
-    model,
-  );
+  const modelId = processingLabel;
+  const forwardProvider: VisionForwardProvider = "openai";
 
   const acc = createVisionBenchmarkAccumulator();
   const allItems: VisionParseItem[] = [];
@@ -426,10 +406,7 @@ export async function runVisionBatchSequential(
           }
 
           let res = await postVisionBatchCompletion({
-            forwardProvider,
-            endpoint,
-            apiKey,
-            model: modelId,
+            model: "server",
             systemText,
             userText,
             imageUrls,
@@ -441,10 +418,7 @@ export async function runVisionBatchSequential(
 
           if (res.status === 400) {
             res = await postVisionBatchCompletion({
-              forwardProvider,
-              endpoint,
-              apiKey,
-              model: modelId,
+              model: "server",
               systemText,
               userText,
               imageUrls,
@@ -456,9 +430,10 @@ export async function runVisionBatchSequential(
           }
 
           if (res.status === 401) {
-            throw new FatalParseError(
-              "Invalid API key. Please check and try again.",
-            );
+            throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
+          }
+          if (res.status === 503) {
+            throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
           }
           if (res.status === 429) {
             throw new FatalParseError(

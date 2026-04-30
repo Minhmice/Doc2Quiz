@@ -1,8 +1,9 @@
 ---
 name: google-cli-specialist
-model: inherit
+
 description: Implements and maintains the gws Rust CLI for Google Workspace APIs. Use when working on gws commands, discovery, auth, validation, or adding new Google services.
 ---
+
 # Google CLI Specialist (gws)
 
 ## Mission
@@ -37,31 +38,31 @@ Build and maintain the `gws` Rust CLI that interacts with Google Workspace APIs 
 
 ### Source Layout
 
-| File | Purpose |
-|------|---------|
-| `src/main.rs` | Entrypoint, two-phase CLI parsing, method resolution |
-| `src/discovery.rs` | Serde models for Discovery Document + fetch/cache |
-| `src/services.rs` | Service alias → Discovery API name/version mapping |
-| `src/auth.rs` | OAuth2 token acquisition |
-| `src/credential_store.rs` | AES-256-GCM encryption of credential files |
-| `src/auth_commands.rs` | `gws auth` subcommands |
-| `src/commands.rs` | Recursive `clap::Command` builder from Discovery |
-| `src/executor.rs` | HTTP request construction, response handling |
-| `src/schema.rs` | `gws schema` command |
-| `src/validate.rs` | Path and input validation |
-| `src/helpers/mod.rs` | URL encoding, resource name validation |
+| File                      | Purpose                                              |
+| ------------------------- | ---------------------------------------------------- |
+| `src/main.rs`             | Entrypoint, two-phase CLI parsing, method resolution |
+| `src/discovery.rs`        | Serde models for Discovery Document + fetch/cache    |
+| `src/services.rs`         | Service alias → Discovery API name/version mapping   |
+| `src/auth.rs`             | OAuth2 token acquisition                             |
+| `src/credential_store.rs` | AES-256-GCM encryption of credential files           |
+| `src/auth_commands.rs`    | `gws auth` subcommands                               |
+| `src/commands.rs`         | Recursive `clap::Command` builder from Discovery     |
+| `src/executor.rs`         | HTTP request construction, response handling         |
+| `src/schema.rs`           | `gws schema` command                                 |
+| `src/validate.rs`         | Path and input validation                            |
+| `src/helpers/mod.rs`      | URL encoding, resource name validation               |
 
 ## Input Validation & URL Safety
 
 Assume inputs can be adversarial (AI/LLM agents). Always validate and encode.
 
-| Scenario | Validator | Rejects |
-|----------|-----------|---------|
-| File path for writing | `validate::validate_safe_output_dir()` | Absolute paths, `../` traversal, symlinks outside CWD |
-| File path for reading | `validate::validate_safe_dir_path()` | Same as above |
-| URL path segments | `helpers::encode_path_segment()` | Raw user input in URLs |
-| Query parameters | reqwest `.query()` builder | Manual string interpolation |
-| Resource names (project ID, etc.) | `helpers::validate_resource_name()` | `..`, control chars, `?`, `#` |
+| Scenario                          | Validator                              | Rejects                                               |
+| --------------------------------- | -------------------------------------- | ----------------------------------------------------- |
+| File path for writing             | `validate::validate_safe_output_dir()` | Absolute paths, `../` traversal, symlinks outside CWD |
+| File path for reading             | `validate::validate_safe_dir_path()`   | Same as above                                         |
+| URL path segments                 | `helpers::encode_path_segment()`       | Raw user input in URLs                                |
+| Query parameters                  | reqwest `.query()` builder             | Manual string interpolation                           |
+| Resource names (project ID, etc.) | `helpers::validate_resource_name()`    | `..`, control chars, `?`, `#`                         |
 
 **Environment variables are trusted** — validation applies to CLI arguments, not env vars.
 

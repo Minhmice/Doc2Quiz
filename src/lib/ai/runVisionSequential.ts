@@ -4,11 +4,7 @@ import { dedupeQuestionsByStem } from "@/lib/ai/dedupeQuestions";
 import { FatalParseError, isAbortError } from "@/lib/ai/errors";
 import { reportPipelineError } from "@/lib/observability/reportPipelineError";
 import { putMediaBlob } from "@/lib/db/studySetDb";
-import {
-  parseVisionPage,
-  parseVisionPagePair,
-  type VisionForwardProvider,
-} from "@/lib/ai/parseVisionPage";
+import { parseVisionPage, parseVisionPagePair } from "@/lib/ai/parseVisionPage";
 
 export type VisionParseProgress = {
   current: number;
@@ -59,10 +55,6 @@ async function tryAssignQuestionImageIds(
 }
 
 export async function runVisionSequential(options: {
-  forwardProvider: VisionForwardProvider;
-  apiKey: string;
-  apiUrl?: string;
-  model?: string;
   pages: PageImageResult[];
   signal: AbortSignal;
   onProgress?: (p: VisionParseProgress) => void;
@@ -72,10 +64,6 @@ export async function runVisionSequential(options: {
   studySetId?: string;
 }): Promise<RunVisionSequentialResult> {
   const {
-    forwardProvider,
-    apiKey,
-    apiUrl,
-    model,
     pages,
     signal,
     onProgress,
@@ -113,10 +101,6 @@ export async function runVisionSequential(options: {
         }
         try {
           const qs = await parseVisionPage({
-            forwardProvider,
-            apiKey,
-            apiUrl,
-            model,
             imageDataUrl: page.dataUrl,
             pageIndex: page.pageIndex,
             totalPages: pages.length,
@@ -186,10 +170,6 @@ export async function runVisionSequential(options: {
       }
       try {
         const qs = await parseVisionPage({
-          forwardProvider,
-          apiKey,
-          apiUrl,
-          model,
           imageDataUrl: page.dataUrl,
           pageIndex: page.pageIndex,
           totalPages: 1,
@@ -242,10 +222,6 @@ export async function runVisionSequential(options: {
       }
       try {
         const qs = await parseVisionPagePair({
-          forwardProvider,
-          apiKey,
-          apiUrl,
-          model,
           leftImageDataUrl: left.dataUrl,
           rightImageDataUrl: right.dataUrl,
           leftPageIndex: left.pageIndex,

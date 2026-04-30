@@ -4,6 +4,7 @@
  */
 
 import { FatalParseError } from "@/lib/ai/errors";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
 import {
   forwardAiPost,
   parseProxyForwardErrorBody,
@@ -12,11 +13,7 @@ import {
   describeBadAiResponse,
   responseLooksLikeHtml,
 } from "@/lib/ai/upstreamErrors";
-import {
-  questionsFromAssistantContent,
-  resolveChatApiUrl,
-  resolveModelId,
-} from "@/lib/ai/parseChunk";
+import { questionsFromAssistantContent } from "@/lib/ai/parseChunk";
 import {
   MCQ_EXTRACTION_SYSTEM_PROMPT,
   visionPagePairUserPrompt,
@@ -40,9 +37,6 @@ function imageTransportUrls(
 }
 
 async function postVisionCompletion(options: {
-  forwardProvider: VisionForwardProvider;
-  endpoint: string;
-  apiKey: string;
   model: string;
   userText: string;
   imageUrl: string;
@@ -50,9 +44,6 @@ async function postVisionCompletion(options: {
   useJsonObjectFormat: boolean;
 }): Promise<Response> {
   const {
-    forwardProvider,
-    endpoint,
-    apiKey,
     model,
     userText,
     imageUrl,
@@ -83,18 +74,12 @@ async function postVisionCompletion(options: {
   }
 
   return forwardAiPost({
-    provider: forwardProvider,
-    targetUrl: endpoint,
-    apiKey,
     signal,
     body,
   });
 }
 
 async function postVisionCompletionPair(options: {
-  forwardProvider: VisionForwardProvider;
-  endpoint: string;
-  apiKey: string;
   model: string;
   userText: string;
   imageUrlA: string;
@@ -103,9 +88,6 @@ async function postVisionCompletionPair(options: {
   useJsonObjectFormat: boolean;
 }): Promise<Response> {
   const {
-    forwardProvider,
-    endpoint,
-    apiKey,
     model,
     userText,
     imageUrlA,
@@ -135,9 +117,6 @@ async function postVisionCompletionPair(options: {
   }
 
   return forwardAiPost({
-    provider: forwardProvider,
-    targetUrl: endpoint,
-    apiKey,
     signal,
     body,
   });
@@ -165,34 +144,19 @@ function readChatCompletionContent(text: string): string {
 }
 
 export async function parseVisionPage(options: {
-  forwardProvider: VisionForwardProvider;
-  apiKey: string;
-  apiUrl?: string;
-  model?: string;
   imageDataUrl: string;
   pageIndex: number;
   totalPages: number;
   signal: AbortSignal;
 }): Promise<import("@/types/question").Question[]> {
   const {
-    forwardProvider,
-    apiKey,
-    apiUrl,
-    model,
     imageDataUrl,
     pageIndex,
     totalPages,
     signal,
   } = options;
 
-  const endpoint = resolveChatApiUrl(
-    forwardProvider === "custom" ? "custom" : "openai",
-    apiUrl,
-  );
-  const modelId = resolveModelId(
-    forwardProvider === "custom" ? "custom" : "openai",
-    model,
-  );
+  const modelId = "server";
 
   const userText = visionPageUserPrompt(pageIndex, totalPages);
 
@@ -209,9 +173,6 @@ export async function parseVisionPage(options: {
 
     try {
       let res = await postVisionCompletion({
-        forwardProvider,
-        endpoint,
-        apiKey,
         model: modelId,
         userText,
         imageUrl,
@@ -223,9 +184,6 @@ export async function parseVisionPage(options: {
 
       if (res.status === 400) {
         res = await postVisionCompletion({
-          forwardProvider,
-          endpoint,
-          apiKey,
           model: modelId,
           userText,
           imageUrl,
@@ -236,9 +194,10 @@ export async function parseVisionPage(options: {
       }
 
       if (res.status === 401) {
-        throw new FatalParseError(
-          "Invalid API key. Please check and try again.",
-        );
+        throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
+      }
+      if (res.status === 503) {
+        throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
       }
       if (res.status === 429) {
         throw new FatalParseError(
@@ -281,10 +240,6 @@ export async function parseVisionPage(options: {
  * Two consecutive page images in one request (cross-page MCQs). More tokens than single-page parse.
  */
 export async function parseVisionPagePair(options: {
-  forwardProvider: VisionForwardProvider;
-  apiKey: string;
-  apiUrl?: string;
-  model?: string;
   leftImageDataUrl: string;
   rightImageDataUrl: string;
   leftPageIndex: number;
@@ -293,10 +248,6 @@ export async function parseVisionPagePair(options: {
   signal: AbortSignal;
 }): Promise<import("@/types/question").Question[]> {
   const {
-    forwardProvider,
-    apiKey,
-    apiUrl,
-    model,
     leftImageDataUrl,
     rightImageDataUrl,
     leftPageIndex,
@@ -305,14 +256,7 @@ export async function parseVisionPagePair(options: {
     signal,
   } = options;
 
-  const endpoint = resolveChatApiUrl(
-    forwardProvider === "custom" ? "custom" : "openai",
-    apiUrl,
-  );
-  const modelId = resolveModelId(
-    forwardProvider === "custom" ? "custom" : "openai",
-    model,
-  );
+  const modelId = "server";
 
   const userText = visionPagePairUserPrompt(
     leftPageIndex,
@@ -334,9 +278,6 @@ export async function parseVisionPagePair(options: {
 
       try {
         let res = await postVisionCompletionPair({
-          forwardProvider,
-          endpoint,
-          apiKey,
           model: modelId,
           userText,
           imageUrlA,
@@ -349,9 +290,6 @@ export async function parseVisionPagePair(options: {
 
         if (res.status === 400) {
           res = await postVisionCompletionPair({
-            forwardProvider,
-            endpoint,
-            apiKey,
             model: modelId,
             userText,
             imageUrlA,
@@ -363,9 +301,10 @@ export async function parseVisionPagePair(options: {
         }
 
         if (res.status === 401) {
-          throw new FatalParseError(
-            "Invalid API key. Please check and try again.",
-          );
+          throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
+        }
+        if (res.status === 503) {
+          throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
         }
         if (res.status === 429) {
           throw new FatalParseError(

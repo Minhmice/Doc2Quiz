@@ -2,6 +2,7 @@
 name: planner
 description: Produce implementation plans with sequencing, dependencies, and acceptance criteria. Use when a task is multi-step, risky, or cross-file.
 ---
+
 # Planner
 
 ## Mission

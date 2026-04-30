@@ -56,6 +56,29 @@ function lsSet(key: string, value: string): void {
   }
 }
 
+const LS_FORWARD_PURGE_V2 = "doc2quiz:ai:forwardSecretsPurgedV2";
+
+/** One-time removal of BYOK fields from localStorage (secrets move to server env). */
+export function purgeForwardSecretsFromStorageOnce(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (lsGet(LS_FORWARD_PURGE_V2) === "1") {
+    return;
+  }
+  clearForwardSettings();
+  lsSet(LS_OPENAI_KEY, "");
+  lsSet(LS_OPENAI_URL, "");
+  lsSet(LS_OPENAI_MODEL, "");
+  lsSet(LS_ANTHROPIC_KEY, "");
+  lsSet(LS_ANTHROPIC_URL, "");
+  lsSet(LS_ANTHROPIC_MODEL, "");
+  lsSet(LS_CUSTOM_KEY, "");
+  lsSet(LS_CUSTOM_URL, "");
+  lsSet(LS_CUSTOM_MODEL, "");
+  lsSet(LS_FORWARD_PURGE_V2, "1");
+}
+
 export function migrateForwardSettingsFromLegacy(): void {
   if (typeof window === "undefined") {
     return;

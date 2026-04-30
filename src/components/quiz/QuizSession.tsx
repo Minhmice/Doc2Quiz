@@ -291,7 +291,7 @@ export function PlaySession({
       setCorrectCount(0);
     } catch (e) {
       setLoadError(
-        e instanceof Error ? e.message : "Could not load question bank.",
+        e instanceof Error ? e.message : "Could not load study content.",
       );
       setPlayable([]);
     } finally {
@@ -511,10 +511,10 @@ export function PlaySession({
           )}
           role="status"
         >
-          <AlertTitle>No missed questions to review</AlertTitle>
+          <AlertTitle>No missed items to review</AlertTitle>
           <AlertDescription>
-            Finish a quiz with at least one incorrect answer to populate review
-            mistakes, or take the full quiz instead.
+            Finish a practice session with at least one incorrect answer to
+            populate review mistakes, or start the full session instead.
           </AlertDescription>
           <Link
             href={quizPlay(studySetId)}
@@ -523,7 +523,7 @@ export function PlaySession({
               "mt-3 inline-flex w-fit",
             )}
           >
-            Take full quiz
+            Open full practice
           </Link>
         </Alert>
       );
@@ -540,7 +540,7 @@ export function PlaySession({
         <AlertTitle
           className={cn(!stitch && "text-amber-200", stitch && "text-[var(--qp-primary-container)]")}
         >
-          No approved questions for a quiz yet.
+          No approved items for practice yet.
         </AlertTitle>
         <AlertDescription
           className={cn(!stitch && "text-amber-100/90", stitch && "text-[var(--qp-muted)]")}
@@ -684,7 +684,7 @@ export function PlaySession({
                   "font-label text-[10px] tracking-[0.16em] text-[var(--qp-secondary)]",
               )}
             >
-              Question review
+              Item review
             </h3>
             {breakdownScroll ? (
               <ScrollArea className="h-[min(22.5rem,50vh)] pr-3">
@@ -742,7 +742,7 @@ export function PlaySession({
             <Button
               type="button"
               disabled
-              title="You did not miss any questions in this session."
+              title="You did not miss any items in this session."
               className={cn(stitch && "rounded-sm font-heading text-xs uppercase")}
             >
               Drill mistakes
@@ -754,7 +754,7 @@ export function PlaySession({
             className={outlineCtaClass}
             onClick={restart}
           >
-            Quiz again
+            Practice again
           </Button>
           <Link
             href="/dashboard"

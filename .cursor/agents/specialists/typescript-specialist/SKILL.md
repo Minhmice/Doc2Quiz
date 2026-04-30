@@ -2,6 +2,7 @@
 name: typescript-specialist
 description: Resolve TypeScript type-system issues and improve contract safety across runtime and compile-time validation. Use for type errors, generics, and schema typing.
 ---
+
 # TypeScript Specialist
 
 ## Mission

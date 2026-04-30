@@ -12,7 +12,6 @@
  * parity is “same quality bar per lane,” not identical implementation.
  */
 
-import Link from "next/link";
 import {
   forwardRef,
   useCallback,
@@ -23,7 +22,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { DEFAULT_EMBEDDING_MODEL } from "@/lib/ai/buildEmbeddingIndex";
 import { runEmbeddingIndexJob } from "@/lib/ai/embeddingIndexJob";
 import {
   cancelUncertainFallbackForStudySet,
@@ -50,8 +48,6 @@ import {
 } from "@/lib/ai/mapQuestionsToPages";
 import {
   parseChunkSingleMcqOnce,
-  resolveChatApiUrl,
-  resolveModelId,
   type ValidatorReasonCode,
 } from "@/lib/ai/parseChunk";
 import { buildLayoutChunksFromRun } from "@/lib/ai/layoutChunksFromOcr";
@@ -92,10 +88,8 @@ import {
   getSurfaceAvailability,
   surfaceBlockReason,
 } from "@/lib/ai/parseCapabilities";
-import {
-  getForwardOpenAiCompatKind,
-  readForwardSettings,
-} from "@/lib/ai/forwardSettings";
+import { purgeForwardSecretsFromStorageOnce } from "@/lib/ai/forwardSettings";
+import type { AiProcessingUxStatus } from "@/types/aiProcessingUx";
 import { getProvider } from "@/lib/ai/storage";
 import { AiParseActions } from "@/components/ai/AiParseActions";
 import { AiParseEstimatePanel } from "@/components/ai/AiParseEstimatePanel";
@@ -352,7 +346,7 @@ export const AiParseSection = forwardRef<
       const now = Date.now();
       if (now - validatorToastLastMsRef.current < 12_000) return;
       validatorToastLastMsRef.current = now;
-      toast.message("Refining questions…", { duration: 2500 });
+      toast.message("Refining content…", { duration: 2500 });
       pipelineLog("PARSE", "validator", "info", "validator_llm_toast", {
         reasons: info.reasons,
       });
@@ -535,11 +529,38 @@ export const AiParseSection = forwardRef<
     void reloadApprovedQuestions();
   }, [reloadApprovedQuestions]);
 
+  useEffect(() => {
+    purgeForwardSecretsFromStorageOnce();
+  }, []);
+
+  const [processingUx, setProcessingUx] = useState<AiProcessingUxStatus | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/ai/processing-status");
+        if (!res.ok) {
+          return;
+        }
+        const data = (await res.json()) as AiProcessingUxStatus;
+        if (!cancelled) {
+          setProcessingUx(data);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const provider = getProvider();
-  const forwardSettings = readForwardSettings();
-  const keyInput = forwardSettings.apiKey;
-  const urlInput = forwardSettings.baseUrl;
-  const modelInput = forwardSettings.modelId;
+  const processingLabel =
+    processingUx?.label ?? "Standard processing";
 
   // Strict single-lane contract:
   // - quiz: vision batch only (when using vision)
@@ -548,14 +569,10 @@ export const AiParseSection = forwardRef<
   const batchOnlyVisionParse = isFlashcardParse || isQuizParse;
   const effectiveAttachPageImage = batchOnlyVisionParse ? false : attachPageImage;
 
-  const hasKey = keyInput.trim().length > 0;
-  const hasCustomEndpoint =
-    provider !== "custom" || urlInput.trim().length > 0;
-  const hasCustomModel =
-    provider !== "custom" || modelInput.trim().length > 0;
+  const serverProcessingAvailable = processingUx?.available === true;
 
   const surfaceList = getSurfaceAvailability({
-    settings: forwardSettings,
+    serverProcessingAvailable,
     attachPageImages: effectiveAttachPageImage,
   });
   const visionSurface =
@@ -570,9 +587,8 @@ export const AiParseSection = forwardRef<
   const visionDisabled =
     !activePdfFile ||
     !visionForwardReady ||
-    !hasKey ||
-    isRunning ||
-    (urlInput.trim().length > 0 && !modelInput.trim());
+    !serverProcessingAvailable ||
+    isRunning;
 
   const canRunVisionParse = !visionDisabled;
 
@@ -582,7 +598,7 @@ export const AiParseSection = forwardRef<
     if (isRunning) {
       return null;
     }
-    if (!hasKey) {
+    if (!serverProcessingAvailable) {
       return null;
     }
     if (visionBlockReasonKey) {
@@ -593,28 +609,17 @@ export const AiParseSection = forwardRef<
         ? "No PDF on file — replace or re-import the document."
         : "Add a PDF file to parse.";
     }
-    if (urlInput.trim()) {
-      if (!modelInput.trim()) {
-        return "Enter a model id in Settings when using a custom API base URL.";
-      }
-    }
     return null;
   }, [
-    hasKey,
+    serverProcessingAvailable,
     isRunning,
     visionBlockReasonKey,
-    urlInput,
-    modelInput,
     activePdfFile,
     isEmbedded,
   ]);
 
   const [embeddingIndexStatus, setEmbeddingIndexStatus] =
     useState<EmbeddingIndexUiStatus>({ status: "idle" });
-  const embeddingKeyRef = useRef(keyInput);
-  const embeddingUrlRef = useRef(urlInput);
-  embeddingKeyRef.current = keyInput;
-  embeddingUrlRef.current = urlInput;
 
   useEffect(() => {
     const sid = studySetId.trim();
@@ -631,14 +636,6 @@ export const AiParseSection = forwardRef<
     }
 
     registerEmbeddingIndexRunner(async ({ studySetId: id, signal }) => {
-      const apiKey = embeddingKeyRef.current.trim();
-      if (!apiKey) {
-        pipelineLog("PARSE", "embedding-rank", "info", "embedding_index_skip_no_key", {
-          studySetId: id,
-        });
-        emitEmbeddingIndexStatus(id, { status: "idle" });
-        return;
-      }
       const doc = await getDocument(id);
       const fullText = (doc?.extractedText ?? "").trim();
       if (!fullText) {
@@ -653,9 +650,6 @@ export const AiParseSection = forwardRef<
       const r = await runEmbeddingIndexJob({
         studySetId: id,
         fullText,
-        apiKey,
-        forwardBaseUrl: embeddingUrlRef.current,
-        embeddingModel: DEFAULT_EMBEDDING_MODEL,
         signal,
         concurrency: 2,
         onProgress: (p) =>
@@ -801,7 +795,6 @@ export const AiParseSection = forwardRef<
     async (
       file: File,
       controller: AbortController,
-      apiKey: string,
       forwardProvider: "openai" | "custom",
       timeStamp: () => string,
       afterOcrParseMode: "vision" | "none",
@@ -895,18 +888,12 @@ export const AiParseSection = forwardRef<
           studySetId: studySetId.trim(),
           pageCount: pages.length,
           forwardProvider,
-          model: modelInput,
         });
         try {
-          const endpoint = resolveChatApiUrl(provider, urlInput);
-          const model = resolveModelId(provider, modelInput);
           const ocrResult = await runOcrSequential({
             pages,
             signal: controller.signal,
             provider: forwardProvider === "openai" ? "openai" : "custom",
-            endpoint,
-            apiKey,
-            model,
             onProgress: ({ current, total, textSoFar }) => {
               setProgress({ current, total, status: "running" });
               setParseOverlay((p) => ({
@@ -972,23 +959,13 @@ export const AiParseSection = forwardRef<
 
       return { kind: "prepared", pages, ocrForMapping };
     },
-    [
-      enableOcr,
-      isProductSurface,
-      studySetId,
-      visionForwardReady,
-      provider,
-      urlInput,
-      modelInput,
-    ],
+    [enableOcr, isProductSurface, studySetId, visionForwardReady],
   );
 
   const runVisionSequentialWithUi = useCallback(
     async (
       pages: PageImageResult[],
       controller: AbortController,
-      forwardProvider: "openai" | "custom",
-      apiKey: string,
       timeStamp: () => string,
     ) => {
       const attachEffective =
@@ -1003,7 +980,7 @@ export const AiParseSection = forwardRef<
         ...p,
         log: [
           ...p.log,
-          `${timeStamp()} — Analyzing structure · ${pages.length} page image${pages.length === 1 ? "" : "s"}${attachEffective ? " · page images will be linked to questions" : ""}`,
+          `${timeStamp()} — Analyzing structure · ${pages.length} page image${pages.length === 1 ? "" : "s"}${attachEffective ? " · page images will be linked to items" : ""}`,
         ].slice(-16),
       }));
 
@@ -1015,10 +992,6 @@ export const AiParseSection = forwardRef<
       });
 
       const result = await runVisionSequential({
-        forwardProvider,
-        apiKey,
-        apiUrl: urlInput,
-        model: modelInput,
         pages,
         signal: controller.signal,
         studySetId,
@@ -1027,21 +1000,21 @@ export const AiParseSection = forwardRef<
           setProgress({ current, total, status: "running" });
           const attachDoneNote =
             attachEffective && current === total
-              ? " · page images saved to questions"
+              ? " · page images saved to items"
               : "";
           setParseOverlay((p) => ({
             ...p,
             extractedCount: questionsSoFar,
             log: [
               ...p.log,
-              `${timeStamp()} — Pass ${current}/${total} · ${questionsSoFar} question${questionsSoFar === 1 ? "" : "s"} extracted${attachDoneNote}`,
+              `${timeStamp()} — Pass ${current}/${total} · ${questionsSoFar} item${questionsSoFar === 1 ? "" : "s"} extracted${attachDoneNote}`,
             ].slice(-16),
           }));
         },
       });
       return { result, attachEffective };
     },
-    [attachPageImage, studySetId, urlInput, modelInput],
+    [attachPageImage, studySetId],
   );
 
   const finalizeVisionParseResult = useCallback(
@@ -1088,7 +1061,7 @@ export const AiParseSection = forwardRef<
             parsePath: "vision",
           });
           toast.error(
-            "Page mapping failed; questions were still saved. Open Review to verify source pages.",
+            "Page mapping failed; items were still saved. Open Review to verify source pages.",
           );
         }
       }
@@ -1098,7 +1071,7 @@ export const AiParseSection = forwardRef<
       const n = result.questions.length;
       const m = result.failedSteps;
       const parts: string[] = [
-        `Vision: parsed ${n} question${n === 1 ? "" : "s"}`,
+        `Vision: parsed ${n} item${n === 1 ? "" : "s"}`,
       ];
       if (m > 0) {
         parts.push(`${m} vision step${m === 1 ? "" : "s"} failed`);
@@ -1136,7 +1109,7 @@ export const AiParseSection = forwardRef<
         );
         if (uncertainCount > 0) {
           toast.warning(
-            `${uncertainCount} question${uncertainCount === 1 ? "" : "s"} have uncertain or missing page mapping — open Review to verify.`,
+            `${uncertainCount} item${uncertainCount === 1 ? "" : "s"} have uncertain or missing page mapping — open Review to verify.`,
           );
         }
         setSummary(summary);
@@ -1150,7 +1123,7 @@ export const AiParseSection = forwardRef<
         !controller.signal.aborted
       ) {
         toast.warning(
-          "Could not attach some page images; those questions have no reference image.",
+          "Could not attach some page images; those items have no reference image.",
         );
       }
 
@@ -1207,7 +1180,7 @@ export const AiParseSection = forwardRef<
             ...p,
             log: [
               ...p.log,
-              `${formatTimeStamp()} — Saving ${flashItems.length} flashcard${flashItems.length === 1 ? "" : "s"} to database...`,
+              `${formatTimeStamp()} — Saving ${flashItems.length} item${flashItems.length === 1 ? "" : "s"} to database...`,
             ],
           }));
           await persistFlashcardVisionItemsForImmediateUse(flashItems);
@@ -1215,7 +1188,7 @@ export const AiParseSection = forwardRef<
 
         const n = flashItems.length;
         const parts = [
-          `Vision (batch): parsed ${n} flashcard${n === 1 ? "" : "s"}`,
+          `Vision (batch): parsed ${n} item${n === 1 ? "" : "s"}`,
         ];
         if (batchResult.failedBatches > 0) {
           parts.push(
@@ -1229,7 +1202,7 @@ export const AiParseSection = forwardRef<
 
         if (!aborted && batchResult.failedBatches > 0 && n > 0) {
           toast.warning(
-            "Some vision batches failed; open Review to verify card coverage.",
+            "Some vision batches failed; open Review to verify item coverage.",
           );
         }
 
@@ -1272,7 +1245,7 @@ export const AiParseSection = forwardRef<
             parsePath: "vision_batch",
           });
           toast.error(
-            "Page mapping failed; questions were still saved. Open Review to verify source pages.",
+            "Page mapping failed; items were still saved. Open Review to verify source pages.",
           );
         }
       }
@@ -1281,7 +1254,7 @@ export const AiParseSection = forwardRef<
 
       const n = questions.length;
       const parts = [
-        `Vision (batch): parsed ${n} question${n === 1 ? "" : "s"}`,
+        `Vision (batch): parsed ${n} item${n === 1 ? "" : "s"}`,
       ];
       if (batchResult.failedBatches > 0) {
         parts.push(
@@ -1295,7 +1268,7 @@ export const AiParseSection = forwardRef<
 
       if (!aborted && batchResult.failedBatches > 0 && n > 0) {
         toast.warning(
-          "Some vision batches failed; open Review to verify question coverage.",
+          "Some vision batches failed; open Review to verify item coverage.",
         );
       }
 
@@ -1305,7 +1278,7 @@ export const AiParseSection = forwardRef<
           ...p,
           log: [
             ...p.log,
-            `${formatTimeStamp()} — Saving ${questions.length} question${questions.length === 1 ? "" : "s"} to database...`,
+            `${formatTimeStamp()} — Saving ${questions.length} item${questions.length === 1 ? "" : "s"} to database...`,
           ],
         }));
         await persistQuestions(questions);
@@ -1315,7 +1288,7 @@ export const AiParseSection = forwardRef<
         );
         if (uncertainCount > 0) {
           toast.warning(
-            `${uncertainCount} question${uncertainCount === 1 ? "" : "s"} have uncertain or missing page mapping — open Review to verify.`,
+            `${uncertainCount} item${uncertainCount === 1 ? "" : "s"} have uncertain or missing page mapping — open Review to verify.`,
           );
         }
         setSummary(summary);
@@ -1356,8 +1329,6 @@ export const AiParseSection = forwardRef<
       pages: PageImageResult[],
       ocrForMapping: OcrRunResult,
       controller: AbortController,
-      forwardProvider: "openai" | "custom",
-      apiKey: string,
       timeStamp: () => string,
     ): Promise<ParseRunResult> => {
       if (parseOutputMode === "flashcard") {
@@ -1382,9 +1353,7 @@ export const AiParseSection = forwardRef<
         parse: (userContent, signal, meta) =>
           parseChunkSingleMcqOnce({
             provider,
-            apiKey,
-            apiUrl: urlInput,
-            model: modelInput,
+            processingLabel,
             chunkText: userContent,
             ragContextPrefix: ragContextPrefix.trim() || undefined,
             signal,
@@ -1419,8 +1388,6 @@ export const AiParseSection = forwardRef<
         const { result, attachEffective } = await runVisionSequentialWithUi(
           pages,
           controller,
-          forwardProvider,
-          apiKey,
           timeStamp,
         );
         if (result.fatalError) {
@@ -1455,7 +1422,7 @@ export const AiParseSection = forwardRef<
         );
         if (fails > 0 && !controller.signal.aborted) {
           toast.warning(
-            "Could not attach some page images; those questions have no reference image.",
+            "Could not attach some page images; those items have no reference image.",
           );
         }
       }
@@ -1488,7 +1455,7 @@ export const AiParseSection = forwardRef<
 
       setQuestions(merged);
       const parts = [
-        `Layout-aware: ${merged.length} question${merged.length === 1 ? "" : "s"}`,
+        `Layout-aware: ${merged.length} item${merged.length === 1 ? "" : "s"}`,
       ];
       if (chunkOut.needsVisionFallback) {
         parts.push("merged with full-page vision where chunks were insufficient");
@@ -1506,7 +1473,7 @@ export const AiParseSection = forwardRef<
         );
         if (uncertainCount > 0) {
           toast.warning(
-            `${uncertainCount} question${uncertainCount === 1 ? "" : "s"} have uncertain or missing page mapping — open Review to verify.`,
+            `${uncertainCount} item${uncertainCount === 1 ? "" : "s"} have uncertain or missing page mapping — open Review to verify.`,
           );
         }
         setSummary(summary);
@@ -1532,10 +1499,9 @@ export const AiParseSection = forwardRef<
     },
     [
       provider,
+      processingLabel,
       attachPageImage,
       studySetId,
-      urlInput,
-      modelInput,
       persistQuestions,
       runVisionSequentialWithUi,
       parseOutputMode,
@@ -1572,8 +1538,7 @@ export const AiParseSection = forwardRef<
     setError(null);
     setSummary(null);
 
-    const apiKey = keyInput.trim();
-    if (!apiKey) {
+    if (!serverProcessingAvailable) {
       return {
         ok: false,
         aborted: false,
@@ -1589,14 +1554,13 @@ export const AiParseSection = forwardRef<
         second: "2-digit",
       });
 
-    const forwardProvider = getForwardOpenAiCompatKind();
+    const forwardProvider = "openai" as const;
 
     pipelineLog("VISION", "parse-start", "info", "handleVisionParse started", {
       studySetId: studySetId.trim() || "(empty)",
       ...fileSummary(activePdfFile),
       forwardProvider,
       aiProvider: provider,
-      model: modelInput,
     });
 
     const controller = new AbortController();
@@ -1751,7 +1715,7 @@ export const AiParseSection = forwardRef<
         const strategyHint =
           plannedBatches.length === 1 && pageSlice.length > 1
             ? isFlashcardParse
-              ? `1 API request (all ${pageSlice.length} pages, overlap 0; theory flashcards, strict page citations)`
+              ? `1 API request (all ${pageSlice.length} pages, overlap 0; theory items, strict page citations)`
               : `1 API request (all ${pageSlice.length} pages, overlap 0; may fall back to 10+2 if it fails)`
             : `${plannedBatches.length} API request(s) (≤${VISION_MAX_PAGES_DEFAULT} pages/batch, overlap 0)`;
         setProgress({ current: 0, total: batchTotal, status: "running" });
@@ -1781,10 +1745,7 @@ export const AiParseSection = forwardRef<
           pages: pageSlice,
           mode: parseOutputMode,
           signal: controller.signal,
-          forwardProvider,
-          apiKey,
-          apiUrl: urlInput,
-          model: modelInput,
+          processingLabel,
           flashcardGeneration: isFlashcardParse
             ? resolvedFlashcardConfig
             : undefined,
@@ -1973,9 +1934,7 @@ export const AiParseSection = forwardRef<
           const tParseStart = performance.now();
           const result = await runSequentialParse({
             provider,
-            apiKey: keyInput.trim(),
-            apiUrl: urlInput,
-            model: modelInput,
+            processingLabel,
             chunks,
             ragContextPrefix: ragContextPrefix.trim() || undefined,
             signal: controller.signal,
@@ -2143,10 +2102,10 @@ export const AiParseSection = forwardRef<
         setQuestions(merged);
         if (!controller.signal.aborted) {
           await persistQuestions(merged);
-          setSummary(`Routed (text-only): parsed ${merged.length} question${merged.length === 1 ? "" : "s"}.`);
+          setSummary(`Routed (text-only): parsed ${merged.length} item${merged.length === 1 ? "" : "s"}.`);
         } else {
           setSummary(
-            `Routed (text-only): parsed ${merged.length} question${merged.length === 1 ? "" : "s"}. Parsing stopped.`,
+            `Routed (text-only): parsed ${merged.length} item${merged.length === 1 ? "" : "s"}. Parsing stopped.`,
           );
         }
         return {
@@ -2162,7 +2121,6 @@ export const AiParseSection = forwardRef<
       const prep = await runRenderPagesAndOptionalOcr(
         activePdfFile,
         controller,
-        apiKey,
         forwardProvider,
         timeStamp,
         "vision",
@@ -2292,8 +2250,6 @@ export const AiParseSection = forwardRef<
         await runVisionSequentialWithUi(
           pages,
           controller,
-          forwardProvider,
-          apiKey,
           timeStamp,
         );
       return await finalizeVisionParseResult(
@@ -2350,13 +2306,12 @@ export const AiParseSection = forwardRef<
   }, [
     activePdfFile,
     visionDisabled,
-    keyInput,
+    serverProcessingAvailable,
     provider,
-    modelInput,
+    processingLabel,
     studySetId,
     effectiveAttachPageImage,
     parseOutputMode,
-    urlInput,
     runRenderPagesAndOptionalOcr,
     runVisionSequentialWithUi,
     finalizeVisionParseResult,
@@ -2394,8 +2349,7 @@ export const AiParseSection = forwardRef<
       setError(null);
       setSummary(null);
 
-      const apiKey = keyInput.trim();
-      if (!apiKey) {
+      if (!serverProcessingAvailable) {
         return {
           ok: false,
           aborted: false,
@@ -2417,7 +2371,7 @@ export const AiParseSection = forwardRef<
           minute: "2-digit",
           second: "2-digit",
         });
-      const forwardProvider = getForwardOpenAiCompatKind();
+      const forwardProvider = "openai" as const;
 
       pipelineLog("VISION", "layout-chunk", "info", "handleLayoutAwareParse started", {
         studySetId: studySetId.trim() || "(empty)",
@@ -2453,7 +2407,6 @@ export const AiParseSection = forwardRef<
         const prep = await runRenderPagesAndOptionalOcr(
           activePdfFile,
           controller,
-          apiKey,
           forwardProvider,
           timeStamp,
           "none",
@@ -2503,8 +2456,6 @@ export const AiParseSection = forwardRef<
           const { result, attachEffective } = await runVisionSequentialWithUi(
             pages,
             controller,
-            forwardProvider,
-            apiKey,
             timeStamp,
           );
           return await finalizeVisionParseResult(
@@ -2521,8 +2472,6 @@ export const AiParseSection = forwardRef<
           pages,
           ocrForMapping,
           controller,
-          forwardProvider,
-          apiKey,
           timeStamp,
         );
       } catch (e) {
@@ -2570,7 +2519,7 @@ export const AiParseSection = forwardRef<
     }, [
       activePdfFile,
       visionDisabled,
-      keyInput,
+      serverProcessingAvailable,
       enableOcr,
       studySetId,
       handleVisionParse,
@@ -2603,8 +2552,7 @@ export const AiParseSection = forwardRef<
     setSummary(null);
     setHybridOcrGateNote(null);
 
-    const apiKey = keyInput.trim();
-    if (!apiKey) {
+    if (!serverProcessingAvailable) {
       return {
         ok: false,
         aborted: false,
@@ -2623,7 +2571,7 @@ export const AiParseSection = forwardRef<
         minute: "2-digit",
         second: "2-digit",
       });
-    const forwardProvider = getForwardOpenAiCompatKind();
+    const forwardProvider = "openai" as const;
 
     pipelineLog("VISION", "hybrid", "info", "handleHybridParse started", {
       studySetId: studySetId.trim() || "(empty)",
@@ -2658,7 +2606,6 @@ export const AiParseSection = forwardRef<
       const prep = await runRenderPagesAndOptionalOcr(
         activePdfFile,
         controller,
-        apiKey,
         forwardProvider,
         timeStamp,
         "none",
@@ -2708,8 +2655,6 @@ export const AiParseSection = forwardRef<
         const { result, attachEffective } = await runVisionSequentialWithUi(
           pages,
           controller,
-          forwardProvider,
-          apiKey,
           timeStamp,
         );
         return await finalizeVisionParseResult(
@@ -2735,8 +2680,6 @@ export const AiParseSection = forwardRef<
         const { result, attachEffective } = await runVisionSequentialWithUi(
           pages,
           controller,
-          forwardProvider,
-          apiKey,
           timeStamp,
         );
         return await finalizeVisionParseResult(
@@ -2753,8 +2696,6 @@ export const AiParseSection = forwardRef<
         pages,
         ocrForMapping,
         controller,
-        forwardProvider,
-        apiKey,
         timeStamp,
       );
     } catch (e) {
@@ -2802,7 +2743,7 @@ export const AiParseSection = forwardRef<
   }, [
     activePdfFile,
     visionDisabled,
-    keyInput,
+    serverProcessingAvailable,
     enableOcr,
     studySetId,
     handleVisionParse,
@@ -2836,8 +2777,8 @@ export const AiParseSection = forwardRef<
         };
       }
 
-      if (!hasKey) {
-        setError("Add an API key in Settings to parse.");
+      if (!serverProcessingAvailable) {
+        setError("Document processing is temporarily unavailable.");
         return {
           ok: false,
           aborted: false,
@@ -2850,7 +2791,7 @@ export const AiParseSection = forwardRef<
         setError(
           visionBlockReasonKey
             ? parseCapabilityUserMessage(visionBlockReasonKey)
-            : "Configure AI in Settings — PDF parsing uses vision (page images).",
+            : "Document processing is temporarily unavailable.",
         );
         return {
           ok: false,
@@ -2862,26 +2803,6 @@ export const AiParseSection = forwardRef<
 
       if (!activePdfFile) {
         setError("No PDF file available. Re-import or replace the document.");
-        return {
-          ok: false,
-          aborted: false,
-          fatalError: null,
-          questions: [],
-        };
-      }
-
-      if (urlInput.trim() && !modelInput.trim()) {
-        setError("Enter a model id in Settings when using a custom API base URL.");
-        return {
-          ok: false,
-          aborted: false,
-          fatalError: null,
-          questions: [],
-        };
-      }
-
-      if (!hasCustomEndpoint || !hasCustomModel) {
-        setError("Check Settings: endpoint and model are required.");
         return {
           ok: false,
           aborted: false,
@@ -3076,9 +2997,7 @@ export const AiParseSection = forwardRef<
             const runPass = async (chunks: string[], chunkOffset: number) =>
               runSequentialParse({
                 provider,
-                apiKey: keyInput.trim(),
-                apiUrl: urlInput,
-                model: modelInput,
+                processingLabel,
                 chunks,
                 ragContextPrefix: ragContextPrefix.trim() || undefined,
                 signal: controller.signal,
@@ -3148,9 +3067,7 @@ export const AiParseSection = forwardRef<
 
             const result = await runSequentialParse({
               provider,
-              apiKey: keyInput.trim(),
-              apiUrl: urlInput,
-              model: modelInput,
+              processingLabel,
               chunks,
               ragContextPrefix: ragContextPrefix.trim() || undefined,
               signal: controller.signal,
@@ -3184,7 +3101,7 @@ export const AiParseSection = forwardRef<
           }
 
           if (controller.signal.aborted) {
-            setSummary(`Text-first: parsed ${qs.length} questions. Parsing stopped.`);
+            setSummary(`Text-first: parsed ${qs.length} items. Parsing stopped.`);
             return {
               ok: false,
               aborted: true,
@@ -3232,10 +3149,10 @@ export const AiParseSection = forwardRef<
           }
 
           pushOverlayLog(
-            `Saving ${qs.length} question${qs.length === 1 ? "" : "s"}...`,
+            `Saving ${qs.length} item${qs.length === 1 ? "" : "s"}...`,
           );
           await persistQuestions(qs);
-          setSummary(`Text-first: parsed ${qs.length} questions.`);
+          setSummary(`Text-first: parsed ${qs.length} items.`);
 
           return {
             ok: !controller.signal.aborted && qs.length > 0,
@@ -3292,16 +3209,12 @@ export const AiParseSection = forwardRef<
       };
     }, [
       onBeforeParse,
-      hasKey,
-      keyInput,
+      serverProcessingAvailable,
       visionForwardReady,
       visionBlockReasonKey,
       activePdfFile,
       provider,
-      urlInput,
-      modelInput,
-      hasCustomEndpoint,
-      hasCustomModel,
+      processingLabel,
       parseStrategy,
       enableOcr,
       pageCount,
@@ -3408,22 +3321,13 @@ export const AiParseSection = forwardRef<
     >
       {!isEmbedded ? (
         <>
-          <AiParseSectionHeader hasKey={hasKey} />
+          <AiParseSectionHeader processingReady={serverProcessingAvailable} />
           <p className="text-sm text-muted-foreground">
-            Each PDF page is rendered and sent to a vision-capable model (OpenAI
-            or Custom). Up to{" "}
+            Each PDF page is rendered for layout-aware parsing. Up to{" "}
             <strong className="font-medium text-foreground">
               {visionPageCap}
             </strong>{" "}
-            page{visionPageCap === 1 ? "" : "s"}. Configure provider and model
-            in{" "}
-            <Link
-              href="/settings"
-              className="font-medium text-primary underline-offset-2 hover:underline"
-            >
-              Settings
-            </Link>
-            .
+            page{visionPageCap === 1 ? "" : "s"}.
           </p>
           {isProductSurface ? (
             isFlashcardParse ? null : (
@@ -3471,7 +3375,7 @@ export const AiParseSection = forwardRef<
             </>
           )}
         </>
-      ) : hasKey && activePdfFile ? (
+      ) : serverProcessingAvailable && activePdfFile ? (
         isEmbedded && isProductSurface ? null : (
         <div className="space-y-3">
           {isProductSurface ? (
@@ -3521,27 +3425,24 @@ export const AiParseSection = forwardRef<
         )
       ) : null}
 
-      {!hasKey ? (
+      {!serverProcessingAvailable ? (
         <p className="text-sm text-muted-foreground">
-          Add an API key in{" "}
-          <Link
-            href="/settings"
-            className="font-medium text-primary underline-offset-2 hover:underline"
-          >
-            Settings
-          </Link>{" "}
-          to parse questions.
+          Document processing is temporarily unavailable.
         </p>
-      ) : null}
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {processingUx?.label
+            ? `${processingUx.label} is enabled.`
+            : null}
+        </p>
+      )}
       {hintMessage ? (
         <p className="text-sm text-muted-foreground">{hintMessage}</p>
       ) : null}
 
-      {!isFlashcardParse && hasKey ? (
+      {!isFlashcardParse && serverProcessingAvailable ? (
         <RagChunkSearchPanel
           studySetId={studySetId}
-          apiKey={keyInput.trim()}
-          forwardBaseUrl={urlInput}
           ragContextPrefix={ragContextPrefix}
           onRagPrefixChange={setRagContextPrefix}
           disabled={isRunning}
@@ -3659,7 +3560,7 @@ export const AiParseSection = forwardRef<
         />
       ) : null}
 
-      {!isEmbedded && hasKey && activePdfFile ? (
+      {!isEmbedded && serverProcessingAvailable && activePdfFile ? (
         <AiParseEstimatePanel estimate={parseEstimate} />
       ) : null}
 

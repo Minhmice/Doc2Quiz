@@ -4,17 +4,30 @@ import type { LucideIcon } from "lucide-react";
 import {
   CheckIcon,
   FileTextIcon,
-  HardDriveIcon,
   Loader2Icon,
-  SaveIcon,
+  Upload,
   Wand2Icon,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import type { StudyContentKind } from "@/types/studySet";
 import type { NewStudySetPdfImportPhase } from "@/components/edit/new/import/newStudySetPdfImportPhase";
+import {
+  buildImportTechnicalDetailLines,
+  getImportUiStage,
+  importUiEyebrow,
+  importUiHeadline,
+  importUiLiveMessage,
+  importUiProgressPercent,
+  importUiStageIndex,
+  IMPORT_UI_STAGE_LABELS,
+  type ImportUiStage,
+} from "@/components/edit/new/import/importUiStage";
+import { ImportFlowTechnicalDetails } from "@/components/edit/new/import/ImportFlowTechnicalDetails";
 import { cn } from "@/lib/utils";
 
 const BAR_EASE = [0.22, 1, 0.36, 1] as const;
+
+const STEP_ICONS: readonly LucideIcon[] = [Upload, FileTextIcon, Wand2Icon];
 
 type PhaseMeta = {
   headline: string;
@@ -22,60 +35,39 @@ type PhaseMeta = {
   liveMessage: string;
 };
 
-const PHASE_ORDER_INGEST: readonly NewStudySetPdfImportPhase[] = [
-  "idb",
-  "pdf",
-  "persist",
-] as const;
-
-const PHASE_ORDER_WITH_AI: readonly NewStudySetPdfImportPhase[] = [
-  "idb",
-  "pdf",
-  "persist",
-  "ai",
-] as const;
-
+/** Legacy ingest meta — internal lines only (shown under Technical details). */
 export function importPhaseMeta(
   phase: NewStudySetPdfImportPhase,
   contentKind: StudyContentKind,
 ): PhaseMeta {
   const product =
-    contentKind === "flashcards" ? "Flashcard set" : "Quiz set";
+    contentKind === "flashcards" ? "Flip study set" : "Practice study set";
   switch (phase) {
     case "idb":
       return {
         headline: "Preparing storage…",
-        stageLine: "Stage 1 of 3 — On-device storage",
+        stageLine: "Internal: idb — on-device storage",
         liveMessage: `${product} import: preparing on-device storage.`,
       };
     case "pdf":
       return {
         headline: "Reading PDF…",
-        stageLine: "Stage 2 of 3 — PDF processing",
+        stageLine: "Internal: pdf — PDF processing",
         liveMessage: `${product} import: reading PDF and extracting text.`,
       };
     case "persist":
       return {
         headline: "Saving study set…",
-        stageLine: "Stage 3 of 3 — Saving",
+        stageLine: "Internal: persist — saving document",
         liveMessage: `${product} import: saving study set.`,
       };
     case "ai":
       return {
         headline: "Generating with AI…",
-        stageLine: "Stage 4 of 4 — AI generation",
-        liveMessage: `${product} import: AI is generating questions from your document.`,
+        stageLine: "Internal: ai — generation job",
+        liveMessage: `${product} import: AI is generating items from your document.`,
       };
   }
-}
-
-function phaseOrderFor(phase: NewStudySetPdfImportPhase) {
-  return phase === "ai" ? PHASE_ORDER_WITH_AI : PHASE_ORDER_INGEST;
-}
-
-function phaseIndex(phase: NewStudySetPdfImportPhase): number {
-  const order = phaseOrderFor(phase);
-  return order.indexOf(phase);
 }
 
 export type NewStudySetPdfImportProgressChromeProps = Readonly<{
@@ -93,6 +85,34 @@ export type NewStudySetPdfImportProgressChromeProps = Readonly<{
   stageLineOverride?: string | null;
 }>;
 
+export function ImportUiThreeStepStrip({
+  stage,
+  className,
+}: Readonly<{
+  stage: ImportUiStage;
+  className?: string;
+}>) {
+  const active = importUiStageIndex(stage);
+  return (
+    <div
+      role="list"
+      className={cn(
+        "flex flex-wrap items-center justify-center gap-3 sm:gap-6",
+        className,
+      )}
+    >
+      {IMPORT_UI_STAGE_LABELS.map((label, i) => {
+        const Icon = STEP_ICONS[i]!;
+        const state: StepState =
+          active > i ? "done" : active === i ? "current" : "upcoming";
+        return (
+          <StepItem key={label} label={label} state={state} icon={Icon} />
+        );
+      })}
+    </div>
+  );
+}
+
 export function NewStudySetPdfImportProgressChrome({
   phase,
   contentKind,
@@ -102,19 +122,22 @@ export function NewStudySetPdfImportProgressChrome({
   stageLineOverride,
 }: NewStudySetPdfImportProgressChromeProps) {
   const reduceMotion = useReducedMotion();
-  const baseMeta = importPhaseMeta(phase, contentKind);
-  const meta = {
-    headline: headlineOverride ?? baseMeta.headline,
-    stageLine: stageLineOverride ?? baseMeta.stageLine,
-    liveMessage: baseMeta.liveMessage,
-  };
-  const active = phaseIndex(phase);
-  const productLabel = contentKind === "flashcards" ? "Flashcards" : "Quiz";
-  const order = phaseOrderFor(phase);
-  const stageCount = order.length;
-  const progressUnit = (active + 1) / stageCount;
-  const progressPercent = Math.round(progressUnit * 100);
-  const showFourStepRow = phase === "ai";
+  const stage = getImportUiStage(phase, { liveParsing: false });
+  const headline = headlineOverride ?? importUiHeadline(stage);
+  const eyebrow =
+    stageLineOverride ?? importUiEyebrow(stage);
+  const liveMessage = importUiLiveMessage(stage, contentKind);
+  const progressPercent = importUiProgressPercent(stage);
+  const progressUnit = progressPercent / 100;
+
+  const technicalLines = buildImportTechnicalDetailLines({
+    importPhase: phase,
+    contentKind,
+    fileName,
+    internalStageLine: importPhaseMeta(phase, contentKind).stageLine,
+  });
+
+  const productLabel = contentKind === "flashcards" ? "Flip study" : "Practice";
 
   const inner = (
     <>
@@ -136,10 +159,10 @@ export function NewStudySetPdfImportProgressChrome({
                 id="new-import-loading-heading"
                 className="font-heading text-base font-bold leading-tight tracking-tight sm:text-lg"
               >
-                {meta.headline}
+                {headline}
               </h2>
               <p className="font-label mt-0.5 text-[10px] uppercase tracking-[0.18em] text-white/65">
-                {meta.stageLine}
+                {eyebrow}
               </p>
             </div>
           </div>
@@ -157,7 +180,7 @@ export function NewStudySetPdfImportProgressChrome({
 
         <div className="mx-auto mt-5 max-w-2xl space-y-4 px-1 pb-5 sm:px-4">
           <p id="new-import-live" className="sr-only" aria-live="polite" aria-atomic="true">
-            {meta.liveMessage}
+            {liveMessage}
           </p>
 
           <div
@@ -167,7 +190,7 @@ export function NewStudySetPdfImportProgressChrome({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progressPercent}
-            aria-valuetext={meta.headline}
+            aria-valuetext={headline}
             aria-label="Import progress"
           >
             <div className="relative h-full w-full overflow-hidden rounded-full bg-muted">
@@ -188,33 +211,12 @@ export function NewStudySetPdfImportProgressChrome({
             </div>
           </div>
 
-          <div
-            role="list"
-            className="flex flex-wrap items-center justify-center gap-3 sm:gap-6"
-          >
-            <StepItem
-              label="Storage"
-              state={active > 0 ? "done" : active === 0 ? "current" : "upcoming"}
-              icon={HardDriveIcon}
-            />
-            <StepItem
-              label="PDF"
-              state={active > 1 ? "done" : active === 1 ? "current" : "upcoming"}
-              icon={FileTextIcon}
-            />
-            <StepItem
-              label="Save"
-              state={active > 2 ? "done" : active === 2 ? "current" : "upcoming"}
-              icon={SaveIcon}
-            />
-            {showFourStepRow ? (
-              <StepItem
-                label="AI generation"
-                state={active > 3 ? "done" : active === 3 ? "current" : "upcoming"}
-                icon={Wand2Icon}
-              />
-            ) : null}
-          </div>
+          <ImportUiThreeStepStrip stage={stage} />
+
+          <ImportFlowTechnicalDetails
+            lines={technicalLines}
+            className="mt-4 rounded-md border border-border bg-background/80 px-3 py-2"
+          />
 
           <div className="rounded-md border border-border bg-background/80 px-3 py-2 text-center">
             <p className="text-xs text-muted-foreground">
@@ -253,24 +255,36 @@ export function NewStudySetPdfImportProgressChrome({
 export function ImportProgressChromeStepsBody({
   phase,
   contentKind,
+  fileName,
+  extraTechnicalDetailLines,
 }: Readonly<{
   phase: NewStudySetPdfImportPhase;
   contentKind: StudyContentKind;
+  fileName?: string | null;
+  extraTechnicalDetailLines?: readonly string[];
 }>) {
   const reduceMotion = useReducedMotion();
+  const stage = getImportUiStage(phase, { liveParsing: false });
   const meta = importPhaseMeta(phase, contentKind);
-  const active = phaseIndex(phase);
-  const order = phaseOrderFor(phase);
-  const stageCount = order.length;
-  const progressUnit = (active + 1) / stageCount;
-  const progressPercent = Math.round(progressUnit * 100);
-  const showFourStepRow = phase === "ai";
+  const liveMessage = importUiLiveMessage(stage, contentKind);
+  const progressPercent = importUiProgressPercent(stage);
+  const progressUnit = progressPercent / 100;
+
+  const technicalLines = [
+    ...buildImportTechnicalDetailLines({
+      importPhase: phase,
+      contentKind,
+      fileName,
+      internalStageLine: meta.stageLine,
+    }),
+    ...(extraTechnicalDetailLines ?? []),
+  ];
 
   return (
     <div className="border-b border-border bg-muted/20 px-4 py-5 sm:px-6">
       <div className="mx-auto max-w-2xl space-y-4 px-1 sm:px-2">
         <p id="new-import-live" className="sr-only" aria-live="polite" aria-atomic="true">
-          {meta.liveMessage}
+          {liveMessage}
         </p>
 
         <div
@@ -280,7 +294,7 @@ export function ImportProgressChromeStepsBody({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={progressPercent}
-          aria-valuetext={meta.headline}
+          aria-valuetext={importUiHeadline(stage)}
           aria-label="Import progress"
         >
           <div className="relative h-full w-full overflow-hidden rounded-full bg-muted">
@@ -301,33 +315,12 @@ export function ImportProgressChromeStepsBody({
           </div>
         </div>
 
-        <div
-          role="list"
-          className="flex flex-wrap items-center justify-center gap-3 sm:gap-6"
-        >
-          <StepItem
-            label="Storage"
-            state={active > 0 ? "done" : active === 0 ? "current" : "upcoming"}
-            icon={HardDriveIcon}
-          />
-          <StepItem
-            label="PDF"
-            state={active > 1 ? "done" : active === 1 ? "current" : "upcoming"}
-            icon={FileTextIcon}
-          />
-          <StepItem
-            label="Save"
-            state={active > 2 ? "done" : active === 2 ? "current" : "upcoming"}
-            icon={SaveIcon}
-          />
-          {showFourStepRow ? (
-            <StepItem
-              label="AI generation"
-              state={active > 3 ? "done" : active === 3 ? "current" : "upcoming"}
-              icon={Wand2Icon}
-            />
-          ) : null}
-        </div>
+        <ImportUiThreeStepStrip stage={stage} />
+
+        <ImportFlowTechnicalDetails
+          lines={technicalLines}
+          className="rounded-md border border-border bg-background/80 px-3 py-2"
+        />
 
         <div className="rounded-md border border-border bg-background/80 px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground">

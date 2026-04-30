@@ -22,6 +22,7 @@ import {
   openEditorHref,
   reviewMistakesHref,
 } from "@/lib/dashboard/studySetDashboardLinks";
+import { COMMAND_REVIEW_LABEL, dashboardCardPrimaryCtaLabel } from "@/lib/ui/studySetActionLabels";
 import { StudySetCardPdfCover } from "@/components/dashboard/StudySetCardPdfCover";
 import type { StudySetMeta } from "@/types/studySet";
 
@@ -41,10 +42,10 @@ export type DashboardStudySetCardProps = Readonly<{
 
 function kindLabel(meta: StudySetMeta): string {
   if (meta.contentKind === "flashcards") {
-    return "Flashcards";
+    return "Flip study";
   }
   if (meta.contentKind === "quiz") {
-    return "Quiz set";
+    return "Multiple choice";
   }
   return "Study set";
 }
@@ -106,14 +107,7 @@ export function DashboardStudySetCard({
   const mistakesHref = reviewMistakesHref(meta);
 
   const primaryHref = variant === "needs_edit" ? review : play;
-  const primaryLabel =
-    variant === "needs_edit"
-      ? "Open editor"
-      : variant === "ready"
-        ? meta.contentKind === "flashcards"
-          ? "Study flashcards"
-          : "Take quiz"
-        : "Resume";
+  const primaryLabel = dashboardCardPrimaryCtaLabel(variant, meta.contentKind);
 
   const borderHover =
     variant === "needs_edit"
@@ -224,7 +218,7 @@ export function DashboardStudySetCard({
                   className="cursor-pointer"
                   onClick={() => router.push(review)}
                 >
-                  Open editor
+                  {COMMAND_REVIEW_LABEL}
                 </DropdownMenuItem>
                 <DropdownMenuItem className="cursor-pointer" onClick={onRename}>
                   Rename

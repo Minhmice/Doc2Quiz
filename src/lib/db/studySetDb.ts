@@ -240,8 +240,21 @@ function rowToQuestion(row: {
     question: row.prompt,
     options: row.choices as Question["options"],
     correctIndex: row.correct_index as Question["correctIndex"],
+    sourceUnitIds: Array.isArray(fromSource.sourceUnitIds)
+      ? fromSource.sourceUnitIds
+      : [],
   };
-  return { ...base, ...fromSource, id: row.id, question: row.prompt, options: base.options, correctIndex: base.correctIndex };
+  return {
+    ...base,
+    ...fromSource,
+    id: row.id,
+    question: row.prompt,
+    options: base.options,
+    correctIndex: base.correctIndex,
+    sourceUnitIds: Array.isArray(fromSource.sourceUnitIds)
+      ? fromSource.sourceUnitIds
+      : base.sourceUnitIds,
+  };
 }
 
 function isLegacyFlashcardCarrierQuestion(q: Question): boolean {
@@ -286,6 +299,7 @@ async function migrateLegacyFlashcardCarrierToApprovedFlashcards(
       front: q.question.trim(),
       back: (q.options[q.correctIndex] ?? "").trim(),
       confidence: typeof q.parseConfidence === "number" ? q.parseConfidence : 0.5,
+      sourceUnitIds: q.sourceUnitIds ?? [],
       sourcePages:
         q.sourcePageIndex !== undefined && q.sourcePageIndex >= 1
           ? [q.sourcePageIndex]
@@ -656,8 +670,21 @@ export async function getApprovedFlashcardBank(
       front: r.front,
       back: r.back,
       confidence: 0.5,
+      sourceUnitIds: Array.isArray(fromSource.sourceUnitIds)
+        ? fromSource.sourceUnitIds
+        : [],
     };
-    const merged = { ...base, ...fromSource, kind: "flashcard" as const, id: r.id, front: r.front, back: r.back };
+    const merged = {
+      ...base,
+      ...fromSource,
+      kind: "flashcard" as const,
+      id: r.id,
+      front: r.front,
+      back: r.back,
+      sourceUnitIds: Array.isArray(fromSource.sourceUnitIds)
+        ? fromSource.sourceUnitIds
+        : base.sourceUnitIds,
+    };
     return merged;
   });
   const savedAt = new Date().toISOString();
@@ -853,6 +880,25 @@ export async function putMediaBlob(studySetId: string, blob: Blob): Promise<stri
   });
 
   return id;
+}
+
+/**
+ * After `enrichStudySetDocumentFromLocalPdf` / `putDocument`, returns the stored PDF media row id (for server generation).
+ */
+export async function getSourcePdfMediaIdForStudySet(
+  studySetId: string,
+): Promise<string | null> {
+  const supabase = createSupabaseBrowserClient();
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from("study_set_documents")
+    .select("source_pdf_asset_id")
+    .eq("user_id", userId)
+    .eq("study_set_id", studySetId)
+    .maybeSingle();
+  assertNoError(error, "getSourcePdfMediaIdForStudySet failed");
+  const id = (data as { source_pdf_asset_id: string | null } | null)?.source_pdf_asset_id;
+  return id && id.trim().length > 0 ? id : null;
 }
 
 export async function getMediaBlob(mediaId: string): Promise<Blob | null> {
@@ -1142,7 +1188,6 @@ export async function touchStudySetMeta(
       | "sourceFileName"
       | "ocrProvider"
       | "ocrStatus"
-      | "contentKind"
     >
   >,
 ): Promise<void> {

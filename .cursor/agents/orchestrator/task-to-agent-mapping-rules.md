@@ -22,15 +22,15 @@
 
 ## 1. Task Category → Agent Mapping (Deterministic)
 
-| Task Category | Agent 1 | Agent 2 | Parallel? | Notes |
-|---------------|---------|---------|-----------|-------|
-| **UI bug or design fix** | frontend-developer | backend-developer (only if API dependency) else typescript-specialist | Yes (2) | Default 2 parallel for focused fixes |
-| **API bug or service bug** | backend-developer | frontend-developer (only if UI depends on contract) else typescript-specialist | Yes (2) | Default 2 parallel for focused fixes |
-| **Full flow bug (UI → API)** | backend-developer | frontend-developer | Yes (2) | Both in parallel |
-| **Schema/RLS/data integrity bug** | database-specialist | backend-developer | Yes (2) | DB + backend integration |
-| **Contract drift or DTO mismatch** | typescript-specialist | backend-developer OR frontend-developer (where break is) | Yes (2) | TS owns contract; impl follows |
-| **Small stabilization pass** | pick 2 closest agents | — | Yes (2) | Minimum 2 agents for stabilization |
-| **gws CLI / Google Workspace CLI** | google-cli-specialist | typescript-specialist (if contract) or code-reviewer | Yes (2) if contract/QA; else 1 | Discovery, auth, commands, validation |
+| Task Category                      | Agent 1               | Agent 2                                                                        | Parallel?                      | Notes                                 |
+| ---------------------------------- | --------------------- | ------------------------------------------------------------------------------ | ------------------------------ | ------------------------------------- |
+| **UI bug or design fix**           | frontend-developer    | backend-developer (only if API dependency) else typescript-specialist          | Yes (2) if needed              | Add Agent 2 only when boundary/contract/risk exists |
+| **API bug or service bug**         | backend-developer     | frontend-developer (only if UI depends on contract) else typescript-specialist | Yes (2) if needed              | Add Agent 2 only when boundary/contract/risk exists |
+| **Full flow bug (UI → API)**       | backend-developer     | frontend-developer                                                             | Yes (2)                        | Both in parallel                      |
+| **Schema/RLS/data integrity bug**  | database-specialist   | backend-developer                                                              | Yes (2)                        | DB + backend integration              |
+| **Contract drift or DTO mismatch** | typescript-specialist | backend-developer OR frontend-developer (where break is)                       | Yes (2)                        | TS owns contract; impl follows        |
+| **Small stabilization pass**       | pick closest agent    | pick 2nd closest agent (only if boundary/contract/risk exists)                 | Yes (2) if needed              | 1 agent ok for single-domain, low-risk |
+| **gws CLI / Google Workspace CLI** | google-cli-specialist | typescript-specialist (if contract) or code-reviewer                           | Yes (2) if contract/QA; else 1 | Discovery, auth, commands, validation |
 
 ---
 
@@ -72,15 +72,15 @@
 
 ### 2.2 Lane Composition Rules
 
-All agents run **in parallel** (at the same time). Merge owner combines outputs after completion.
+When multiple agents are selected, they run **in parallel** (at the same time). Merge owner combines outputs after completion.
 
-| Scope | Agent 1 | Agent 2 | Merge Owner |
-|-------|---------|---------|-------------|
-| **Backend-only** | backend-developer | typescript-specialist | backend-developer |
-| **Frontend-only** | frontend-developer | typescript-specialist OR code-reviewer | frontend-developer |
-| **Full flow (FE+BE)** | frontend-developer | backend-developer | orchestrator |
-| **Contract-heavy** | typescript-specialist | backend-developer OR frontend-developer | typescript-specialist |
-| **DB-heavy** | database-specialist | backend-developer | database-specialist |
+| Scope                 | Agent 1               | Agent 2 (only if boundary/contract/risk) | Merge Owner           |
+| --------------------- | --------------------- | --------------------------------------- | --------------------- |
+| **Backend-only**      | backend-developer     | typescript-specialist                   | backend-developer     |
+| **Frontend-only**     | frontend-developer    | typescript-specialist OR code-reviewer  | frontend-developer    |
+| **Full flow (FE+BE)** | frontend-developer    | backend-developer                       | orchestrator          |
+| **Contract-heavy**    | typescript-specialist | backend-developer OR frontend-developer | typescript-specialist |
+| **DB-heavy**          | database-specialist   | backend-developer                       | database-specialist   |
 
 ### 2.3 Fan-out (same-skill parallel, large task)
 
@@ -95,9 +95,9 @@ When the task is **large** and **single-domain** (e.g. add theme across app, red
 
 ## 3. Parallel Selection Rules
 
-### When to use 2 agents in parallel (default for focused fixes)
+### When to use 2 agents in parallel (boundary/contract/risk)
 
-- **Focused fix, UI adjustment, behavior alignment, targeted stabilization** → default to exactly 2 parallel agents.
+- **Boundary/contract/risk exists** (e.g. UI↔API contract, DTO drift, shared type surface, DB+backend integration) → use 2 agents in parallel.
 - Task spans **UI and API** in the same user flow → backend-developer + frontend-developer.
 - UI-only fix with no API dependency → frontend-developer + typescript-specialist.
 - API-only fix with no UI dependency → backend-developer + typescript-specialist.
@@ -110,7 +110,7 @@ When the task is **large** and **single-domain** (e.g. add theme across app, red
 
 ### When to use 1 agent (no parallel)
 
-- Single-file change, trivial one-module fix.
+- Single-file change, or single-domain low-risk fix.
 - User explicitly requests single agent.
 
 ---
@@ -153,12 +153,13 @@ For every delegated task, use this format. Each agent block must use the exact n
 **Code scope**: [files/modules touched]
 
 **Parallel agents** (run at the same time):
-1) [agent-name]
+
+1. [agent-name]
    Task: [what this agent must achieve]
    Inputs: [docs, diffs, constraints]
    Output required: [exact artifact format]
 
-2) [agent-name]
+2. [agent-name]
    Task: [what this agent must achieve]
    Inputs: [docs, diffs, constraints]
    Output required: [exact artifact format]
@@ -168,25 +169,25 @@ For every delegated task, use this format. Each agent block must use the exact n
 **Final merge**: [merge owner]
 ```
 
-For focused fixes, default to exactly 2 parallel agents.
+For focused fixes, use 1 agent unless a boundary/contract/risk exists.
 
 ---
 
-## 6. Quick Reference: Task → Agents (2 parallel default)
+## 6. Quick Reference: Task → Agents (2 when needed)
 
-| User says / Task implies | Agent 1 | Agent 2 |
-|--------------------------|---------|---------|
-| "Fix button spacing" | frontend-developer | typescript-specialist |
-| "API returns 500 on upload" | backend-developer | typescript-specialist |
-| "Upload flow broken end-to-end" | backend-developer | frontend-developer |
-| "RLS blocks valid access" | database-specialist | backend-developer |
-| "DTO doesn't match API response" | typescript-specialist | backend-developer or frontend-developer |
-| "Small lint/type cleanup" | owning specialist | code-reviewer |
-| "Add gws service" / "Fix gws validation" / "gws discovery bug" | google-cli-specialist | typescript-specialist or code-reviewer |
-| "Add theme" / "Redesign components" / "Large UI scope" | frontend-developer × 2–3 (fan-out) | — Merge then Phase 2 |
-| "Add translations" / "i18n keys" / "locale" / "localized text" | frontend-developer (+ i18n skill) | Attach skills/i18n.md |
-| "Monochrome theme" / "editorial B&W" / "minimalist monochrome" | frontend-developer | Attach skills/minimalist-monochrome.md |
-| "Add theme" / "new preset" / "theme broken" / "data-theme" | frontend-developer | Attach skills/theme-instructions.md |
-| "Bauhaus" / "constructivist" / "hard shadow primary colors" | frontend-developer | Attach skills/bauhaus-theme.md |
-| "Linear dark" / "cinematic" / "modern dark premium" / "spotlight card" | frontend-developer | Attach skills/linear-modern-dark.md |
-| "Add shadcn component" / "customize shadcn" / "components.json" | frontend-developer | Shadcn in frontend.md |
+| User says / Task implies                                               | Agent 1                            | Agent 2                                 |
+| ---------------------------------------------------------------------- | ---------------------------------- | --------------------------------------- |
+| "Fix button spacing"                                                   | frontend-developer                 | typescript-specialist                   |
+| "API returns 500 on upload"                                            | backend-developer                  | typescript-specialist                   |
+| "Upload flow broken end-to-end"                                        | backend-developer                  | frontend-developer                      |
+| "RLS blocks valid access"                                              | database-specialist                | backend-developer                       |
+| "DTO doesn't match API response"                                       | typescript-specialist              | backend-developer or frontend-developer |
+| "Small lint/type cleanup"                                              | owning specialist                  | code-reviewer                           |
+| "Add gws service" / "Fix gws validation" / "gws discovery bug"         | google-cli-specialist              | typescript-specialist or code-reviewer  |
+| "Add theme" / "Redesign components" / "Large UI scope"                 | frontend-developer × 2–3 (fan-out) | — Merge then Phase 2                    |
+| "Add translations" / "i18n keys" / "locale" / "localized text"         | frontend-developer (+ i18n skill)  | Attach skills/i18n.md                   |
+| "Monochrome theme" / "editorial B&W" / "minimalist monochrome"         | frontend-developer                 | Attach skills/minimalist-monochrome.md  |
+| "Add theme" / "new preset" / "theme broken" / "data-theme"             | frontend-developer                 | Attach skills/theme-instructions.md     |
+| "Bauhaus" / "constructivist" / "hard shadow primary colors"            | frontend-developer                 | Attach skills/bauhaus-theme.md          |
+| "Linear dark" / "cinematic" / "modern dark premium" / "spotlight card" | frontend-developer                 | Attach skills/linear-modern-dark.md     |
+| "Add shadcn component" / "customize shadcn" / "components.json"        | frontend-developer                 | Shadcn in frontend.md                   |

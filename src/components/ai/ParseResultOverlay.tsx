@@ -88,7 +88,7 @@ export function ParseResultOverlay({
         <CardContent className="space-y-5 text-left sm:text-center">
           <div>
             <p className="text-2xl font-bold tabular-nums text-foreground">
-              {flashCount} flashcard{flashCount === 1 ? "" : "s"} detected
+              {flashCount} item{flashCount === 1 ? "" : "s"} detected
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               Front and back text were extracted from your document images. You
@@ -133,7 +133,7 @@ export function ParseResultOverlay({
       <CardContent className="space-y-5 text-left sm:text-center">
         <div>
           <p className="text-2xl font-bold tabular-nums text-foreground">
-            {questionCount} question{questionCount === 1 ? "" : "s"} detected
+            {questionCount} item{questionCount === 1 ? "" : "s"} detected
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             Structure scan:{" "}
@@ -151,7 +151,7 @@ export function ParseResultOverlay({
           <ul className="mt-2 list-inside list-disc space-y-1 text-foreground">
             <li>
               <span className="font-semibold tabular-nums">{questionCount}</span>{" "}
-              questions
+              items
             </li>
             <li>100% multiple choice format</li>
             <li>
@@ -177,8 +177,8 @@ export function ParseResultOverlay({
             ) : null}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Based on how complete each stem and four options look — not a model
-            self-score.
+            Based on how complete each item stem and four options look — not a
+            model self-score.
           </p>
         </div>
 
@@ -205,7 +205,7 @@ export function ParseResultOverlay({
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No questions found in this pass. Try again or check the PDF.
+            No items found in this pass. Try again or check the PDF.
           </p>
         )}
 

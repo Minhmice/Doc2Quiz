@@ -91,7 +91,7 @@ export function appendUncertainMappingSummaryClause(
     return { summary: baseSummary, uncertainCount: 0 };
   }
   const trimmed = baseSummary.replace(/\s*\.\s*$/, "");
-  const extra = ` · ${uncertainCount} question${uncertainCount === 1 ? "" : "s"} with uncertain page mapping — check Review.`;
+  const extra = ` · ${uncertainCount} item${uncertainCount === 1 ? "" : "s"} with uncertain page mapping — check Review.`;
   return {
     summary: `${trimmed}.${extra}`,
     uncertainCount,

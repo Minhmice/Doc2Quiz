@@ -21,13 +21,9 @@ import {
   responseLooksLikeHtml,
 } from "@/lib/ai/upstreamErrors";
 import { validateQuestionsFromJson } from "@/lib/ai/validateQuestions";
-import { normalizeOpenAiChatCompletionsUrl } from "@/lib/ai/openAiEndpoint";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
 import { sha256Utf8Hex } from "@/lib/db/parseCacheDb";
 import type { Question } from "@/types/question";
-
-const OPENAI_MODEL = "gpt-4o-mini";
-const DEFAULT_OPENAI_CHAT_URL =
-  "https://api.openai.com/v1/chat/completions";
 
 /** Stable codes for pipeline logs / toast gating (Phase 32). */
 export type ValidatorReasonCode =
@@ -85,31 +81,6 @@ export async function buildValidatorContentFingerprint(
   return sha256Utf8Hex(`${chunkFp}|${qFp}`);
 }
 
-function resolveOpenAiCompatEndpointAndModel(
-  apiUrl: string | undefined,
-  model: string | undefined,
-): { endpoint: string; modelId: string; forwardProvider: "openai" | "custom" } {
-  const t = (apiUrl ?? "").trim();
-  const forwardProvider = t ? "custom" : "openai";
-  const endpoint =
-    forwardProvider === "openai"
-      ? DEFAULT_OPENAI_CHAT_URL
-      : normalizeOpenAiChatCompletionsUrl(t);
-  const modelId =
-    forwardProvider === "custom"
-      ? (() => {
-          const m = (model ?? "").trim();
-          if (!m) {
-            throw new FatalParseError(
-              "Enter a model id for your API base URL.",
-            );
-          }
-          return m;
-        })()
-      : (model ?? "").trim() || OPENAI_MODEL;
-  return { endpoint, modelId, forwardProvider };
-}
-
 const CHUNK_CONTEXT_MAX = 12_000;
 
 function buildValidatorUserMessage(
@@ -135,28 +106,20 @@ function buildValidatorUserMessage(
  * LLM validator pass — OpenAI-compatible chat completions, same-origin forward.
  */
 export async function runValidatorLlmPass(options: {
-  apiKey: string;
-  apiUrl?: string;
-  model?: string;
   chunkText: string;
   draftQuestions: Question[];
   signal: AbortSignal;
   onRawAssistantText?: (text: string) => void;
 }): Promise<Question[]> {
-  const { apiKey, apiUrl, model, chunkText, draftQuestions, signal, onRawAssistantText } =
+  const { chunkText, draftQuestions, signal, onRawAssistantText } =
     options;
-  const { endpoint, modelId, forwardProvider } =
-    resolveOpenAiCompatEndpointAndModel(apiUrl, model);
 
   const userContent = buildValidatorUserMessage(chunkText, draftQuestions);
 
   const res = await forwardAiPost({
-    provider: forwardProvider,
-    targetUrl: endpoint,
-    apiKey,
     signal,
     body: {
-      model: modelId,
+      model: "server",
       messages: [
         { role: "system", content: MCQ_VALIDATOR_SYSTEM_PROMPT },
         { role: "user", content: userContent },
@@ -169,9 +132,10 @@ export async function runValidatorLlmPass(options: {
   const text = await res.text();
 
   if (res.status === 401) {
-    throw new FatalParseError(
-      "Invalid API key. Please check and try again.",
-    );
+    throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
+  }
+  if (res.status === 503) {
+    throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
   }
   if (res.status === 429) {
     throw new FatalParseError(

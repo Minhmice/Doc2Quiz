@@ -1,7 +1,9 @@
 ---
 name: orchestrator
+model: inherit
 description: Route requests to registered specialists. Never implement directly—always delegate for any code or file changes.
 ---
+
 # Orchestrator
 
 **Always-on**: This project may apply the orchestrator via an always-apply rule. When active, this SKILL governs any implementation request.
@@ -27,6 +29,15 @@ You are **not** an implementer. Do not write production code or directly modify 
 - **Routing**: use `find_skill.py` only when task type is ambiguous; otherwise pick from path/domain rules in task-to-agent-mapping.
 - **Performance**: keep handoffs minimal (reference SKILL by path only). Avoid 1-agent runs unless truly trivial and the user explicitly requests it.
 - **Fan-out (large task)**: If the task is large (many independent files/components in one domain) and the chosen specialist has `max_parallel` in registry, split work and run 2–3 instances of that specialist in parallel; merge outputs then run Phase 2 once. See SKILL-DETAILS § Fan-out.
+
+## GSD Source Bridge (no install)
+
+- For GSD-like intent, behave like `/gsd-do`: infer the closest command/workflow without asking the user to name it.
+- Source priority: read one matching local file from `.cursor/commands/gsd/`, then fallback to `docs/agent-tools/gsd-for-cursor/src/commands/gsd/` and `docs/agent-tools/get-shit-done/commands/gsd/`.
+- Use those files as workflow evidence only; do not install, copy, register, or paste GSD prompts wholesale.
+- Translate GSD roles to registered specialists in `registry.yaml`; never spawn unregistered GSD agents directly.
+- Lazy-load only the selected command/workflow and any directly referenced local workflow file; never preload the full GSD bundle.
+- Preserve this skill's delegation, parallelization, and Review & QA gate as the final authority.
 
 ## References (canonical details)
 

@@ -18,18 +18,13 @@ import {
   SettingsIcon,
   BookOpenIcon,
   SearchIcon,
-  LayersIcon,
+  Play,
   FlaskConical,
 } from "lucide-react";
 import { FOCUS_LIBRARY_SEARCH_EVENT } from "@/lib/appEvents";
 import { ensureStudySetDb, getStudySetMeta } from "@/lib/db/studySetDb";
-import {
-  editFlashcards,
-  editQuiz,
-  flashcardsPlay,
-  newRoot,
-  quizPlay,
-} from "@/lib/routes/studySetPaths";
+import { editFlashcards, editQuiz, flashcardsPlay, newRoot, quizPlay } from "@/lib/routes/studySetPaths";
+import { COMMAND_PRACTICE_LABEL, COMMAND_REVIEW_LABEL } from "@/lib/ui/studySetActionLabels";
 import type { StudyContentKind } from "@/types/studySet";
 
 function studySetIdFromPathname(pathname: string): string | undefined {
@@ -140,17 +135,22 @@ export function CommandPalette() {
             <CommandGroup heading="Current set">
               <CommandItem onSelect={() => go(reviewHref)}>
                 <BookOpenIcon />
-                Open editor
+                {COMMAND_REVIEW_LABEL}
               </CommandItem>
-              {contentKind === "flashcards" ? (
-                <CommandItem onSelect={() => go(flashcardsPlay(studySetId))}>
-                  <LayersIcon />
-                  Flashcards
-                </CommandItem>
-              ) : contentKind === "quiz" ? (
-                <CommandItem onSelect={() => go(quizPlay(studySetId))}>
-                  <BookOpenIcon />
-                  Take quiz
+              {contentKind === "flashcards" ||
+              contentKind === "quiz" ||
+              contentKind === null ? (
+                <CommandItem
+                  onSelect={() =>
+                    go(
+                      contentKind === "flashcards"
+                        ? flashcardsPlay(studySetId)
+                        : quizPlay(studySetId),
+                    )
+                  }
+                >
+                  <Play />
+                  {COMMAND_PRACTICE_LABEL}
                 </CommandItem>
               ) : null}
             </CommandGroup>

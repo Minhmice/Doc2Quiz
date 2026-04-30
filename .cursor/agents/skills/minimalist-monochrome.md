@@ -3,11 +3,11 @@
 ## When to use this skill
 
 - User asks for **Minimalist Monochrome**, **editorial B&W**, **Vogue-style**, **no accent color**, or **sharp / zero radius** UI.
-- Task touches **`components/themes/monochrome/**`**, **MonochromeCard / MonochromeButton / MonochromeInput**, or workspace UI that must stay consistent with the monochrome preset.
+- Task touches **`components/themes/monochrome/**`**, **MonochromeCard / MonochromeButton / MonochromeInput\*\*, or workspace UI that must stay consistent with the monochrome preset.
 - Refactoring **any component** to respect this design language inside RawVault.
 
 **Handoff line for orchestrator / frontend-developer:**  
-*Act as frontend-developer per `.cursor/agents/specialists/frontend-developer/SKILL.md`. Apply `.cursor/agents/skills/minimalist-monochrome.md` for all styling and interaction rules. Scope: [files].*
+_Act as frontend-developer per `.cursor/agents/specialists/frontend-developer/SKILL.md`. Apply `.cursor/agents/skills/minimalist-monochrome.md` for all styling and interaction rules. Scope: [files]._
 
 ---
 
@@ -26,14 +26,14 @@ Ask focused questions if scope is unclear: single component vs full page vs toke
 
 ## Design philosophy (non-negotiables)
 
-| Principle | Implementation hint |
-|-----------|-------------------|
-| **Reduction to essence** | Black, white, controlled gray for secondary only. No accent colors “for interest.” |
-| **Serif as hero** | Headings: Playfair (already `--font-heading` in monochrome blocks). Body: Source Serif. Labels: JetBrains Mono, uppercase tracking. |
-| **Sharp geometry** | **0px radius** in monochrome preset (`borderRadius` preset 0). Classes: `rounded-none`. |
-| **Lines, not blobs** | Borders, underlines, rules — not shadows or glows. |
-| **Inversion for emphasis** | Hover/selected: black surface + white type (see MonochromeCard patterns). |
-| **Motion: binary / fast** | `duration-100` or `steps(1)` — no bouncy easing for core chrome. |
+| Principle                  | Implementation hint                                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Reduction to essence**   | Black, white, controlled gray for secondary only. No accent colors “for interest.”                                                  |
+| **Serif as hero**          | Headings: Playfair (already `--font-heading` in monochrome blocks). Body: Source Serif. Labels: JetBrains Mono, uppercase tracking. |
+| **Sharp geometry**         | **0px radius** in monochrome preset (`borderRadius` preset 0). Classes: `rounded-none`.                                             |
+| **Lines, not blobs**       | Borders, underlines, rules — not shadows or glows.                                                                                  |
+| **Inversion for emphasis** | Hover/selected: black surface + white type (see MonochromeCard patterns).                                                           |
+| **Motion: binary / fast**  | `duration-100` or `steps(1)` — no bouncy easing for core chrome.                                                                    |
 
 **NOT this style:** colorful, rounded-xl friendly SaaS, gradients, shadow cards, blue primary as decoration.
 
@@ -43,14 +43,14 @@ Ask focused questions if scope is unclear: single component vs full page vs toke
 
 CSS lives in `app/globals.css` under `:root[data-theme="monochrome-light"]` and `:root[data-theme="monochrome-dark"]`. Conceptual targets:
 
-| Semantic | Light (editorial) | Notes |
-|----------|-------------------|--------|
-| background / foreground | white / black | Stark contrast |
-| card | white | Border black |
-| muted | off-white field | `#f5f5f5` band |
-| muted-foreground | dark gray | Secondary copy only |
-| border | black | Hairline to 2px for emphasis |
-| primary | black (user may override via `--rv-primary`) | “Accent” is black |
+| Semantic                | Light (editorial)                            | Notes                        |
+| ----------------------- | -------------------------------------------- | ---------------------------- |
+| background / foreground | white / black                                | Stark contrast               |
+| card                    | white                                        | Border black                 |
+| muted                   | off-white field                              | `#f5f5f5` band               |
+| muted-foreground        | dark gray                                    | Secondary copy only          |
+| border                  | black                                        | Hairline to 2px for emphasis |
+| primary                 | black (user may override via `--rv-primary`) | “Accent” is black            |
 
 **In components:** never hardcode `#000` / `#fff` if the same intent exists as `bg-foreground` + `text-background` on hover — use tokens so **dark monochrome** stays coherent.
 
@@ -125,23 +125,23 @@ Use utilities in `globals.css`: `.texture-horizontal-lines`, `.texture-grid`, `.
 
 ## Repo pointers
 
-| Area | Path |
-|------|------|
-| Theme shell | `components/themes/monochrome/{Card,Button,Input}.tsx` |
-| Tokens | `app/globals.css` → `monochrome-light` / `monochrome-dark` |
+| Area               | Path                                                                   |
+| ------------------ | ---------------------------------------------------------------------- |
+| Theme shell        | `components/themes/monochrome/{Card,Button,Input}.tsx`                 |
+| Tokens             | `app/globals.css` → `monochrome-light` / `monochrome-dark`             |
 | Example complex UI | `components/workspace/FileGrid.tsx` (mono hover, preview pane, badges) |
-| Theme switch | `components/theme-provider/ThemeProvider.tsx`, `ThemePanel` |
+| Theme switch       | `components/theme-provider/ThemeProvider.tsx`, `ThemePanel`            |
 
 ---
 
 ## Differentiation vs “Minimalist Modern” (Vivid)
 
-| | Vivid / modern | Minimalist Monochrome |
-|--|----------------|----------------------|
-| Color | Blue, gradients | Black / white only |
-| Type | Sans | Serif display + body |
-| Radius | lg/xl | 0 |
-| Depth | Shadow, lift | Flat, borders, invert |
+|        | Vivid / modern  | Minimalist Monochrome |
+| ------ | --------------- | --------------------- |
+| Color  | Blue, gradients | Black / white only    |
+| Type   | Sans            | Serif display + body  |
+| Radius | lg/xl           | 0                     |
+| Depth  | Shadow, lift    | Flat, borders, invert |
 
 ---
 

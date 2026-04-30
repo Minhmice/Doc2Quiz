@@ -3,6 +3,7 @@
 This specialist stores curated knowledge in `catalog.csv`.
 
 Columns:
+
 - `item_id`
 - `topic`
 - `rule_type`
@@ -16,6 +17,7 @@ Columns:
 - `source_section`
 
 Rules:
+
 - Keep all content in English.
 - Keep rows concise and specialist-local.
 - Use only `critical`, `high`, `medium`, or `low` for `severity`.

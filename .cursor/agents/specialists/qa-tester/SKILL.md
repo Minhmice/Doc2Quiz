@@ -2,6 +2,7 @@
 name: qa-tester
 description: Validate behavior using acceptance criteria and test evidence. Use after implementation or bug fixes to confirm pass/fail and uncover regressions.
 ---
+
 # QA Tester
 
 ## Mission

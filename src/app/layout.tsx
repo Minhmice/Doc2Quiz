@@ -20,7 +20,7 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: "Doc2Quiz",
-  description: "Turn study PDFs into local quiz banks you can review and finish",
+  description: "Turn study PDFs into local study sets you can review and finish",
 };
 
 export default function RootLayout({

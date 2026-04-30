@@ -41,6 +41,7 @@ import {
 } from "@/lib/ai/mcqDraftValidate";
 import { parseJsonFromModelText } from "@/lib/ai/jsonFromModelText";
 import { pipelineLog } from "@/lib/logging/pipelineLogger";
+import { AI_PROCESSING_UNAVAILABLE_MESSAGE } from "@/lib/ai/processingMessages";
 import type { AiProvider, Question } from "@/types/question";
 
 export type { ValidatorReasonCode } from "@/lib/ai/mcqDraftValidate";
@@ -82,12 +83,12 @@ function singleMcqQuestionsFromAssistantContent(content: string): Question[] {
 }
 
 export type ParseChunkOnceParams = {
+  /** @deprecated Legacy routing field; forward proxy uses server env. */
   provider: AiProvider;
-  apiKey: string;
-  /** Full endpoint URL; empty uses vendor default except Custom (required). */
-  apiUrl?: string;
-  /** Model id; empty uses built-in default for OpenAI/Anthropic; required for Custom. */
-  model?: string;
+  /**
+   * Distinguishes cache entries by processing lane (from `/api/ai/processing-status` `label`).
+   */
+  processingLabel: string;
   chunkText: string;
   signal: AbortSignal;
   /** Session / debug only — never persisted to IDB. */
@@ -167,23 +168,16 @@ export function resolveModelId(
 }
 
 async function parseOpenAI(
-  apiKey: string,
-  endpoint: string,
-  model: string,
   chunkText: string,
   signal: AbortSignal,
-  forwardProvider: "openai" | "custom",
   systemPrompt: string,
   extractQuestions: (content: string) => Question[] = questionsFromAssistantContent,
   onRawAssistantText?: (text: string) => void,
 ): Promise<Question[]> {
   const res = await forwardAiPost({
-    provider: forwardProvider,
-    targetUrl: endpoint,
-    apiKey,
     signal,
     body: {
-      model,
+      model: "server",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: chunkText },
@@ -196,14 +190,15 @@ async function parseOpenAI(
   const text = await res.text();
 
   if (res.status === 401) {
-    throw new FatalParseError(
-      "Invalid API key. Please check and try again.",
-    );
+    throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
   }
   if (res.status === 429) {
     throw new FatalParseError(
       "Too many requests. Please wait and try again.",
     );
+  }
+  if (res.status === 503) {
+    throw new FatalParseError(AI_PROCESSING_UNAVAILABLE_MESSAGE);
   }
   if (!res.ok) {
     const proxyMsg =
@@ -236,29 +231,12 @@ async function parseOpenAI(
   return extractQuestions(content);
 }
 
-export function resolveOpenAiCompatEndpointAndModel(
-  apiUrl: string | undefined,
-  model: string | undefined,
-): { endpoint: string; modelId: string; forwardProvider: "openai" | "custom" } {
-  const t = (apiUrl ?? "").trim();
-  const forwardProvider = t ? "custom" : "openai";
-  const endpoint =
-    forwardProvider === "openai"
-      ? DEFAULT_OPENAI_CHAT_URL
-      : normalizeOpenAiChatCompletionsUrl(t);
-  const modelId =
-    forwardProvider === "custom"
-      ? (() => {
-          const m = (model ?? "").trim();
-          if (!m) {
-            throw new FatalParseError(
-              "Enter a model id for your API base URL.",
-            );
-          }
-          return m;
-        })()
-      : (model ?? "").trim() || OPENAI_MODEL;
-  return { endpoint, modelId, forwardProvider };
+/** Cache + telemetry lane id (not an upstream model id). */
+export function resolveProcessingLaneForCache(processingLabel: string): {
+  modelId: string;
+  forwardProvider: "openai";
+} {
+  return { modelId: processingLabel, forwardProvider: "openai" };
 }
 
 async function finalizeChunkQuestions(options: {
@@ -267,9 +245,6 @@ async function finalizeChunkQuestions(options: {
   draftCacheHit: boolean;
   skipAllCache: boolean;
   validatorLane: "text_multi_mcq_validator" | "text_single_mcq_validator";
-  apiKey: string;
-  apiUrl?: string;
-  model?: string;
   modelId: string;
   forwardProvider: "openai" | "custom";
   signal: AbortSignal;
@@ -283,9 +258,6 @@ async function finalizeChunkQuestions(options: {
     draftCacheHit,
     skipAllCache,
     validatorLane,
-    apiKey,
-    apiUrl,
-    model,
     modelId,
     forwardProvider,
     signal,
@@ -338,9 +310,6 @@ async function finalizeChunkQuestions(options: {
 
   try {
     let out = await runValidatorLlmPassWithRetries({
-      apiKey,
-      apiUrl,
-      model,
       chunkText,
       draftQuestions: repaired,
       signal,
@@ -387,9 +356,7 @@ export async function parseChunkOnce(
   params: ParseChunkOnceParams,
 ): Promise<ParseChunkOnceResult> {
   const {
-    apiKey,
-    apiUrl,
-    model,
+    processingLabel,
     chunkText,
     ragContextPrefix,
     signal,
@@ -401,8 +368,8 @@ export async function parseChunkOnce(
     chunkText,
     ragContextPrefix,
   );
-  const { endpoint, modelId, forwardProvider } =
-    resolveOpenAiCompatEndpointAndModel(apiUrl, model);
+  const { modelId, forwardProvider } =
+    resolveProcessingLaneForCache(processingLabel);
   const skipAllCache = Boolean(onRawAssistantText);
 
   let draftQuestions: Question[];
@@ -411,12 +378,8 @@ export async function parseChunkOnce(
   if (skipAllCache) {
     draftQuestions = await withRetries("llm_chunk", signal, async () =>
       parseOpenAI(
-        apiKey,
-        endpoint,
-        modelId,
         effectiveChunkText,
         signal,
-        forwardProvider,
         MCQ_EXTRACTION_SYSTEM_PROMPT,
         undefined,
         onRawAssistantText,
@@ -443,12 +406,8 @@ export async function parseChunkOnce(
     } else {
       draftQuestions = await withRetries("llm_chunk", signal, async () =>
         parseOpenAI(
-          apiKey,
-          endpoint,
-          modelId,
           effectiveChunkText,
           signal,
-          forwardProvider,
           MCQ_EXTRACTION_SYSTEM_PROMPT,
         ),
       );
@@ -462,9 +421,6 @@ export async function parseChunkOnce(
     draftCacheHit,
     skipAllCache,
     validatorLane: "text_multi_mcq_validator",
-    apiKey,
-    apiUrl,
-    model,
     modelId,
     forwardProvider,
     signal,
@@ -484,9 +440,7 @@ export async function parseChunkSingleMcqOnce(
   params: ParseChunkOnceParams,
 ): Promise<Question | null> {
   const {
-    apiKey,
-    apiUrl,
-    model,
+    processingLabel,
     chunkText,
     ragContextPrefix,
     signal,
@@ -498,19 +452,15 @@ export async function parseChunkSingleMcqOnce(
     chunkText,
     ragContextPrefix,
   );
-  const { endpoint, modelId, forwardProvider } =
-    resolveOpenAiCompatEndpointAndModel(apiUrl, model);
+  const { modelId, forwardProvider } =
+    resolveProcessingLaneForCache(processingLabel);
   const skipAllCache = Boolean(onRawAssistantText);
 
   const runForward = () =>
     withRetries("llm_chunk", signal, async () => {
       const qs = await parseOpenAI(
-        apiKey,
-        endpoint,
-        modelId,
         effectiveChunkText,
         signal,
-        forwardProvider,
         MCQ_SINGLE_CHUNK_SYSTEM_PROMPT,
         singleMcqQuestionsFromAssistantContent,
         onRawAssistantText,
@@ -562,9 +512,6 @@ export async function parseChunkSingleMcqOnce(
     draftCacheHit,
     skipAllCache,
     validatorLane: "text_single_mcq_validator",
-    apiKey,
-    apiUrl,
-    model,
     modelId,
     forwardProvider,
     signal,

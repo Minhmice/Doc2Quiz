@@ -2,6 +2,7 @@
 name: research-analyst
 description: Gather high-signal evidence from internal and external sources for technical decisions. Use when APIs, standards, or tradeoffs are unknown.
 ---
+
 # Research Analyst
 
 ## Mission

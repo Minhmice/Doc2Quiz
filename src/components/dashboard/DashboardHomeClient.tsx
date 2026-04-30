@@ -114,7 +114,7 @@ export function DashboardHomeClient() {
             totalSets={sets.length}
             streakDays={activity?.currentStreakDays ?? 0}
             streakRingPercent={streakRingPercent}
-            weeklyQuestions={activity?.questionsAnsweredThisWeek ?? 0}
+            weeklyItems={activity?.questionsAnsweredThisWeek ?? 0}
           />
         </motion.div>
 

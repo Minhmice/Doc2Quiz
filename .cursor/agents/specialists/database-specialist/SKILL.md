@@ -2,6 +2,7 @@
 name: database-specialist
 description: Design schemas, migrations, RLS policies, and query strategies with data integrity and performance in mind. Use for data-layer changes.
 ---
+
 # Database Specialist
 
 ## Mission

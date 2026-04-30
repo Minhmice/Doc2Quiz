@@ -6,17 +6,6 @@ import {
   describeBadAiResponse,
   responseLooksLikeHtml,
 } from "@/lib/ai/upstreamErrors";
-import {
-  resolveChatApiUrl,
-  resolveModelId,
-} from "@/lib/ai/parseChunk";
-import {
-  getKeyForProvider,
-  getModelForProvider,
-  getProvider,
-  getUrlForProvider,
-} from "@/lib/ai/storage";
-import type { AiProvider } from "@/types/question";
 
 export type StudySetTitleResult = {
   title: string;
@@ -54,20 +43,13 @@ function parseTitleJson(text: string): StudySetTitleResult | null {
 }
 
 async function openAiStyleTitle(
-  provider: Extract<AiProvider, "openai" | "custom">,
-  apiKey: string,
-  endpoint: string,
-  model: string,
   userContent: string,
   signal: AbortSignal | undefined,
 ): Promise<StudySetTitleResult | null> {
   const res = await forwardAiPost({
-    provider: provider === "custom" ? "custom" : "openai",
-    targetUrl: endpoint,
-    apiKey,
     signal,
     body: {
-      model,
+      model: "server",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
@@ -102,8 +84,8 @@ async function openAiStyleTitle(
 }
 
 /**
- * Uses configured AI provider to suggest title + optional subtitle from PDF text.
- * Falls back to filename-based title when no key, short text, or errors.
+ * Uses server-configured AI to suggest title + optional subtitle from PDF text.
+ * Falls back to filename-based title when text is short or on errors.
  */
 export async function generateStudySetTitle(
   extractedText: string,
@@ -118,26 +100,10 @@ export async function generateStudySetTitle(
     return { title: fallbackTitle };
   }
 
-  const provider = getProvider();
-  const apiKey = getKeyForProvider(provider).trim();
-  if (!apiKey) {
-    return { title: fallbackTitle };
-  }
-
   const userContent = `Document excerpt:\n\n---\n${excerpt}\n---`;
 
   try {
-    const endpoint = resolveChatApiUrl(provider, getUrlForProvider(provider));
-    const model = resolveModelId(provider, getModelForProvider(provider));
-
-    const parsed = await openAiStyleTitle(
-      provider === "custom" ? "custom" : "openai",
-      apiKey,
-      endpoint,
-      model,
-      userContent,
-      signal,
-    );
+    const parsed = await openAiStyleTitle(userContent, signal);
 
     if (parsed?.title) {
       return parsed;

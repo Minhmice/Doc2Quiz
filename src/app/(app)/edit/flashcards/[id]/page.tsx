@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { FlashcardReviewWorkspace } from "@/components/flashcards/review/FlashcardReviewWorkspace";
+import { useStudySetProductSurfaceRedirect } from "@/hooks/useStudySetProductSurfaceRedirect";
 import { createRandomUuid } from "@/lib/ids/createRandomUuid";
 import {
   ensureStudySetDb,
@@ -18,6 +19,10 @@ import type { StudySetMeta } from "@/types/studySet";
 export default function EditFlashcardsReviewPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
+  const routeReady = useStudySetProductSurfaceRedirect(
+    id || undefined,
+    "edit-flashcards",
+  );
   const [meta, setMeta] = useState<StudySetMeta | null>(null);
   const [cards, setCards] = useState<FlashcardVisionItem[]>([]);
   const [initialCards, setInitialCards] = useState<FlashcardVisionItem[]>([]);
@@ -28,7 +33,7 @@ export default function EditFlashcardsReviewPage() {
   const [dirty, setDirty] = useState(false);
 
   const load = useCallback(async () => {
-    if (!id) {
+    if (!id || !routeReady) {
       return;
     }
     setLoadError(null);
@@ -53,7 +58,7 @@ export default function EditFlashcardsReviewPage() {
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Failed to load.");
     }
-  }, [id]);
+  }, [id, routeReady]);
 
   useEffect(() => {
     void load();
@@ -136,6 +141,14 @@ export default function EditFlashcardsReviewPage() {
 
   if (!id) {
     return null;
+  }
+
+  if (!routeReady) {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Loading…
+      </p>
+    );
   }
 
   if (loadError) {

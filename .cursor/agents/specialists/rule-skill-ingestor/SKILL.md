@@ -1,6 +1,6 @@
 ---
 name: rule-skill-ingestor
-model: gpt-5.3-codex-high
+model: inherit
 description: Ingest new Cursor rules/skills into the agent system data (rules, mappings, catalogs).
 ---
 
@@ -39,10 +39,10 @@ Safely ingest user-provided Cursor rules (`.mdc`) and agent skills (`.md`) into 
 
 Some standalone skill folders are **merged into the repo** instead of staying as separate installable skills:
 
-| Topic | Where it lives | Lookup |
-|-------|----------------|--------|
-| **Responsive design** | `.cursor/agents/skills/frontend.md` § Responsive design | `python3 …/frontend-developer/scripts/search.py "<q>" -d responsive` → `data/responsive-design.csv` |
-| **Stitch (MCP)** | `.cursor/agents/skills/stitch.md` | **Opt-in only** — load when the user explicitly asks for Stitch; do not merge into default frontend context |
+| Topic                 | Where it lives                                          | Lookup                                                                                                      |
+| --------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Responsive design** | `.cursor/agents/skills/frontend.md` § Responsive design | `python3 …/frontend-developer/scripts/search.py "<q>" -d responsive` → `data/responsive-design.csv`         |
+| **Stitch (MCP)**      | `.cursor/agents/skills/stitch.md`                       | **Opt-in only** — load when the user explicitly asks for Stitch; do not merge into default frontend context |
 
 When ingesting a **new** standalone skill that duplicates frontend concerns, prefer extending `frontend.md` + `frontend-developer/data/*.csv` (and optional `-d` domain in `core.py`) instead of leaving duplicate roots.
 
@@ -110,4 +110,3 @@ python3 .cursor/agents/specialists/rule-skill-ingestor/scripts/ingest.py skill \
   --skill-target field \
   --owner-field-id backend
 ```
-
