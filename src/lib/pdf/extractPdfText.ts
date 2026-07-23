@@ -6,7 +6,7 @@ import {
   normalizeUnknownError,
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
-import { getPdfjs } from "@/lib/pdf/getPdfjs";
+import { destroyPdfDocument, getPdfjs } from "@/lib/pdf/getPdfjs";
 import { ensurePdfWorker } from "@/lib/pdf/pdfWorker";
 
 function textContentToPageString(content: { items: readonly unknown[] }): string {
@@ -95,7 +95,7 @@ export async function extractPdfText(
       });
       return out;
     } finally {
-      await pdf.destroy();
+      await destroyPdfDocument(pdf);
     }
   } catch (raw) {
     const norm = normalizeUnknownError(raw);
@@ -159,7 +159,7 @@ export async function extractPdfTextForPageRange(
       }
       return pageTexts.join("\n\n");
     } finally {
-      await pdf.destroy();
+      await destroyPdfDocument(pdf);
     }
   } catch (raw) {
     const norm = normalizeUnknownError(raw);

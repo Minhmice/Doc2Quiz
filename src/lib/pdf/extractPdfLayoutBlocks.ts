@@ -6,7 +6,7 @@ import {
   normalizeUnknownError,
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
-import { getPdfjs } from "@/lib/pdf/getPdfjs";
+import { destroyPdfDocument, getPdfjs } from "@/lib/pdf/getPdfjs";
 import {
   type BuildLayoutBlocksOptions,
   type PdfLayoutBlock,
@@ -120,7 +120,7 @@ export async function extractPdfLayoutBlocksForPageIndices(
 
       return { pageCount, pages };
     } finally {
-      await pdf.destroy();
+      await destroyPdfDocument(pdf);
     }
   } catch (raw) {
     const norm = normalizeUnknownError(raw);

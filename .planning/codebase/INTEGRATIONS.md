@@ -1,81 +1,155 @@
 # External Integrations
 
-**Analysis Date:** 2026-04-14
+**Analysis Date:** 2026-07-24
 
 ## APIs & External Services
 
-**AI model providers (Bring-your-own-key, browser-owned):**
-- **Same-origin AI forward** — browser → Next Route Handler → vendor
-  - Implementation:
-    - Client: `src/lib/ai/sameOriginForward.ts` (`forwardAiPost`)
-    - Server: `src/app/api/ai/forward/route.ts`
-    - Settings/migration: `src/lib/ai/forwardSettings.ts` (persists a forward triple in `localStorage`)
-  - Supported providers (forward header behavior): `openai`, `anthropic`, `custom` (`src/app/api/ai/forward/route.ts`)
-  - Auth: **request body includes apiKey** (no server-side vendor keys by default)
-  - Target URL policy: `https:` allowed; `http:` allowed only for `localhost`/`127.0.0.1` (`src/app/api/ai/forward/route.ts`)
+**AI — OpenAI-compatible HTTP (server-configured):**
+
+- **Purpose:** Document extraction, MCQ/flashcard generation, embeddings, vision page parsing, title generation
+- **Client:** No vendor SDK; native `fetch` from Route Handlers and server modules
+- **Config:** `src/lib/server/ai-processing-config.ts` reads `AI_PROVIDER_URL`, `AI_PROVIDER_KEY`, `AI_MODEL_FREE`, `AI_MODEL_PRO`, optional `AI_EMBEDDING_MODEL`, `DOC_PROCESSING_MODE`
+- **Auth:** `Authorization: Bearer ${AI_PROVIDER_KEY}` on upstream requests
+- **Default models:** `mineru25` (free tier), `gpt-4.1-mini` (pro tier) when env vars unset
+- **Tier routing:** `src/lib/server/resolveUserAiTier.ts` — `AI_PRO_USER_IDS` CSV, `user.app_metadata.doc2quiz_ai_tier`, `user.app_metadata.role === "admin"`, or `user.user_metadata.doc2quiz_ai_tier`
+- **Same-origin proxy routes (authenticated Supabase user required):**
+  - `POST /api/ai/forward` — chat completions and models probe (`src/app/api/ai/forward/route.ts`)
+  - `POST /api/ai/embed` — embeddings (`src/app/api/ai/embed/route.ts`)
+- **Direct server calls:** `src/lib/server/openAiChatCompletion.ts` used by canonical extraction/generation (`src/lib/server/generateFromFile/**`)
+- **URL policy:** HTTPS only; HTTP allowed for `localhost` / `127.0.0.1` (`isAllowedTargetUrl` in forward/embed routes)
+- **UX status (no secrets):** `GET /api/ai/processing-status` (`src/app/api/ai/processing-status/route.ts`)
+
+**Vision image staging:**
+
+- **Purpose:** Convert client-rendered PDF page `data:` URLs into fetchable HTTPS URLs for multimodal upstream calls
+- **Route:** `POST /api/ai/vision-staging`, `GET /api/ai/vision-staging/[id]` (`src/app/api/ai/vision-staging/**`)
+- **Client helper:** `src/lib/ai/stageVisionDataUrl.ts`
+- **Fallback:** In-memory store (`src/lib/ai/visionStagingStore.ts`, ~10 min TTL) when Blob token unset
+- **Note:** Vision staging POST is currently **unauthenticated**; size-capped only (~12 MB decoded)
+
+**Developer / debug surfaces (gated):**
+
+- `GET|POST /api/ai/dev-engine-panel` — when `ENABLE_DEV_ENGINE_PANEL=true` and not production (`src/app/api/ai/dev-engine-panel/route.ts`)
+- `GET /api/develop/mock/[slug]` — when `NODE_ENV === "development"` or `ALLOW_DEVELOP_MOCKS=1`
+- `GET /api/study-sets/[id]/generation-debug` — dev-only generation fingerprints (`src/app/api/study-sets/[id]/generation-debug/route.ts`)
 
 ## Data Storage
 
 **Databases:**
-- **IndexedDB (browser local-first)** — `src/lib/db/studySetDb.ts`
-  - Name/version: `DB_NAME = "doc2quiz"`, `DB_VERSION = 6` (`src/types/studySet.ts`)
-  - Core stores: `meta`, `document`, `draft`, `approved`, `approvedFlashcards`, `media`, `parseProgress`, `ocr`, `quizSessions`, `studyWrongHistory` (`src/lib/db/studySetDb.ts`)
+
+- **Supabase Postgres** (hosted)
+  - Connection: `NEXT_PUBLIC_SUPABASE_URL` (public), authenticated via anon key + user session
+  - Client: `@supabase/supabase-js` via `@supabase/ssr` wrappers (`src/lib/supabase/server.ts`, `browser.ts`, `middlewareClient.ts`)
+  - Schema: `supabase/migrations/*.sql` — `study_sets`, `study_set_documents`, `media_assets`, `canonical_document_extractions`, `generation_output_cache`, parse progress, RLS on `auth.users`
+  - **No service-role key** referenced in application code; all access is user-scoped through anon key + RLS
 
 **File Storage:**
-- **Optional Vercel Blob** (`@vercel/blob`) — vision image staging when `BLOB_READ_WRITE_TOKEN` is set
-  - POST: `src/app/api/ai/vision-staging/route.ts` (uploads with `put`)
-  - GET: `src/app/api/ai/vision-staging/[id]/route.ts` (redirects via `head`)
-  - Path naming: `visionStagingBlobPathname` (`src/lib/ai/visionStagingStore.ts`)
-- **In-memory staging fallback** — local dev / no token (`src/lib/ai/visionStagingStore.ts`)
-  - TTL: ~10 minutes; bounded entries; not multi-instance safe
+
+- **Supabase Storage** — private bucket `doc2quiz` (`supabase/migrations/20260418_000003_create_storage_bucket_doc2quiz.sql`)
+  - Upload API: `/api/uploads/pdf/init`, `part`, `complete`, `abort` (`src/app/api/uploads/pdf/**`)
+  - Client upload orchestration: `src/lib/uploads/runPdfUploadSession.ts`, `src/lib/uploads/pdfUploadClient.ts`
+  - Direct reads/writes in app code: `src/lib/db/studySetDb.ts`, `src/lib/ai/ocrDb.ts`, `src/lib/server/generateFromFile/resolveContentSha256.ts`
+- **Vercel Blob** (optional) — public staging URLs for vision images when `BLOB_READ_WRITE_TOKEN` is set (`@vercel/blob` `put` / `head` in vision-staging routes)
+- **Browser IndexedDB** — local-first hybrid caches and legacy stores:
+  - `src/lib/db/studySetDb.ts`, `src/lib/db/parseCacheDb.ts`, `src/lib/db/embeddingIndexDb.ts`
+  - Parse settings/history: `src/lib/ai/parseLocalStorage.ts`, `src/lib/ai/ocrStorage.ts`, `src/lib/review/approvedBank.ts`
 
 **Caching:**
-- **Client-side vision parse cache** — `src/lib/ai/visionParseCache.ts` (caches batch results keyed by batch hash; used by `src/lib/ai/runVisionBatchSequential.ts`)
+
+- **Postgres tables:** `canonical_document_extractions`, `generation_output_cache` (server-side dedup by content hash + schema version)
+- **In-memory:** Vision staging fallback (`visionStagingStore.ts`)
+- **IndexedDB:** Vision parse batch cache (`src/lib/ai/visionParseCache.ts`), embedding index jobs (`src/lib/ai/embeddingIndexJob.ts`)
+- **CDN / edge:** Long-cache headers for `/_next/static/*` in `next.config.ts`; no separate Redis or CDN SDK
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Not implemented (no accounts). AI credentials are stored per-browser in `localStorage` (`src/lib/ai/forwardSettings.ts`) and sent through `POST /api/ai/forward`.
+
+- **Supabase Auth** (email/password)
+  - Implementation: `src/middleware.ts` refreshes session cookies via `updateSession` (`src/lib/supabase/middlewareClient.ts`)
+  - Server guard: `requireUser()` in `src/lib/supabase/auth-guard.ts` redirects unauthenticated users to `/login`
+  - Setup notes: `supabase/EMAIL_AUTH_SETUP.md` (confirm-email disabled for MVP flow)
+  - API routes check `supabase.auth.getUser()` and return `401` when absent (e.g. `/api/ai/forward`, `/api/ai/embed`, `/api/ai/processing-status`)
+
+**Legacy client key storage (purged on load):**
+
+- `src/lib/ai/forwardSettings.ts` still defines localStorage keys for historical BYOK migration, but `purgeForwardSecretsFromStorageOnce()` clears secrets on app load (`src/components/ai/AiParseSection.tsx`); **active AI calls use server env only** via `src/lib/ai/sameOriginForward.ts`
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Optional Sentry (`@sentry/nextjs`)
-  - Client init: `sentry.client.config.ts` (env: `NEXT_PUBLIC_SENTRY_DSN`)
-  - Server init: `sentry.server.config.ts` + `instrumentation.ts` (env: `SENTRY_DSN`)
+
+- **Sentry** (`@sentry/nextjs`) — optional, disabled when DSN unset
+  - Server: `SENTRY_DSN` → `sentry.server.config.ts` (loaded from `instrumentation.ts`)
+  - Client: `NEXT_PUBLIC_SENTRY_DSN` → `sentry.client.config.ts`
+  - Pipeline errors: `src/lib/observability/reportPipelineError.ts` (scrubs PII; `tracesSampleRate: 0`)
+  - `next.config.ts` is **not** wrapped with `withSentryConfig` (no source-map upload token required for local builds)
 
 **Logs:**
-- Structured pipeline logging to console (`src/lib/logging/pipelineLogger.ts`)
+
+- **Console via `pipelineLog`** — `src/lib/logging/pipelineLogger.ts`
+  - `info` gated to development or `NEXT_PUBLIC_D2Q_PIPELINE_DEBUG=1`
+  - `warn` / `error` always emitted
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not enforced in code. Optional Vercel-specific integration exists via `@vercel/blob` for image staging.
+
+- **Vercel** (documented in `README.md` for Blob storage and production deploys)
+- **Supabase** (hosted Postgres + Auth + Storage)
 
 **CI Pipeline:**
-- Not detected in this pass (no repo-level CI config referenced here).
+
+- **Not detected** — no `.github/workflows/` or other CI config in repo
 
 ## Environment Configuration
 
 **Required env vars:**
-- None required for local-only usage if the user supplies AI settings in the UI (stored in `localStorage`).
 
-**Optional env vars (code-referenced):**
-- `BLOB_READ_WRITE_TOKEN` — enables public HTTPS staging for vision upstream (`src/app/api/ai/vision-staging/*`, `src/lib/ai/stageVisionDataUrl.ts`)
-- `D2Q_SERVER_PARSE_ENABLED` — exposes parse job API stubs (`src/lib/serverParse/env.ts`, `src/app/api/parse-jobs/*`)
-- `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` — enable Sentry (`sentry.*.config.ts`)
+| Variable | Scope | Purpose |
+|----------|-------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anon key for client + server user-scoped access |
+| `AI_PROVIDER_URL` | Server | OpenAI-compatible base URL for chat/embeddings |
+| `AI_PROVIDER_KEY` | Server | Bearer token for AI upstream |
+
+**Optional env vars:**
+
+| Variable | Purpose |
+|----------|---------|
+| `AI_MODEL_FREE` / `AI_MODEL_PRO` | Per-tier model IDs (defaults: `mineru25`, `gpt-4.1-mini`) |
+| `AI_EMBEDDING_MODEL` | Embeddings model (default `text-embedding-3-small`) |
+| `AI_PRO_USER_IDS` | Comma-separated Supabase user IDs for pro tier |
+| `DOC_PROCESSING_MODE` | Document processing mode string (default `auto`) |
+| `ENABLE_DEV_ENGINE_PANEL` | `true` enables dev AI panel routes |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob for vision staging |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Sentry error reporting |
+| `NEXT_PUBLIC_D2Q_PIPELINE_DEBUG` | `1` enables verbose pipeline `info` logs |
+| `NEXT_PUBLIC_ENABLE_DEV_OCR_LAB` | `true` allows `/dev/ocr` in production |
+| `ALLOW_DEVELOP_MOCKS` | `1` enables develop mock API outside dev |
+| `D2Q_OBJECT_STORAGE_ENABLED` | Enables direct-upload capability probe |
+| `D2Q_OBJECT_STORAGE_ADAPTER_READY` | Second gate for working presign/finalize path |
+| `D2Q_PDF_UPLOAD_FINALIZE_SECRET` | HMAC secret for PDF upload finalize tokens |
+| `D2Q_SERVER_PARSE_ENABLED` | `1` or `true` exposes parse-job stub API (`src/lib/serverParse/env.ts`) |
 
 **Secrets location:**
-- Browser `localStorage` (AI forward triple), plus optional local `.env*` files for operator configuration. Do not commit secrets.
+
+- Local: `.env` / `.env.local` (gitignored)
+- Production: Vercel project environment variables and Supabase dashboard
+- Template: `.env.example` (server AI vars only; Supabase vars documented in code/README)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None detected.
+
+- **None** for core product flows
+- Parse-job stub (`/api/parse-jobs`, `/api/parse-jobs/[id]`) returns `404` unless `D2Q_SERVER_PARSE_ENABLED` is set; not a webhook receiver
 
 **Outgoing:**
-- None detected (no webhook emitters).
+
+- **None** — no Stripe, email provider, or outbound webhook dispatchers in application code
+- AI calls are synchronous HTTP `fetch` to configured upstream; no callback URLs registered
 
 ---
 
-*Integration audit: 2026-04-14*
+*Integration audit: 2026-07-24*

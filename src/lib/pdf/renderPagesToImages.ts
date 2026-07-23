@@ -7,7 +7,7 @@ import {
   normalizeUnknownError,
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
-import { getPdfjs } from "@/lib/pdf/getPdfjs";
+import { destroyPdfDocument, getPdfjs } from "@/lib/pdf/getPdfjs";
 import {
   canUseImagePreprocessWorker,
   encodeJpegDataUrlInWorker,
@@ -198,7 +198,7 @@ export async function renderPdfPagesToImages(
           throw new Error("Canvas 2D context not available");
         }
 
-        await page.render({ canvasContext, viewport }).promise;
+        await page.render({ canvas, canvasContext, viewport }).promise;
         if (signal.aborted) {
           throw new DOMException("Aborted", "AbortError");
         }
@@ -297,7 +297,7 @@ export async function renderPdfPagesToImages(
     });
     return out;
   } finally {
-    await pdf.destroy();
+    await destroyPdfDocument(pdf);
   }
 }
 
@@ -367,13 +367,13 @@ export async function renderSinglePdfPageToDataUrl(
         return null;
       }
 
-      await page.render({ canvasContext, viewport }).promise;
+      await page.render({ canvas, canvasContext, viewport }).promise;
       const dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
       canvas.width = 0;
       canvas.height = 0;
       return dataUrl;
     } finally {
-      await pdf.destroy();
+      await destroyPdfDocument(pdf);
     }
   } catch (raw) {
     pipelineLog("PDF", "render-page", "error", "renderSinglePdfPageToDataUrl failed", {

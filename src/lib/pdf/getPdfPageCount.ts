@@ -7,7 +7,7 @@ import {
   normalizeUnknownError,
   pipelineLog,
 } from "@/lib/logging/pipelineLogger";
-import { getPdfjs } from "@/lib/pdf/getPdfjs";
+import { destroyPdfDocument, getPdfjs } from "@/lib/pdf/getPdfjs";
 import { ensurePdfWorker } from "@/lib/pdf/pdfWorker";
 
 /** Opens the PDF with pdf.js and returns `numPages` (no text extraction). */
@@ -52,6 +52,6 @@ export async function getPdfPageCount(file: File): Promise<number> {
     });
     throw new Error("PDF_OPEN_FAILED", { cause: raw });
   } finally {
-    await pdf?.destroy();
+    await destroyPdfDocument(pdf);
   }
 }

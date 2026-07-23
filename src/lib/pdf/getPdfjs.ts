@@ -3,6 +3,7 @@
 import { pipelineLog } from "@/lib/logging/pipelineLogger";
 
 export type PdfjsModule = typeof import("pdfjs-dist");
+export type PdfDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
 
 let pdfjsPromise: Promise<PdfjsModule> | null = null;
 let workerConfigured = false;
@@ -28,4 +29,12 @@ export async function getPdfjs(): Promise<PdfjsModule> {
     });
   }
   return pdfjsPromise;
+}
+
+/** pdfjs v6+: cleanup via loadingTask (PDFDocumentProxy.destroy removed). */
+export async function destroyPdfDocument(
+  pdf: PdfDocumentProxy | undefined,
+): Promise<void> {
+  if (!pdf) return;
+  await pdf.loadingTask.destroy();
 }

@@ -8,7 +8,7 @@ import {
 import {
   MIN_CHARS_PER_PAGE_FOR_TEXT_SIGNAL,
 } from "@/lib/ai/parseRoutePolicy";
-import { getPdfjs } from "@/lib/pdf/getPdfjs";
+import { destroyPdfDocument, getPdfjs } from "@/lib/pdf/getPdfjs";
 import { VISION_MAX_PAGES_DEFAULT } from "@/lib/pdf/renderPagesToImages";
 import {
   PAGE_SIGNAL_SAMPLED_TEXT_LAYER,
@@ -195,7 +195,7 @@ export async function classifyPdfPages(
         },
       });
     } finally {
-      await pdf.destroy();
+      await destroyPdfDocument(pdf);
     }
   } catch (raw) {
     const norm = normalizeUnknownError(raw);

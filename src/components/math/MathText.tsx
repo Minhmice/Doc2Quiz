@@ -26,10 +26,10 @@ declare global {
 }
 
 /** Keep in sync with package.json `mathjax` version (CDN fallback). */
-const MATHJAX_PKG_VERSION = "3.2.2";
+const MATHJAX_PKG_VERSION = "4.1.3";
 const MATHJAX_LOCAL_BASE = "/mathjax/es5";
 const MATHJAX_LOCAL_SCRIPT = `${MATHJAX_LOCAL_BASE}/tex-chtml.js`;
-const MATHJAX_CDN_BASE = `https://cdn.jsdelivr.net/npm/mathjax@${MATHJAX_PKG_VERSION}/es5`;
+const MATHJAX_CDN_BASE = `https://cdn.jsdelivr.net/npm/mathjax@${MATHJAX_PKG_VERSION}`;
 const MATHJAX_CDN_SCRIPT = `${MATHJAX_CDN_BASE}/tex-chtml.js`;
 
 let mathJaxLoadPromise: Promise<void> | null = null;

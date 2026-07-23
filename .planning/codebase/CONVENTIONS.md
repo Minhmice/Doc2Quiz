@@ -1,52 +1,219 @@
-# Doc2Quiz — project conventions
+# Coding Conventions
 
-This document reflects the **current** repository layout and tooling (Next.js App Router, TypeScript, Tailwind CSS v4). It is not a product spec.
+**Analysis Date:** 2026-07-24
 
-## Stack and versions
+## Naming Patterns
 
-- **Framework:** Next.js 15 (`next` ^15.2.4), **React 19**, App Router under `src/app/`.
-- **Styling:** Tailwind CSS v4 (`tailwindcss` ^4, `@tailwindcss/postcss` ^4).
-- **Lint:** ESLint 9 flat config extending **eslint-config-next** presets (`next/core-web-vitals`, `next/typescript`). Entry: `eslint.config.mjs` (uses `@eslint/eslintrc` `FlatCompat`). **Ignored paths** include `.next/`, `node_modules/`, `public/pdf.worker.min.mjs`, `public/mathjax/**`, `next-env.d.ts`.
-- **Scripts:** `npm run dev` (Turbopack), `npm run build`, `npm run lint` (runs `eslint` directly — not `next lint`).
+**Files:**
+- React components: **PascalCase** filenames with `.tsx` extension — e.g. `QuestionEditor.tsx`, `ApiStatusIndicator.tsx` in `src/components/`.
+- Hooks: **`use` + PascalCase** in camelCase filename — e.g. `useStudySetProductSurfaceRedirect.ts`, `useDashboardHome.ts`. One exception uses kebab-case: `use-is-in-view.tsx`.
+- Library modules: **camelCase** filenames — e.g. `validateStrictGenerated.ts`, `pipelineLogger.ts`, `studySetDb.ts` under `src/lib/`.
+- Route segments: **kebab-case** in `src/app/` — e.g. `generate-from-file`, `processing-status`.
+- Types: domain files in `src/types/` — e.g. `question.ts`, `visionParse.ts`, `studySet.ts` (camelCase file, PascalCase exported types).
+- Validation schemas: `src/lib/validations/*.ts` and `src/lib/server/generateFromFile/*Schemas.ts`.
 
-## TypeScript and imports
+**Functions:**
+- **camelCase** for functions and methods — e.g. `validateStrictQuizQuestions`, `mismatchHrefForSurface`, `pipelineLog`, `requireUser`.
+- **PascalCase** only for React components and component-local variant helpers — e.g. `Button`, `QuestionEditor`, `buttonVariants`.
+- Async route handlers: named HTTP verbs — `export async function POST(req: Request)` in `src/app/api/**/route.ts`.
 
-- **Strict mode** enabled (`strict: true` in `tsconfig.json`).
-- **Path alias:** `@/*` maps to `./src/*` (see `tsconfig.json` `paths`). Prefer `@/components/...`, `@/lib/...`, `@/types/...` over deep relative imports from `src/`.
+**Variables:**
+- **camelCase** for locals and parameters — e.g. `studySetId`, `correctIndex`, `parsed`.
+- **SCREAMING_SNAKE_CASE** for module-level constants — e.g. `MAX_IMAGE_BYTES` in `src/components/review/QuestionEditor.tsx`, `FOCUS_CHECK_MIN_MS` in `src/components/layout/ApiStatusIndicator.tsx`, `LS_LAST_AI_REACHABILITY` in `src/lib/ai/aiReachability.ts`.
+- Boolean state often prefixed with `is` / `has` — e.g. `isPipelineVerbose`, `isAiProcessingConfigured`.
 
-## `src/` layout (high level)
+**Types:**
+- Domain types: **PascalCase** — e.g. `Question`, `FlashcardVisionItem`, `StudyContentKind`, `PipelineDomain`.
+- Form/schema inferred types: suffix **`FormValues`** or descriptive name — e.g. `QuestionEditorFormValues` from `z.infer<typeof questionEditorSchema>` in `src/lib/validations/question.ts`.
+- Props types: **`ComponentNameProps`** — e.g. `QuestionEditorProps` in `src/components/review/QuestionEditor.tsx`.
+- Discriminated result unions: **`{ ok: true } | { ok: false; error: string }`** — used in `src/lib/server/generateFromFile/validateStrictGenerated.ts` and parse flows in `src/components/ai/AiParseSection.tsx`.
 
-| Area | Role |
-|------|------|
-| `src/app/` | Routes, layouts, route groups (e.g. `(app)`), `page.tsx` / `layout.tsx`, redirects. Root `page.tsx` redirects to `/dashboard`. |
-| `src/components/` | Feature UI (`dashboard/`, `play/`, `sets/`, `layout/`, `ai/`, …) and shared building blocks. |
-| `src/components/ui/` | **Design-system primitives** (see below). |
-| `src/lib/` | PDF ingestion, AI clients, **IndexedDB** (`lib/db/`), logging, utilities (`utils.ts`, `cn`). |
-| `src/types/` | Shared domain types and constants (questions, study sets, parse/OCR types). |
+## Code Style
 
-Naming is mostly **PascalCase** for React components/files (`.tsx`), **camelCase** for functions and variables, **kebab-case** for route segments where the filesystem requires it.
+**Formatting:**
+- **No Prettier config** detected. Formatting is implicit via ESLint + TypeScript + editor defaults.
+- **Semicolons are mixed** — many `src/lib/` and API files use semicolons; several `src/components/ui/` primitives omit them (e.g. `src/lib/utils.ts`, `src/components/ui/button.tsx`). Match the surrounding file when editing.
+- **Double quotes** dominate string literals in TypeScript/TSX.
+- Numeric separators allowed — e.g. `1_500_000`, `60_000`.
 
-## Server vs client components
+**Linting:**
+- **ESLint 10** flat config in `eslint.config.mjs`.
+- Extends **`next/core-web-vitals`** and **`next/typescript`** via `@eslint/eslintrc` `FlatCompat`.
+- Ignored paths: `.next/**`, `node_modules/**`, `public/pdf.worker.min.mjs`, `public/mathjax/**`, `next-env.d.ts`.
+- Run: `npm run lint` (invokes `eslint` directly, not `next lint`).
 
-- Default in the App Router is **Server Components**.
-- Any file that uses browser-only APIs, React client hooks (`useState`, `useEffect`, …), or event handlers on client-owned subtrees should be a **Client Component** with the directive **`"use client"`** as the first statement in the module.
+**TypeScript:**
+- **`strict: true`** in `tsconfig.json`.
+- Path alias: **`@/*` → `./src/*`**. Prefer `@/lib/...`, `@/components/...`, `@/types/...` over deep relative imports from `src/`.
+- Target `ES2017`, `moduleResolution: "bundler"`, `jsx: "preserve"`.
 
-## Data and persistence (local-first)
+## Import Organization
 
-- **IndexedDB** is the primary store for study-set lifecycle data (documents, drafts, media, OCR artifacts, etc.). Core access lives in `src/lib/db/studySetDb.ts` (and related modules such as `ocrDb.ts`, migration helpers).
-- **localStorage** is still used for smaller or legacy-adjacent concerns (for example AI provider settings, reachability snapshots, OCR tab prefs, migration flags like `LS_IDB_MIGRATED` in `src/types/studySet.ts`). New durable study-set state should follow existing IDB patterns rather than inventing parallel storage.
+**Order:**
+1. **External packages** (React, Next.js, third-party) — e.g. `next/server`, `react`, `zod`, `@base-ui/react`.
+2. **Blank line**
+3. **Internal `@/` aliases** — grouped by layer: `@/lib/`, `@/types/`, `@/components/`.
 
-## UI layer: `src/components/ui`
+**Path Aliases:**
+- `@/*` maps to `./src/*` (see `tsconfig.json` `paths`).
 
-- Primitives are built on **@base-ui/react** (e.g. `Button` wraps `@base-ui/react/button`), styled with **class-variance-authority** (`cva`) and **`cn`** from `@/lib/utils` (typically `clsx` + `tailwind-merge`).
-- Treat these as the **canonical** controls for dialogs, tooltips, inputs, etc., instead of ad hoc HTML in feature code.
-- The repo also lists **`shadcn`** as a dev dependency for scaffolding; the implemented primitives in `ui/` follow the Base UI + Tailwind pattern above.
+**Barrel re-exports:**
+- Use sparingly. `src/components/buttons/index.ts` re-exports `Button` from `./button` for a stable import path (`@/components/buttons/button` is also used directly in feature code).
 
-## ESLint habits
+**Example (client component):**
 
-- Follow **Next.js + TypeScript** rules from the extended presets; repo-specific ignores cover generated or vendor assets under `public/`.
-- When an exception is required (for example `<img>` for blob URLs from IndexedDB), use a **targeted** `eslint-disable-next-line` with a short justification, matching existing files.
+```typescript
+"use client";
 
-## Optional / adjacent tooling
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
-- **Sentry** (`@sentry/nextjs`) and **Vercel Blob** appear in `package.json` for deployment or uploads as configured in the project; they do not change the above source-layout or UI conventions.
+import { putMediaBlob } from "@/lib/db/studySetDb";
+import type { Question } from "@/types/question";
+import { questionEditorSchema } from "@/lib/validations/question";
+import { Button } from "@/components/buttons/button";
+```
+
+Pattern from `src/components/review/QuestionEditor.tsx`.
+
+## Server vs Client Components
+
+- **Default:** Server Components in the App Router (`src/app/`).
+- Add **`"use client"`** as the **first statement** when the module uses browser APIs, React client hooks (`useState`, `useEffect`, `useRouter`, etc.), or client event handlers — e.g. `src/components/review/QuestionEditor.tsx`, `src/hooks/useStudySetProductSurfaceRedirect.ts`.
+- Server-only auth: `requireUser()` in `src/lib/supabase/auth-guard.ts` uses `redirect()` from `next/navigation` on the server.
+
+## Error Handling
+
+**Patterns:**
+
+**1. Discriminated `ok` results (pure validation):**
+
+```typescript
+export function validateStrictQuizQuestions(
+  questions: Question[],
+): { ok: true } | { ok: false; error: string } {
+  // return { ok: false, error: "..." } on failure
+  return { ok: true };
+}
+```
+
+Use in `src/lib/server/generateFromFile/validateStrictGenerated.ts`, `src/lib/ai/validateVisionQuizItems.ts`, and similar validators. Callers branch on `.ok` before persisting.
+
+**2. API route HTTP errors:**
+
+Return `NextResponse.json({ error: string }, { status: number })` — e.g. `401` unauthorized, `400` invalid body, `502` upstream failure, `503` service unavailable in `src/app/api/ai/embed/route.ts`. Authenticate via Supabase `getUser()` before processing.
+
+**3. Upstream AI / HTTP body sanitization:**
+
+Use `describeBadAiResponse(status, bodyText)` and `responseLooksLikeHtml(text)` from `src/lib/ai/upstreamErrors.ts` to avoid dumping HTML error pages into the UI.
+
+**4. Unknown thrown values:**
+
+Normalize with `normalizeUnknownError(err)` from `src/lib/logging/pipelineLogger.ts` before logging structured context.
+
+**5. User-facing toasts:**
+
+Use `toast.success` / `toast.error` from **sonner** in client components — e.g. `src/components/review/QuestionEditor.tsx`.
+
+**6. Redirect guards:**
+
+Server layouts/pages call `requireUser()`; client surfaces use `useStudySetProductSurfaceRedirect` (`src/hooks/useStudySetProductSurfaceRedirect.ts`) with `router.replace` when content kind mismatches the route.
+
+**7. Async cleanup in effects:**
+
+Use `let cancelled = false` + check before `setState` — pattern in `src/hooks/useStudySetProductSurfaceRedirect.ts`.
+
+## Logging
+
+**Framework:** Structured **`console`** via `pipelineLog` in `src/lib/logging/pipelineLogger.ts`.
+
+**Patterns:**
+- Prefix: `[DOMAIN][stage]` where `DOMAIN` is `PDF | OCR | VISION | IDB | STUDY_SET | MAPPING | PARSE`.
+- **`info`**: only when `NODE_ENV === "development"` or `NEXT_PUBLIC_D2Q_PIPELINE_DEBUG === "1"`.
+- **`warn` / `error`**: always emitted.
+- Vision events: `visionPipelineEvent()` flattens `VisionPipelineEvent` into info logs.
+- Do not use `pipelineLog` for routine UI events; reserve for PDF intake, OCR, vision, IDB, and parse pipelines.
+
+**Error tracking:** **Sentry** (`@sentry/nextjs`) configured in `sentry.client.config.ts` and `sentry.server.config.ts`. Enabled only when `NEXT_PUBLIC_SENTRY_DSN` is set. `beforeSend` must not attach PDF bytes or API keys.
+
+## Validation
+
+**Zod** (`zod` ^4) is the standard schema library.
+
+- **Form validation:** `src/lib/validations/` — e.g. `questionEditorSchema` in `question.ts`, paired with **react-hook-form** + `@hookform/resolvers/zod` (`zodResolver`).
+- **Server generation payloads:** `src/lib/server/generateFromFile/schemas.ts`, `canonicalUnitSchemas.ts`.
+- **Post-parse strict checks:** imperative validators in `validateStrictGenerated.ts` (complement Zod, do not replace for persistence gates).
+
+Export inferred types with `z.infer<typeof schema>`.
+
+## UI Conventions
+
+**Primitives:** `src/components/ui/` — built on **@base-ui/react**, styled with **class-variance-authority** (`cva`) and **`cn()`** from `src/lib/utils.ts` (`clsx` + `tailwind-merge`).
+
+**Feature components:** `src/components/{feature}/` — e.g. `review/`, `quiz/`, `ai/`, `dashboard/`, `layout/`.
+
+**Buttons:** Import from `@/components/buttons/button` or `@/components/buttons` — do not duplicate button styling in feature code.
+
+**Styling:** Tailwind CSS v4 (`tailwindcss` ^4, `@tailwindcss/postcss`).
+
+**Images from IndexedDB / blob URLs:** Use `<img>` with a targeted eslint exception — `// eslint-disable-next-line @next/next/no-img-element` plus short justification (see `src/components/media/StoredImage.tsx`, `src/components/quiz/QuizSession.tsx`). Do not use `next/image` for dynamic blob/object URLs.
+
+**Stable automation hooks:** Add explicit `data-testid` when automation needs a contract — e.g. `data-testid="doc2quiz-api-status-trigger"` in `src/components/layout/ApiStatusIndicator.tsx`. Do not rely on auto-generated Base UI internal ids.
+
+## Data & Persistence
+
+- **IndexedDB** is the primary client store for study-set lifecycle — `src/lib/db/studySetDb.ts`, `parseCacheDb.ts`, `embeddingIndexDb.ts`, `ocrDb.ts`.
+- **localStorage** for small prefs and flags — e.g. AI reachability in `src/lib/ai/aiReachability.ts`, keys in `src/types/studySet.ts`.
+- **Supabase** for auth and server-backed features — clients in `src/lib/supabase/browser.ts`, `server.ts`, session refresh in `src/middleware.ts` via `src/lib/supabase/middlewareClient.ts`.
+- New durable study-set state should follow existing IDB patterns; avoid parallel ad hoc storage.
+
+## Comments
+
+**When to Comment:**
+- Non-obvious business rules, pipeline phase markers, and security constraints.
+- File-level JSDoc on modules with external contracts — e.g. `src/lib/logging/pipelineLogger.ts`, `src/lib/ai/upstreamErrors.ts`.
+- Phase references in config — e.g. `next.config.ts` redirect comments.
+
+**JSDoc/TSDoc:**
+- Use on exported hooks and guards explaining return semantics — e.g. `@returns true when safe to render` on `useStudySetProductSurfaceRedirect`.
+- Use on domain types when lanes must not be confused — e.g. `Question` vs flashcard types in `src/types/question.ts`.
+- Avoid narrating obvious code.
+
+## Function Design
+
+**Size:** Large orchestration files exist in the AI parse lane (e.g. `src/components/ai/AiParseSection.tsx`). Prefer extracting pure helpers into `src/lib/ai/` or `src/lib/pdf/` rather than growing UI files further.
+
+**Parameters:** Prefer explicit typed objects for complex inputs (`QuestionEditorProps`, API `Body` types in route handlers). Use `string | undefined` for optional route params and guard early.
+
+**Return Values:**
+- Pure validators: discriminated `{ ok }` unions.
+- API routes: `NextResponse` or `NextResponse.json`.
+- Hooks that gate rendering: `boolean` ready flag — `useStudySetProductSurfaceRedirect` returns `true` when safe to render.
+
+## Module Design
+
+**Exports:** Named exports preferred — `export function`, `export type`, `export const schema`. Default exports used for Next.js pages/layouts and `next.config.ts`.
+
+**Barrel Files:** Minimal — `src/components/buttons/index.ts`, `src/lib/learning/index.ts`. Do not add barrels unless there is an established import path to preserve.
+
+**Legacy code:** `src/components-legacy/` holds develop/preview batches; do not extend for new product features.
+
+## ESLint Exceptions
+
+When disabling rules, use **line-scoped** comments with justification:
+
+```typescript
+// eslint-disable-next-line @next/next/no-img-element -- object URL from IndexedDB blob
+```
+
+```typescript
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+```
+
+Seen in `src/components/media/StoredImage.tsx`, `src/components/animate-ui/icons/icon.tsx`. Never blanket-disable rules at file level without strong reason.
+
+---
+
+*Convention analysis: 2026-07-24*
