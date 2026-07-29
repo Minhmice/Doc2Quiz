@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  flashcardAmountSchema,
+  flashcardCoverageSchema,
+  flashcardLearningGoalSchema,
+} from "@/lib/pipeline/flashcardSchemas";
 import { SUPPORTED_MIME_TYPES } from "@/lib/pipeline/validation";
 
 const mimeEnum = z.enum(
@@ -74,4 +79,18 @@ export const workspaceQuizGenerateBodySchema = z
 
 export type WorkspaceQuizGenerateBody = z.infer<
   typeof workspaceQuizGenerateBodySchema
+>;
+
+/** POST /api/workspaces/[workspaceId]/outputs/flashcards — IDs + wizard options only. */
+export const workspaceFlashcardGenerateBodySchema = z
+  .object({
+    canonicalVersionIds: z.array(z.string().uuid()).min(1),
+    learningGoal: flashcardLearningGoalSchema,
+    coverage: flashcardCoverageSchema,
+    amount: flashcardAmountSchema,
+  })
+  .strict();
+
+export type WorkspaceFlashcardGenerateBody = z.infer<
+  typeof workspaceFlashcardGenerateBodySchema
 >;

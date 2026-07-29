@@ -83,7 +83,7 @@ function isAtLeastPipelineStage(
   return stageIndex >= minimumIndex;
 }
 
-function truncateCanonicalMarkdown(canonicalMarkdown: string): {
+export function truncateCanonicalMarkdown(canonicalMarkdown: string): {
   markdown: string;
   warnings: string[];
 } {
@@ -98,7 +98,7 @@ function truncateCanonicalMarkdown(canonicalMarkdown: string): {
   };
 }
 
-function filterSectionsByCoverage(
+export function filterSectionsByCoverage(
   sections: CanonicalSection[],
   coverage: FlashcardGenerateBody["coverage"],
 ): CanonicalSection[] {
@@ -109,20 +109,22 @@ function filterSectionsByCoverage(
   return sections.filter((section) => allowed.has(section.section_key));
 }
 
-function resolveCoverageMode(
+export function resolveCoverageMode(
   coverage: FlashcardGenerateBody["coverage"],
 ): string {
   return coverage === "entire_document" ? "entire_document" : "selected_sections";
 }
 
-function resolveRequestedCount(amount: FlashcardGenerateBody["amount"]): string {
+export function resolveRequestedCount(
+  amount: FlashcardGenerateBody["amount"],
+): string {
   if (amount === "recommended") {
     return "recommended";
   }
   return String(amount.count);
 }
 
-async function callFlashcardGenerator(params: {
+export async function callFlashcardGenerator(params: {
   studySetId: string;
   title: string;
   language: string;

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { z } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import {
@@ -8,11 +7,6 @@ import {
   MultiSourceFlashcardValidationError,
   runMultiSourceFlashcardGenerate,
 } from "@/lib/pipeline/flashcardMultiSourceGenerate";
-import {
-  flashcardAmountSchema,
-  flashcardCoverageSchema,
-  flashcardLearningGoalSchema,
-} from "@/lib/pipeline/flashcardSchemas";
 import { summarizeZodError } from "@/lib/pipeline/zodErrorSummary";
 import { QuotaExceededError } from "@/lib/server/quota/QuotaExceededError";
 import {
@@ -21,153 +15,35 @@ import {
   releaseGenerationQuota,
   reserveGenerationQuota,
 } from "@/lib/server/quota/generationQuotaReservation";
-import { resolveLegacyStudySetBridge } from "@/lib/workspaces/documentVersions";
+import { getUserUsage } from "@/lib/server/quota/getUserUsage";
 import {
   WorkspaceForbiddenError,
   WorkspaceNotFoundError,
 } from "@/lib/workspaces/errors";
+import { workspaceFlashcardGenerateBodySchema } from "@/lib/workspaces/schemas";
 
-const legacyFlashcardGenerateBodySchema = z
-  .object({
-    learningGoal: flashcardLearningGoalSchema,
-    coverage: flashcardCoverageSchema,
-    amount: flashcardAmountSchema,
-    canonicalVersionIds: z.array(z.string().uuid()).min(1).optional(),
-  })
-  .strict();
-
-async function resolveWorkspaceSources(params: {
-  supabase: Awaited<
-    ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>
-  >;
-  userId: string;
-  studySetId: string;
-  explicitVersionIds?: string[];
-}): Promise<
-  | { error: Response }
-  | { workspaceId: string; canonicalVersionIds: string[] }
-> {
-  const { supabase, userId, studySetId, explicitVersionIds } = params;
-
-  const { data: ownedSet, error: ownedError } = await supabase
-    .from("study_sets")
-    .select("id")
-    .eq("id", studySetId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (ownedError) {
-    return {
-      error: NextResponse.json({ error: ownedError.message }, { status: 500 }),
-    };
-  }
-  if (!ownedSet) {
-    return {
-      error: NextResponse.json({ error: "Not found" }, { status: 404 }),
-    };
-  }
-
-  const bridge = await resolveLegacyStudySetBridge({
-    supabase,
-    legacyStudySetId: studySetId,
-  });
-
-  let workspaceId = bridge?.workspaceId ?? null;
-  let learningOutputId = bridge?.learningOutputId ?? null;
-
-  if (!workspaceId) {
-    const { data: parentOutputs, error: parentError } = await supabase
-      .from("learning_outputs")
-      .select("id, workspace_id")
-      .eq("legacy_parent_study_set_id", studySetId)
-      .eq("kind", "flashcards")
-      .is("deleted_at", null)
-      .limit(1)
-      .maybeSingle();
-
-    if (parentError) {
-      return {
-        error: NextResponse.json(
-          { error: parentError.message },
-          { status: 500 },
-        ),
-      };
-    }
-    workspaceId = parentOutputs?.workspace_id ?? null;
-    learningOutputId = parentOutputs?.id ?? null;
-  }
-
-  if (!workspaceId) {
-    return {
-      error: NextResponse.json(
-        {
-          error: "validation_error",
-          message:
-            "Study set is not linked to a workspace learning output. Use the workspace flashcards route with explicit canonicalVersionIds.",
-        },
-        { status: 400 },
-      ),
-    };
-  }
-
-  if (explicitVersionIds && explicitVersionIds.length > 0) {
-    return { workspaceId, canonicalVersionIds: explicitVersionIds };
-  }
-
-  if (learningOutputId) {
-    const { data: snapshots, error: snapError } = await supabase
-      .from("output_source_snapshots")
-      .select("canonical_version_id, ordinal")
-      .eq("output_id", learningOutputId)
-      .order("ordinal", { ascending: true });
-
-    if (snapError) {
-      return {
-        error: NextResponse.json({ error: snapError.message }, { status: 500 }),
-      };
-    }
-
-    const fromSnapshots = (snapshots ?? [])
-      .map((row) => row.canonical_version_id)
-      .filter((id): id is string => typeof id === "string" && id.length > 0);
-
-    if (fromSnapshots.length > 0) {
-      return { workspaceId, canonicalVersionIds: fromSnapshots };
-    }
-  }
-
-  return {
-    error: NextResponse.json(
-      {
-        error: "validation_error",
-        message:
-          "Explicit canonicalVersionIds are required when no frozen output snapshots exist.",
-      },
-      { status: 400 },
-    ),
-  };
-}
-
-/**
- * Narrow legacy adapter: resolve workspace/bridge sources and delegate to
- * workspace-native multi-source flashcard generation.
- * Does not delete quiz or prior flashcard banks.
- */
 export async function POST(
   request: Request,
-  ctx: { params: Promise<{ id: string }> },
+  ctx: { params: Promise<{ workspaceId: string }> },
 ) {
   const auth = await requireApiUser();
   if ("error" in auth) {
     return auth.error as Response;
   }
 
-  const { id } = await ctx.params;
+  const { workspaceId } = await ctx.params;
 
-  let body: z.infer<typeof legacyFlashcardGenerateBodySchema>;
+  let body: {
+    canonicalVersionIds: string[];
+    learningGoal: "memorize" | "understand" | "exam_preparation";
+    coverage:
+      | "entire_document"
+      | { sectionKeys: string[] };
+    amount: "recommended" | { count: number };
+  };
   try {
     const rawBody = await request.json();
-    body = legacyFlashcardGenerateBodySchema.parse(rawBody);
+    body = workspaceFlashcardGenerateBodySchema.parse(rawBody);
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(
@@ -182,30 +58,40 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const resolved = await resolveWorkspaceSources({
-    supabase: auth.supabase,
-    userId: auth.user.id,
-    studySetId: id,
-    explicitVersionIds: body.canonicalVersionIds,
-  });
-  if ("error" in resolved) {
-    return resolved.error as Response;
-  }
-
   let reservationToken: string | null = null;
   let quotaCommitted = false;
+  let bridgeStudySetId: string | null = null;
 
   try {
+    const usage = await getUserUsage({
+      supabase: auth.supabase as never,
+      user: auth.user,
+    });
+    if (
+      usage.plan === "free" &&
+      usage.weeklyRemaining <= 0 &&
+      usage.bonusCredits <= 0
+    ) {
+      throw new QuotaExceededError({
+        weeklyUsed: usage.weeklyUsed,
+        weeklyLimit: usage.weeklyLimit,
+        bonusCredits: usage.bonusCredits,
+        weekResetsAt: usage.weekResetsAt,
+      });
+    }
+
     const result = await runMultiSourceFlashcardGenerate({
       supabase: auth.supabase,
       user: auth.user,
       userId: auth.user.id,
-      workspaceId: resolved.workspaceId,
-      canonicalVersionIds: resolved.canonicalVersionIds,
+      workspaceId,
+      canonicalVersionIds: body.canonicalVersionIds,
       learningGoal: body.learningGoal,
       coverage: body.coverage,
       amount: body.amount,
     });
+
+    bridgeStudySetId = result.bridgeStudySetId;
 
     const reservation = await reserveGenerationQuota({
       supabase: auth.supabase,
@@ -248,6 +134,7 @@ export async function POST(
       } catch (releaseError) {
         console.error("quota release failed", {
           reservationToken,
+          bridgeStudySetId,
           releaseError,
           originalError: error,
         });
@@ -311,7 +198,7 @@ export async function POST(
       );
     }
 
-    console.error("flashcard generate route error", error);
+    console.error("workspace flashcard generate route error", error);
     return NextResponse.json(
       { error: "internal_error", message: "Flashcard generation failed." },
       { status: 500 },

@@ -7,6 +7,8 @@ export type ApprovedFlashcardInsertRow = {
   id: string;
   user_id: string;
   study_set_id: string;
+  /** Set when persisting workspace-native learning outputs (RPC also assigns). */
+  output_id?: string;
   front: string;
   back: string;
   tags: string[];
@@ -31,12 +33,14 @@ export function mapGeneratedCardToRow(
     promptVersion: string;
     detectedFormat: FlashcardFormat;
     learningGoal: string;
+    outputId?: string;
   },
 ): ApprovedFlashcardInsertRow {
   return {
     id: meta.id,
     user_id: meta.userId,
     study_set_id: meta.studySetId,
+    ...(meta.outputId ? { output_id: meta.outputId } : {}),
     front: card.front,
     back: card.back,
     tags: card.concept_id ? [card.concept_id] : [],
@@ -61,6 +65,7 @@ export function mapFlashcardOutputToRows(
     promptVersion: string;
     detectedFormat: FlashcardFormat;
     learningGoal: string;
+    outputId?: string;
   },
 ): ApprovedFlashcardInsertRow[] {
   return cards.map((card) =>
@@ -71,6 +76,7 @@ export function mapFlashcardOutputToRows(
       promptVersion: meta.promptVersion,
       detectedFormat: meta.detectedFormat,
       learningGoal: meta.learningGoal,
+      outputId: meta.outputId,
     }),
   );
 }
