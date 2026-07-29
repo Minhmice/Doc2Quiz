@@ -1,16 +1,9 @@
-/**
- * Legacy study-set ingest client.
- * New owned create flow uses `ingestWorkspaceSource` → POST /api/workspaces/ingest.
- * Keep this module for existing study-set routes until 09-07/09-08 adapters retire it.
- */
 import { createSupabaseBrowserClient } from "@/lib/client/supabase";
-import { createStudySetEarlyMeta } from "@/lib/client/studySetDb";
-import type { IngestJsonBody } from "@/lib/pipeline/ingestSchemas";
+import type { WorkspaceIngestJsonBody } from "@/lib/workspaces/schemas";
 import {
   isSupportedMimeType,
   type SupportedMimeType,
 } from "@/lib/pipeline/validation";
-import type { StudyContentKind } from "@/types/studySet";
 
 export type IngestUiStep =
   | "idle"
@@ -20,13 +13,23 @@ export type IngestUiStep =
   | "done"
   | "error";
 
-const MULTIPART_THRESHOLD_BYTES = 10 * 1024 * 1024;
-const DOC2QUIZ_BUCKET = "doc2quiz";
+export type WorkspaceIngestIdentity = {
+  workspaceId: string;
+  documentId: string;
+  documentVersionId: string;
+  versionNumber: number;
+  conversionStatus: "ok" | "failed";
+  rawMarkdownLength: number;
+  title: string;
+};
 
 export type IngestSourceInput =
   | { kind: "file"; file: File }
   | { kind: "paste"; text: string }
   | { kind: "youtube"; url: string };
+
+const MULTIPART_THRESHOLD_BYTES = 10 * 1024 * 1024;
+const DOC2QUIZ_BUCKET = "doc2quiz";
 
 function sanitizeFilename(filename: string): string {
   const base = filename.split(/[/\\]/).pop() ?? "upload";
@@ -96,71 +99,90 @@ async function requireUserId(): Promise<string> {
   return user.id;
 }
 
+function mapNetworkError(error: unknown): Error {
+  if (error instanceof TypeError) {
+    return new Error("Connection lost. Check your network and try again.");
+  }
+  if (error instanceof Error) {
+    return error;
+  }
+  return new Error("Conversion failed. Try a different file or paste the text directly.");
+}
+
+async function parseIngestResponse(res: Response): Promise<WorkspaceIngestIdentity> {
+  const payload = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    message?: string;
+    workspaceId?: string;
+    documentId?: string;
+    documentVersionId?: string;
+    versionNumber?: number;
+    conversionStatus?: "ok" | "failed";
+    rawMarkdownLength?: number;
+    title?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(
+      payload.message ??
+        payload.error ??
+        "Conversion failed. Try a different file or paste the text directly.",
+    );
+  }
+
+  if (
+    !payload.workspaceId ||
+    !payload.documentId ||
+    !payload.documentVersionId ||
+    typeof payload.versionNumber !== "number"
+  ) {
+    throw new Error("Ingest response missing workspace identity.");
+  }
+
+  return {
+    workspaceId: payload.workspaceId,
+    documentId: payload.documentId,
+    documentVersionId: payload.documentVersionId,
+    versionNumber: payload.versionNumber,
+    conversionStatus: payload.conversionStatus ?? "ok",
+    rawMarkdownLength: payload.rawMarkdownLength ?? 0,
+    title: payload.title ?? "Untitled",
+  };
+}
+
 async function postIngestJson(
-  studySetId: string,
-  body: IngestJsonBody,
-): Promise<void> {
-  const res = await fetch(`/api/study-sets/${studySetId}/ingest`, {
+  body: WorkspaceIngestJsonBody,
+): Promise<WorkspaceIngestIdentity> {
+  const res = await fetch("/api/workspaces/ingest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const payload = (await res.json().catch(() => ({}))) as {
-    error?: string;
-    message?: string;
-  };
-  if (!res.ok) {
-    throw new Error(
-      payload.message ??
-        payload.error ??
-        "Conversion failed. Try a different file or paste the text directly.",
-    );
-  }
+  return parseIngestResponse(res);
 }
 
-async function postIngestMultipart(
-  studySetId: string,
-  file: File,
-): Promise<void> {
+async function postIngestMultipart(file: File): Promise<WorkspaceIngestIdentity> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`/api/study-sets/${studySetId}/ingest`, {
+  const res = await fetch("/api/workspaces/ingest", {
     method: "POST",
     body: form,
   });
-  const payload = (await res.json().catch(() => ({}))) as {
-    error?: string;
-    message?: string;
-  };
-  if (!res.ok) {
-    throw new Error(
-      payload.message ??
-        payload.error ??
-        "Conversion failed. Try a different file or paste the text directly.",
-    );
-  }
+  return parseIngestResponse(res);
 }
 
-export async function ingestStudySetSource(params: {
+/**
+ * First-upload client: posts to workspace ingest only.
+ * Does not call createStudySetEarlyMeta — server creates workspace after validation.
+ * Legacy study-set ingest remains in ingestStudySet.ts for existing routes.
+ */
+export async function ingestWorkspaceSource(params: {
   input: IngestSourceInput;
-  contentKind: StudyContentKind;
-  title?: string;
   onStep?: (step: IngestUiStep) => void;
-}): Promise<string> {
-  const { input, contentKind, onStep } = params;
-  const title =
-    params.title ??
-    (input.kind === "file"
-      ? input.file.name.replace(/\.[^.]+$/, "") || "New study set"
-      : contentKind === "flashcards"
-        ? "New flip study"
-        : "New practice set");
+}): Promise<WorkspaceIngestIdentity> {
+  const { input, onStep } = params;
 
   onStep?.("validating");
-
-  const studySetId = await createStudySetEarlyMeta({ title, contentKind });
-  const userId = await requireUserId();
-  const supabase = createSupabaseBrowserClient();
 
   try {
     if (input.kind === "file") {
@@ -169,7 +191,10 @@ export async function ingestStudySetSource(params: {
 
       if (file.size > MULTIPART_THRESHOLD_BYTES) {
         onStep?.("uploading");
-        const storagePath = `${userId}/${studySetId}/${sanitizeFilename(file.name)}`;
+        const userId = await requireUserId();
+        const supabase = createSupabaseBrowserClient();
+        const stagingId = crypto.randomUUID();
+        const storagePath = `${userId}/ingest-staging/${stagingId}/${sanitizeFilename(file.name)}`;
         const { error } = await supabase.storage
           .from(DOC2QUIZ_BUCKET)
           .upload(storagePath, file, {
@@ -181,38 +206,42 @@ export async function ingestStudySetSource(params: {
         }
 
         onStep?.("converting");
-        await postIngestJson(studySetId, {
+        const result = await postIngestJson({
           kind: "file_ref",
           storagePath,
           mimeType,
           filename: file.name,
           sizeBytes: file.size,
         });
-      } else {
-        onStep?.("converting");
-        await postIngestMultipart(studySetId, file);
+        onStep?.("done");
+        return result;
       }
-    } else if (input.kind === "paste") {
+
       onStep?.("converting");
-      await postIngestJson(studySetId, {
+      const result = await postIngestMultipart(file);
+      onStep?.("done");
+      return result;
+    }
+
+    if (input.kind === "paste") {
+      onStep?.("converting");
+      const result = await postIngestJson({
         kind: "paste",
         text: input.text,
       });
-    } else {
-      onStep?.("converting");
-      await postIngestJson(studySetId, {
-        kind: "youtube",
-        url: input.url,
-      });
+      onStep?.("done");
+      return result;
     }
 
+    onStep?.("converting");
+    const result = await postIngestJson({
+      kind: "youtube",
+      url: input.url,
+    });
     onStep?.("done");
-    return studySetId;
+    return result;
   } catch (error) {
     onStep?.("error");
-    if (error instanceof TypeError) {
-      throw new Error("Connection lost. Check your network and try again.");
-    }
-    throw error;
+    throw mapNetworkError(error);
   }
 }

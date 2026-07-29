@@ -174,10 +174,11 @@ describe("documentVersions metadata and soft delete", () => {
       documentId: "doc-1",
     });
 
-    const updateArg = chain.update.mock.calls[0]?.[0] as {
-      deleted_at: string;
-    };
-    expect(updateArg.deleted_at).toEqual(expect.any(String));
+    const updateCalls = chain.update.mock.calls as unknown as Array<
+      [{ deleted_at: string }]
+    >;
+    const updateArg = updateCalls[0]?.[0];
+    expect(updateArg?.deleted_at).toEqual(expect.any(String));
     expect(from).not.toHaveBeenCalledWith("learning_outputs");
     expect(from).not.toHaveBeenCalledWith("output_source_snapshots");
   });
