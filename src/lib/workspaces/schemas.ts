@@ -63,3 +63,15 @@ export const softDeleteVersionParamsSchema = z.object({
 export type SoftDeleteVersionParams = z.infer<
   typeof softDeleteVersionParamsSchema
 >;
+
+/** POST /api/workspaces/[workspaceId]/outputs/quiz — IDs only, no markdown/checksums. */
+export const workspaceQuizGenerateBodySchema = z
+  .object({
+    canonicalVersionIds: z.array(z.string().uuid()).min(1),
+    questionCount: z.number().int().min(1).max(40).optional(),
+  })
+  .strict();
+
+export type WorkspaceQuizGenerateBody = z.infer<
+  typeof workspaceQuizGenerateBodySchema
+>;
