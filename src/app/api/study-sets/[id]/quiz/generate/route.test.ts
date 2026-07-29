@@ -29,7 +29,7 @@ vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
 }));
 
-vi.mock("@/lib/workspaces/documentVersions", () => ({
+vi.mock("@/lib/workspaces/legacyBridge", () => ({
   resolveLegacyStudySetBridge: (...args: unknown[]) =>
     resolveLegacyStudySetBridgeMock(...args),
 }));
@@ -53,12 +53,30 @@ vi.mock("@/lib/server/quota/generationQuotaReservation", async (importOriginal) 
 import { POST } from "@/app/api/study-sets/[id]/quiz/generate/route";
 
 const VERSION_A = "11111111-1111-4111-8111-111111111111";
+const PARENT_ID = "parent-set";
+const BRIDGE_ID = "quiz-bridge";
 
 const RESERVED = {
   kind: "reserved" as const,
   reservationToken: "token-quiz-1",
   usedBonus: false,
   reservationExpiresAt: "2026-07-30T06:00:00.000Z",
+};
+
+const BRIDGE_RESOLUTION = {
+  outputId: "out-existing",
+  workspaceId: "ws-1",
+  bridgeStudySetId: BRIDGE_ID,
+  legacyParentStudySetId: PARENT_ID,
+  kind: "quiz" as const,
+  resolutionMode: "bridge" as const,
+  historyStudySetId: BRIDGE_ID,
+};
+
+const PARENT_RESOLUTION = {
+  ...BRIDGE_RESOLUTION,
+  resolutionMode: "parent" as const,
+  historyStudySetId: PARENT_ID,
 };
 
 function jsonRequest(body: unknown = {}) {
@@ -70,30 +88,14 @@ function jsonRequest(body: unknown = {}) {
 }
 
 function createAuthSupabase(options?: {
-  owned?: boolean;
   snapshots?: Array<{ canonical_version_id: string | null; ordinal: number }>;
 }) {
-  const owned = options?.owned ?? true;
   const snapshots = options?.snapshots ?? [
     { canonical_version_id: VERSION_A, ordinal: 1 },
   ];
 
   return {
     from: vi.fn((table: string) => {
-      if (table === "study_sets") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                maybeSingle: vi.fn(async () => ({
-                  data: owned ? { id: "set-1" } : null,
-                  error: null,
-                })),
-              })),
-            })),
-          })),
-        };
-      }
       if (table === "output_source_snapshots") {
         return {
           select: vi.fn(() => ({
@@ -106,23 +108,12 @@ function createAuthSupabase(options?: {
           })),
         };
       }
-      if (table === "learning_outputs") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                is: vi.fn(() => ({
-                  limit: vi.fn(() => ({
-                    maybeSingle: vi.fn(async () => ({
-                      data: null,
-                      error: null,
-                    })),
-                  })),
-                })),
-              })),
-            })),
-          })),
-        };
+      if (
+        table === "quota_consumptions" ||
+        table === "study_sessions" ||
+        table === "study_mistakes"
+      ) {
+        throw new Error(`must not mutate historic ${table}`);
       }
       throw new Error(`Unexpected table ${table}`);
     }),
@@ -136,11 +127,7 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
       supabase: createAuthSupabase(),
       user: { id: "user-1" },
     });
-    resolveLegacyStudySetBridgeMock.mockResolvedValue({
-      workspaceId: "ws-1",
-      legacyStudySetId: "set-1",
-      learningOutputId: "out-existing",
-    });
+    resolveLegacyStudySetBridgeMock.mockResolvedValue(BRIDGE_RESOLUTION);
     reserveGenerationQuotaMock.mockResolvedValue(RESERVED);
     commitGenerationQuotaMock.mockResolvedValue({ status: "committed" });
     releaseGenerationQuotaMock.mockResolvedValue({ status: "released" });
@@ -167,30 +154,41 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
     });
 
     const response = await POST(jsonRequest(), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(response.status).toBe(401);
     expect(runMultiSourceQuizGenerateMock).not.toHaveBeenCalled();
   });
 
-  it("returns 404 when study set is not found", async () => {
-    requireApiUserMock.mockResolvedValue({
-      supabase: createAuthSupabase({ owned: false }),
-      user: { id: "user-1" },
-    });
+  it("returns 404 when bridge is inaccessible", async () => {
+    resolveLegacyStudySetBridgeMock.mockResolvedValue(null);
 
     const response = await POST(jsonRequest(), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(response.status).toBe(404);
     expect(runMultiSourceQuizGenerateMock).not.toHaveBeenCalled();
   });
 
+  it("passes explicit quiz route kind into resolver", async () => {
+    await POST(jsonRequest(), {
+      params: Promise.resolve({ id: BRIDGE_ID }),
+    });
+
+    expect(resolveLegacyStudySetBridgeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studySetId: BRIDGE_ID,
+        routeKind: "quiz",
+        userId: "user-1",
+      }),
+    );
+  });
+
   it("returns 400 for invalid questionCount body", async () => {
     const response = await POST(jsonRequest({ questionCount: 99 }), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(response.status).toBe(400);
@@ -199,7 +197,7 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
 
   it("delegates to workspace service using frozen snapshot sources", async () => {
     const response = await POST(jsonRequest({ questionCount: 4 }), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
     const body = await response.json();
 
@@ -221,15 +219,75 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
     });
   });
 
+  it("parent kind selection resolves quiz child only", async () => {
+    resolveLegacyStudySetBridgeMock.mockResolvedValue(PARENT_RESOLUTION);
+
+    await POST(jsonRequest(), {
+      params: Promise.resolve({ id: PARENT_ID }),
+    });
+
+    expect(resolveLegacyStudySetBridgeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studySetId: PARENT_ID,
+        routeKind: "quiz",
+      }),
+    );
+    expect(runMultiSourceQuizGenerateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceId: "ws-1" }),
+    );
+  });
+
+  it("bridge resolution does not fall back to parent history keys", async () => {
+    expect(BRIDGE_RESOLUTION.historyStudySetId).toBe(BRIDGE_ID);
+    expect(BRIDGE_RESOLUTION.historyStudySetId).not.toBe(PARENT_ID);
+
+    await POST(jsonRequest(), {
+      params: Promise.resolve({ id: BRIDGE_ID }),
+    });
+
+    expect(resolveLegacyStudySetBridgeMock).toHaveBeenCalled();
+    expect(reserveGenerationQuotaMock).toHaveBeenCalledWith(
+      expect.objectContaining({ studySetId: "bridge-new" }),
+    );
+  });
+
+  it("does not mutate historic quota/session/mistake fixtures", async () => {
+    const supabase = createAuthSupabase();
+    requireApiUserMock.mockResolvedValue({
+      supabase,
+      user: { id: "user-1" },
+    });
+
+    await POST(jsonRequest(), {
+      params: Promise.resolve({ id: BRIDGE_ID }),
+    });
+
+    expect(supabase.from).not.toHaveBeenCalledWith("quota_consumptions");
+    expect(supabase.from).not.toHaveBeenCalledWith("study_sessions");
+    expect(supabase.from).not.toHaveBeenCalledWith("study_mistakes");
+  });
+
   it("prefers explicit canonicalVersionIds over snapshot fallback", async () => {
     const explicit = "22222222-2222-4222-8222-222222222222";
     await POST(jsonRequest({ canonicalVersionIds: [explicit] }), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(runMultiSourceQuizGenerateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         canonicalVersionIds: [explicit],
+      }),
+    );
+  });
+
+  it("uses frozen snapshots after source soft delete (snapshot study)", async () => {
+    await POST(jsonRequest(), {
+      params: Promise.resolve({ id: BRIDGE_ID }),
+    });
+
+    expect(runMultiSourceQuizGenerateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canonicalVersionIds: [VERSION_A],
       }),
     );
   });
@@ -245,7 +303,7 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
     );
 
     const response = await POST(jsonRequest(), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(response.status).toBe(402);
@@ -258,7 +316,7 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
     );
 
     const response = await POST(jsonRequest(), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(response.status).toBe(409);
@@ -272,7 +330,7 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
     );
 
     const response = await POST(jsonRequest(), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(response.status).toBe(400);
@@ -285,7 +343,7 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
     );
 
     const response = await POST(jsonRequest(), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(response.status).toBe(422);
@@ -293,7 +351,7 @@ describe("POST /api/study-sets/[id]/quiz/generate (legacy bridge adapter)", () =
 
   it("does not call replace_quiz_questions or runQuizGenerate", async () => {
     await POST(jsonRequest(), {
-      params: Promise.resolve({ id: "set-1" }),
+      params: Promise.resolve({ id: BRIDGE_ID }),
     });
 
     expect(runMultiSourceQuizGenerateMock).toHaveBeenCalled();

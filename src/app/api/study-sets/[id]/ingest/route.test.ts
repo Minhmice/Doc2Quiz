@@ -2,18 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
 import {
-  IngestConversionError,
-  IngestValidationError,
-} from "@/lib/pipeline/ingest";
+  WorkspaceIngestConversionError,
+  WorkspaceIngestValidationError,
+} from "@/lib/workspaces/createWorkspaceIngest";
 
-const runIngestMock = vi.fn();
+const runWorkspaceIngestMock = vi.fn();
 const requireApiUserMock = vi.fn();
+const resolveLegacyStudySetBridgeMock = vi.fn();
+const resolveLegacyWorkspaceDocumentMock = vi.fn();
 
-vi.mock("@/lib/pipeline/ingest", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/pipeline/ingest")>();
+vi.mock("@/lib/workspaces/createWorkspaceIngest", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/workspaces/createWorkspaceIngest")>();
   return {
     ...actual,
-    runIngest: (...args: unknown[]) => runIngestMock(...args),
+    runWorkspaceIngest: (...args: unknown[]) => runWorkspaceIngestMock(...args),
   };
 });
 
@@ -21,44 +24,53 @@ vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
 }));
 
+vi.mock("@/lib/workspaces/legacyBridge", () => ({
+  resolveLegacyStudySetBridge: (...args: unknown[]) =>
+    resolveLegacyStudySetBridgeMock(...args),
+  resolveLegacyWorkspaceDocument: (...args: unknown[]) =>
+    resolveLegacyWorkspaceDocumentMock(...args),
+}));
+
 import { POST } from "@/app/api/study-sets/[id]/ingest/route";
 
-function jsonRequest(body: unknown, contentType = "application/json") {
+const BRIDGE = {
+  outputId: "out-1",
+  workspaceId: "ws-1",
+  bridgeStudySetId: "bridge-1",
+  legacyParentStudySetId: "parent-1",
+  kind: "quiz" as const,
+  resolutionMode: "bridge" as const,
+  historyStudySetId: "bridge-1",
+};
+
+function jsonRequest(body: unknown) {
   return new Request("http://localhost/api/study-sets/set-1/ingest", {
     method: "POST",
-    headers: { "content-type": contentType },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-function createAuthSupabase() {
-  return {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            maybeSingle: vi.fn(async () => ({
-              data: { id: "set-1" },
-              error: null,
-            })),
-          })),
-        })),
-      })),
-    })),
-  };
-}
-
-describe("POST /api/study-sets/[id]/ingest", () => {
+describe("POST /api/study-sets/[id]/ingest (legacy adapter)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireApiUserMock.mockResolvedValue({
-      supabase: createAuthSupabase(),
+      supabase: { from: vi.fn() },
       user: { id: "user-1" },
     });
-    runIngestMock.mockResolvedValue({
-      studySetId: "set-1",
-      pipelineStage: "raw",
+    resolveLegacyStudySetBridgeMock.mockResolvedValue(BRIDGE);
+    resolveLegacyWorkspaceDocumentMock.mockResolvedValue({
+      documentId: "doc-1",
+      documentVersionId: "dv-1",
+    });
+    runWorkspaceIngestMock.mockResolvedValue({
+      workspaceId: "ws-1",
+      documentId: "doc-1",
+      documentVersionId: "dv-2",
+      versionNumber: 2,
+      conversionStatus: "ok",
       rawMarkdownLength: 42,
+      title: "Biology",
     });
   });
 
@@ -67,21 +79,38 @@ describe("POST /api/study-sets/[id]/ingest", () => {
       error: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
     });
 
-    const response = await POST(jsonRequest({ kind: "paste", text: "x".repeat(30) }), {
-      params: Promise.resolve({ id: "set-1" }),
-    });
+    const response = await POST(
+      jsonRequest({ kind: "paste", text: "x".repeat(30) }),
+      { params: Promise.resolve({ id: "set-1" }) },
+    );
 
     expect(response.status).toBe(401);
   });
 
-  it("returns 400 for validation errors", async () => {
-    runIngestMock.mockRejectedValue(
-      new IngestValidationError("Unsupported file type"),
+  it("returns 404 when bridge inaccessible", async () => {
+    resolveLegacyStudySetBridgeMock.mockResolvedValue(null);
+
+    const response = await POST(
+      jsonRequest({ kind: "paste", text: "x".repeat(30) }),
+      { params: Promise.resolve({ id: "set-1" }) },
     );
 
-    const response = await POST(jsonRequest({ kind: "paste", text: "x".repeat(30) }), {
-      params: Promise.resolve({ id: "set-1" }),
-    });
+    expect(response.status).toBe(404);
+    expect(resolveLegacyStudySetBridgeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ routeKind: "ingest" }),
+    );
+    expect(runWorkspaceIngestMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for validation errors", async () => {
+    runWorkspaceIngestMock.mockRejectedValue(
+      new WorkspaceIngestValidationError("Unsupported file type"),
+    );
+
+    const response = await POST(
+      jsonRequest({ kind: "paste", text: "x".repeat(30) }),
+      { params: Promise.resolve({ id: "set-1" }) },
+    );
     const body = await response.json();
 
     expect(response.status).toBe(400);
@@ -89,26 +118,46 @@ describe("POST /api/study-sets/[id]/ingest", () => {
   });
 
   it("returns 422 for conversion errors", async () => {
-    runIngestMock.mockRejectedValue(
-      new IngestConversionError("Conversion failed"),
+    runWorkspaceIngestMock.mockRejectedValue(
+      new WorkspaceIngestConversionError("Conversion failed"),
     );
 
-    const response = await POST(jsonRequest({ kind: "paste", text: "x".repeat(30) }), {
-      params: Promise.resolve({ id: "set-1" }),
-    });
+    const response = await POST(
+      jsonRequest({ kind: "paste", text: "x".repeat(30) }),
+      { params: Promise.resolve({ id: "set-1" }) },
+    );
 
     expect(response.status).toBe(422);
   });
 
-  it("returns 200 with pipeline stage on success", async () => {
-    const response = await POST(jsonRequest({ kind: "paste", text: "x".repeat(30) }), {
-      params: Promise.resolve({ id: "set-1" }),
-    });
+  it("delegates to workspace ingest and preserves legacy DTO fields", async () => {
+    const response = await POST(
+      jsonRequest({ kind: "paste", text: "x".repeat(30) }),
+      { params: Promise.resolve({ id: "set-1" }) },
+    );
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.pipelineStage).toBe("raw");
     expect(body.rawMarkdownLength).toBe(42);
-    expect(runIngestMock).toHaveBeenCalled();
+    expect(body.studySetId).toBe("set-1");
+    expect(runWorkspaceIngestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: "ws-1",
+        documentId: "doc-1",
+      }),
+    );
+  });
+
+  it("rejects ingest when source document is soft-deleted", async () => {
+    resolveLegacyWorkspaceDocumentMock.mockResolvedValue(null);
+
+    const response = await POST(
+      jsonRequest({ kind: "paste", text: "x".repeat(30) }),
+      { params: Promise.resolve({ id: "set-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(runWorkspaceIngestMock).not.toHaveBeenCalled();
   });
 });

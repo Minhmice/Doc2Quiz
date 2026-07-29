@@ -2,40 +2,27 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
-import {
-  IngestConversionError,
-  IngestValidationError,
-  runIngest,
-} from "@/lib/pipeline/ingest";
-import { ingestJsonBodySchema } from "@/lib/pipeline/ingestSchemas";
 import { formatSupabaseNetworkError } from "@/lib/supabase/networkErrors";
 import type { SupportedMimeType } from "@/lib/pipeline/validation";
+import {
+  runWorkspaceIngest,
+  WorkspaceIngestConversionError,
+  WorkspaceIngestValidationError,
+} from "@/lib/workspaces/createWorkspaceIngest";
+import {
+  resolveLegacyStudySetBridge,
+  resolveLegacyWorkspaceDocument,
+} from "@/lib/workspaces/legacyBridge";
+import { workspaceIngestJsonBodySchema } from "@/lib/workspaces/schemas";
+import {
+  WorkspaceForbiddenError,
+  WorkspaceNotFoundError,
+} from "@/lib/workspaces/errors";
 
-async function verifyStudySet(
-  supabase: Awaited<
-    ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>
-  >,
-  userId: string,
-  studySetId: string,
-) {
-  const { data, error } = await supabase
-    .from("study_sets")
-    .select("id")
-    .eq("id", studySetId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) {
-    return { error: NextResponse.json({ error: error.message }, { status: 500 }) };
-  }
-
-  if (!data) {
-    return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-  }
-
-  return { ok: true as const };
-}
-
+/**
+ * Legacy set-ID ingest adapter. Appends a workspace document version; does not
+ * call mutable legacy runIngest / canonical_documents upsert.
+ */
 export async function POST(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -46,9 +33,32 @@ export async function POST(
   }
 
   const { id } = await ctx.params;
-  const verified = await verifyStudySet(auth.supabase, auth.user.id, id);
-  if ("error" in verified) {
-    return verified.error as Response;
+
+  const bridge = await resolveLegacyStudySetBridge({
+    supabase: auth.supabase,
+    studySetId: id,
+    routeKind: "ingest",
+    userId: auth.user.id,
+  });
+
+  if (!bridge) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const document = await resolveLegacyWorkspaceDocument({
+    supabase: auth.supabase,
+    workspaceId: bridge.workspaceId,
+  });
+
+  if (!document) {
+    return NextResponse.json(
+      {
+        error: "validation_error",
+        message:
+          "Workspace has no active document for replacement ingest. Soft-deleted sources cannot accept new versions.",
+      },
+      { status: 400 },
+    );
   }
 
   const contentType = request.headers.get("content-type") ?? "";
@@ -61,14 +71,23 @@ export async function POST(
         return NextResponse.json({ error: "Missing file" }, { status: 400 });
       }
 
-      const result = await runIngest({
+      const result = await runWorkspaceIngest({
         supabase: auth.supabase,
         userId: auth.user.id,
-        studySetId: id,
+        workspaceId: bridge.workspaceId,
+        documentId: document.documentId,
         payload: { kind: "multipart_file", file },
       });
 
-      return NextResponse.json(result);
+      return NextResponse.json({
+        studySetId: id,
+        pipelineStage: "raw" as const,
+        rawMarkdownLength: result.rawMarkdownLength,
+        workspaceId: result.workspaceId,
+        documentId: result.documentId,
+        documentVersionId: result.documentVersionId,
+        versionNumber: result.versionNumber,
+      });
     }
 
     let jsonBody: unknown;
@@ -78,29 +97,47 @@ export async function POST(
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const body = ingestJsonBodySchema.parse(jsonBody);
-    const result = await runIngest({
+    const body = workspaceIngestJsonBodySchema.parse(jsonBody);
+    const result = await runWorkspaceIngest({
       supabase: auth.supabase,
       userId: auth.user.id,
-      studySetId: id,
+      workspaceId: bridge.workspaceId,
+      documentId: document.documentId,
       payload:
         body.kind === "file_ref"
           ? { ...body, mimeType: body.mimeType as SupportedMimeType }
           : body,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      studySetId: id,
+      pipelineStage: "raw" as const,
+      rawMarkdownLength: result.rawMarkdownLength,
+      workspaceId: result.workspaceId,
+      documentId: result.documentId,
+      documentVersionId: result.documentVersionId,
+      versionNumber: result.versionNumber,
+    });
   } catch (error) {
-    if (error instanceof IngestValidationError) {
+    if (error instanceof WorkspaceIngestValidationError) {
       return NextResponse.json(
         { error: "validation_error", message: error.message },
         { status: 400 },
       );
     }
-    if (error instanceof IngestConversionError) {
+    if (error instanceof WorkspaceIngestConversionError) {
       return NextResponse.json(
         { error: "conversion_error", message: error.message },
         { status: 422 },
+      );
+    }
+    if (error instanceof WorkspaceNotFoundError) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (error instanceof WorkspaceForbiddenError) {
+      return NextResponse.json(
+        { error: "forbidden", message: error.message },
+        { status: 403 },
       );
     }
     if (error instanceof ZodError) {
