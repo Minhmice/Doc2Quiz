@@ -16,38 +16,27 @@ type MockSupabase = {
 };
 
 function createChain(result: { data: unknown; error: unknown }) {
-  const terminal = {
-    maybeSingle: vi.fn(async () => result),
-    order: vi.fn(() => ({
-      limit: vi.fn(async () => result),
-      then: undefined,
-    })),
-    limit: vi.fn(async () => result),
-  };
+  const maybeSingle = vi.fn(async () => result);
+  const limit = vi.fn(async () => result);
+  const order = vi.fn(() => {
+    const ordered: {
+      limit: typeof limit;
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise<unknown>;
+    } = {
+      limit,
+      then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
+    };
+    return ordered;
+  });
 
-  // Support .order().limit() and bare .order() for index queries
-  terminal.order = vi.fn(() => ({
-    ...terminal,
-    limit: vi.fn(async () => result),
-    // When metadata selects with only .order (no limit), await the chain
-    then: (resolve: (v: unknown) => unknown) =>
-      Promise.resolve(result).then(resolve),
-  }));
-
-  const gt = vi.fn(() => ({
-    order: terminal.order,
-  }));
-
-  const is = vi.fn(() => ({
-    maybeSingle: terminal.maybeSingle,
-  }));
-
+  const gt = vi.fn(() => ({ order }));
+  const is = vi.fn(() => ({ maybeSingle }));
   const eq = vi.fn(() => ({
-    eq: eq,
+    eq,
     is,
     gt,
-    order: terminal.order,
-    maybeSingle: terminal.maybeSingle,
+    order,
+    maybeSingle,
   }));
 
   return {
