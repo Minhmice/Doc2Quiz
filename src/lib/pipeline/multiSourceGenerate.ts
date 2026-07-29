@@ -5,8 +5,6 @@ import { mapQuizOutputToRows } from "@/lib/pipeline/mapQuizOutputToRows";
 import {
   buildQuestionCandidates,
   callQuizGenerator,
-  QuizGenerateError,
-  QuizGenerateValidationError,
   resolveGenerationMode,
   truncateCanonicalMarkdown,
   validateAtomicFactArtifact,
@@ -42,12 +40,27 @@ import {
 const QUIZ_AI_TOTAL_BUDGET_MS = 180_000;
 const SUPABASE_WRITE_MAX_ATTEMPTS = 3;
 
-export class MultiSourceGenerateValidationError extends QuizGenerateValidationError {
+export class MultiSourceGenerateValidationError extends Error {
   readonly name = "MultiSourceGenerateValidationError";
 }
 
-export class MultiSourceGenerateError extends QuizGenerateError {
+export class MultiSourceGenerateError extends Error {
   readonly name = "MultiSourceGenerateError";
+  readonly statusCode: number;
+  readonly code: string;
+  readonly details?: Record<string, number | string>;
+
+  constructor(
+    message: string,
+    statusCode = 422,
+    code = "QUIZ_GENERATION_FAILED",
+    details?: Record<string, number | string>,
+  ) {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.details = details;
+  }
 }
 
 export type MultiSourceQuizGenerateSuccess = QuizGenerateSuccess & {

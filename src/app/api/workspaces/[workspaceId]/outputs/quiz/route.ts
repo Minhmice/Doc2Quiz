@@ -60,7 +60,7 @@ export async function POST(
 
   try {
     const usage = await getUserUsage({
-      supabase: auth.supabase,
+      supabase: auth.supabase as never,
       user: auth.user,
     });
     if (
