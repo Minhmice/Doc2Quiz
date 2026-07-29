@@ -281,7 +281,7 @@ Plans:
   4. User redeems case-insensitive coupon codes in Settings; bonus credits stack; each code once per user
   5. Vitest + build pass; EN/VI plan copy complete
 
-**Plans:** 6/6 plans complete
+**Plans:** 6/7 plans complete
 
 Plans:
 **Wave 1**
@@ -307,6 +307,10 @@ Plans:
 **Wave 6** *(gap closure; blocked on 08-05)*
 
 - [x] 08-06-PLAN.md — Reserve-before-generation route lifecycle and deterministic failure-release tests for quiz and flashcards
+
+**Wave 7** *(gap closure; blocked on 08-06)*
+
+- [ ] 08-07-PLAN.md — Fix GET /api/usage TypeScript build failure (TS2589) without runtime behavior change
 
 ### Phase 9: Workspace-Centered Learning & Canonical Provenance
 
