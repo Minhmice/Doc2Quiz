@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T06:33:00.000Z"
+last_updated: "2026-07-29T23:45:33.670Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 6
-  total_plans: 60
-  completed_plans: 43
-  percent: 72
+  total_plans: 61
+  completed_plans: 45
+  percent: 60
 ---
 
 # Doc2Quiz — State

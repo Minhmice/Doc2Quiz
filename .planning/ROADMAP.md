@@ -200,7 +200,7 @@ Plans:
   4. Literal product copy stays primary; destructive, privacy, auth, accessibility, serious-error, and shaming copy contains no slang
   5. Lint, typecheck, tests, build, route matrix, and mobile/desktop layout verification pass with existing functionality unchanged
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -223,7 +223,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 06-07-PLAN.md — Coverage audit, full automated gates, and human EN/VI route/layout verification
+- [x] 06-07-PLAN.md — Coverage audit, full automated gates, and human EN/VI route/layout verification
 
 ### Phase 7: Normalize app information architecture around setId-based quiz and flashcard routes, unified creation flows, library filtering, set-detail navigation, and a responsive sidebar that persists, collapses, or hides by workflow context
 
