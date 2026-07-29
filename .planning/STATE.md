@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T06:10:00.000Z"
+last_updated: "2026-07-30T06:20:00.000Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 60
-  completed_plans: 41
-  percent: 68
+  completed_plans: 42
+  percent: 70
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 09 (workspace-centered-learning-canonical-provenance) — EXECUTING
-Plan: 09-02 complete; next 09-03 (3 of 9)
-Status: Ready to execute 09-03
+Plan: 09-03 complete; next 09-04 (4 of 9)
+Status: Ready to execute 09-04
 Last activity: 2026-07-30
 
-Progress: [███████░░░] 68%
+Progress: [███████░░░] 70%
 
 ## Decisions
 
@@ -63,6 +63,8 @@ Progress: [███████░░░] 68%
 - [Phase 09]: Native outputs use null `legacy_parent_study_set_id`; backfill always sets immutable parent.
 - [Phase 09]: First ingest validates before `create_workspace_document_version`; originals land at `{workspaceId}/{documentId}/{versionId}/...`.
 - [Phase 09]: Import client uses `/api/workspaces/ingest`; legacy `ingestStudySet` retained for adapters.
+- [Phase 09]: Workspace canonicalize appends via `persist_canonical_version` only; never `replace_canonical_content`.
+- [Phase 09]: Canonical reader returns metadata + paginated section bodies (limit 1–50); progressive UI uses IntersectionObserver.
 
 ## Quick Tasks Completed
 
@@ -72,7 +74,7 @@ Progress: [███████░░░] 68%
 
 ## Next step
 
-Execute Phase 9 Plan 09-03 — append-only canonical versions and progressive section reader.
+Execute Phase 9 Plan 09-04 — multi-source quiz generation from selected canonical version IDs.
 
 ## Accumulated Context
 

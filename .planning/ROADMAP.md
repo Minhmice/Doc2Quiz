@@ -321,7 +321,7 @@ Plans:
   4. Quiz and flashcard generation supports multiple canonical document versions and persists frozen snapshots.
   5. Soft-deleting documents or canonical versions preserves existing generated outputs and provenance.
 
-**Plans:** 2/9 plans executed
+**Plans:** 3/9 plans executed
 
 Plans:
 **Wave 1**
@@ -334,7 +334,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 09-03-PLAN.md — Append-only canonical versions and progressive section reader
+- [x] 09-03-PLAN.md — Append-only canonical versions and progressive section reader
 
 **Wave 4** *(blocked on Wave 3)*
 
