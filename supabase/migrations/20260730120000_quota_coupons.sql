@@ -56,6 +56,17 @@ create policy "Users can view own quota wallet"
   to authenticated
   using ((select auth.uid()) = user_id);
 
+create policy "Users can create own quota wallet"
+  on public.user_quota_wallet for insert
+  to authenticated
+  with check ((select auth.uid()) = user_id);
+
+create policy "Users can update own quota wallet"
+  on public.user_quota_wallet for update
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
 create policy "Users can view own quota consumptions"
   on public.quota_consumptions for select
   to authenticated
