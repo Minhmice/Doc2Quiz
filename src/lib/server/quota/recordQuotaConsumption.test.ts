@@ -1,55 +1,68 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/server/resolveUserAiTier", () => ({ resolveUserAiTier: vi.fn(() => "free") }));
-vi.mock("./getUserUsage", () => ({ getUserUsage: vi.fn() }));
 
-import { getUserUsage } from "./getUserUsage";
+import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
+
 import { recordQuotaConsumption } from "./recordQuotaConsumption";
 
-function createSupabase(existing: unknown = null) {
+function createSupabase() {
   const insert = vi.fn(async () => ({ error: null }));
   const upsert = vi.fn(async () => ({ error: null }));
+  const update = vi.fn(async () => ({ error: null }));
   return {
     insert,
     upsert,
+    update,
+    rpc: vi.fn(),
     from: vi.fn((table: string) => {
       if (table === "quota_consumptions") {
         return {
-          select: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn(async () => ({ data: existing, error: null })) })) })) })),
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+              })),
+            })),
+          })),
           insert,
+          update,
         };
       }
-      return { upsert };
+      return { upsert, update };
     }),
   };
 }
 
 describe("recordQuotaConsumption", () => {
-  it("records weekly generation without wallet mutation", async () => {
-    vi.mocked(getUserUsage).mockResolvedValue({ plan: "free", weeklyUsed: 9, weeklyLimit: 10, weeklyRemaining: 1, bonusCredits: 2, weekResetsAt: "", });
+  it("does not insert or mutate quota tables for free users", async () => {
     const supabase = createSupabase();
 
-    await recordQuotaConsumption({ supabase, user: { id: "user-1" } as never, studySetId: "set-1", contentKind: "quiz" });
-
-    expect(supabase.insert).toHaveBeenCalledWith(expect.objectContaining({ used_bonus: false }));
-    expect(supabase.upsert).not.toHaveBeenCalled();
-  });
-
-  it("uses bonus after weekly limit", async () => {
-    vi.mocked(getUserUsage).mockResolvedValue({ plan: "free", weeklyUsed: 10, weeklyLimit: 10, weeklyRemaining: 0, bonusCredits: 2, weekResetsAt: "", });
-    const supabase = createSupabase();
-
-    await recordQuotaConsumption({ supabase, user: { id: "user-1" } as never, studySetId: "set-1", contentKind: "quiz" });
-
-    expect(supabase.insert).toHaveBeenCalledWith(expect.objectContaining({ used_bonus: true }));
-    expect(supabase.upsert).toHaveBeenCalledWith(expect.objectContaining({ bonus_credits: 1 }));
-  });
-
-  it("skips duplicate study set", async () => {
-    const supabase = createSupabase({ id: "existing" });
-
-    await recordQuotaConsumption({ supabase, user: { id: "user-1" } as never, studySetId: "set-1", contentKind: "quiz" });
+    await recordQuotaConsumption({
+      supabase,
+      user: { id: "user-1" } as never,
+      studySetId: "set-1",
+      contentKind: "quiz",
+    });
 
     expect(supabase.insert).not.toHaveBeenCalled();
+    expect(supabase.upsert).not.toHaveBeenCalled();
+    expect(supabase.update).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it("skips work for pro users without touching quota tables", async () => {
+    vi.mocked(resolveUserAiTier).mockReturnValue("pro");
+    const supabase = createSupabase();
+
+    await recordQuotaConsumption({
+      supabase,
+      user: { id: "user-1" } as never,
+      studySetId: "set-1",
+      contentKind: "quiz",
+    });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalled();
   });
 });
