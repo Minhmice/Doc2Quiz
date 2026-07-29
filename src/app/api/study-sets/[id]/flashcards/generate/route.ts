@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
+import { QuotaExceededError } from "@/lib/server/quota/QuotaExceededError";
+import {
+  GenerationInProgressError,
+  commitGenerationQuota,
+  releaseGenerationQuota,
+  reserveGenerationQuota,
+} from "@/lib/server/quota/generationQuotaReservation";
 import {
   FlashcardGenerateError,
   FlashcardGenerateValidationError,
@@ -74,7 +81,20 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  let reservationToken: string | null = null;
+  let quotaCommitted = false;
+
   try {
+    const reservation = await reserveGenerationQuota({
+      supabase: auth.supabase,
+      user: auth.user,
+      studySetId: id,
+      contentKind: "flashcards",
+    });
+    if (reservation.kind === "reserved") {
+      reservationToken = reservation.reservationToken;
+    }
+
     const result = await runFlashcardGenerate({
       supabase: auth.supabase,
       userId: auth.user.id,
@@ -85,6 +105,20 @@ export async function POST(
       amount: body.amount,
     });
 
+    if (reservationToken) {
+      const commitResult = await commitGenerationQuota({
+        supabase: auth.supabase,
+        reservationToken,
+      });
+      if (commitResult.status !== "committed") {
+        return NextResponse.json(
+          { error: "internal_error", message: "Quota commit failed." },
+          { status: 500 },
+        );
+      }
+      quotaCommitted = true;
+    }
+
     return NextResponse.json({
       recommendedCount: result.recommendedCount,
       generatedCount: result.generatedCount,
@@ -92,6 +126,37 @@ export async function POST(
       cardIds: result.cardIds,
     });
   } catch (error) {
+    if (reservationToken && !quotaCommitted) {
+      try {
+        await releaseGenerationQuota({
+          supabase: auth.supabase,
+          reservationToken,
+        });
+      } catch (releaseError) {
+        console.error("quota release failed", {
+          reservationToken,
+          releaseError,
+          originalError: error,
+        });
+        return NextResponse.json(
+          { error: "internal_error", message: "Quota release failed." },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (error instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: "quota_exceeded", ...error.details },
+        { status: error.statusCode },
+      );
+    }
+    if (error instanceof GenerationInProgressError) {
+      return NextResponse.json(
+        { error: "generation_in_progress" },
+        { status: 409 },
+      );
+    }
     if (error instanceof FlashcardGenerateValidationError) {
       return NextResponse.json(
         { error: "validation_error", message: error.message },

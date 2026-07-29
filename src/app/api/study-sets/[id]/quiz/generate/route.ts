@@ -3,8 +3,12 @@ import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import { QuotaExceededError } from "@/lib/server/quota/QuotaExceededError";
-import { assertGenerationQuota } from "@/lib/server/quota/assertGenerationQuota";
-import { recordQuotaConsumption } from "@/lib/server/quota/recordQuotaConsumption";
+import {
+  GenerationInProgressError,
+  commitGenerationQuota,
+  releaseGenerationQuota,
+  reserveGenerationQuota,
+} from "@/lib/server/quota/generationQuotaReservation";
 import {
   QuizGenerateError,
   QuizGenerateValidationError,
@@ -73,12 +77,19 @@ export async function POST(
     }
   }
 
+  let reservationToken: string | null = null;
+  let quotaCommitted = false;
+
   try {
-    await assertGenerationQuota({
+    const reservation = await reserveGenerationQuota({
       supabase: auth.supabase,
       user: auth.user,
       studySetId: id,
+      contentKind: "quiz",
     });
+    if (reservation.kind === "reserved") {
+      reservationToken = reservation.reservationToken;
+    }
 
     const result = await runQuizGenerate({
       supabase: auth.supabase,
@@ -88,12 +99,19 @@ export async function POST(
       questionCountOverride,
     });
 
-    await recordQuotaConsumption({
-      supabase: auth.supabase,
-      user: auth.user,
-      studySetId: id,
-      contentKind: "quiz",
-    });
+    if (reservationToken) {
+      const commitResult = await commitGenerationQuota({
+        supabase: auth.supabase,
+        reservationToken,
+      });
+      if (commitResult.status !== "committed") {
+        return NextResponse.json(
+          { error: "internal_error", message: "Quota commit failed." },
+          { status: 500 },
+        );
+      }
+      quotaCommitted = true;
+    }
 
     return NextResponse.json({
       requestedCount: result.requestedCount,
@@ -106,10 +124,35 @@ export async function POST(
       rejectionSummary: result.rejectionSummary,
     });
   } catch (error) {
+    if (reservationToken && !quotaCommitted) {
+      try {
+        await releaseGenerationQuota({
+          supabase: auth.supabase,
+          reservationToken,
+        });
+      } catch (releaseError) {
+        console.error("quota release failed", {
+          reservationToken,
+          releaseError,
+          originalError: error,
+        });
+        return NextResponse.json(
+          { error: "internal_error", message: "Quota release failed." },
+          { status: 500 },
+        );
+      }
+    }
+
     if (error instanceof QuotaExceededError) {
       return NextResponse.json(
         { error: "quota_exceeded", ...error.details },
         { status: error.statusCode },
+      );
+    }
+    if (error instanceof GenerationInProgressError) {
+      return NextResponse.json(
+        { error: "generation_in_progress" },
+        { status: 409 },
       );
     }
     if (error instanceof QuizGenerateValidationError) {
