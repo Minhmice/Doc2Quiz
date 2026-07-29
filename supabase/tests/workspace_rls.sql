@@ -527,4 +527,173 @@ select pg_temp.assert_true(
   'canonical_version_sections created'
 );
 
+-- -------------------------------------------------------------------------
+-- Atomic RPCs: append-only persist + create_learning_output rollback
+-- -------------------------------------------------------------------------
+
+select pg_temp.as_user(owner_id) from workspace_test_ids;
+
+do $$
+declare
+  doc_version_id uuid;
+  persist_result jsonb;
+  created jsonb;
+  before_outputs integer;
+  before_bridges integer;
+  before_questions integer;
+begin
+  select dv.id into doc_version_id
+  from public.document_versions dv
+  join workspace_test_ids t
+    on dv.conversion_provenance ->> 'study_set_id' = t.parent_study_set_id::text
+  limit 1;
+
+  persist_result := public.persist_canonical_version(
+    doc_version_id,
+    '# Canonical v2',
+    encode(digest('# Canonical v2', 'sha256'), 'hex'),
+    encode(digest('[]', 'sha256'), 'hex'),
+    'test-model',
+    'prompt-1',
+    'parser-1',
+    '{"temperature":0}'::jsonb,
+    '{"mode":"test"}'::jsonb,
+    '{}'::jsonb,
+    1,
+    '[{"ordinal":1,"section_key":"sec_new","heading":"N","body_markdown":"x","section_type":"section"}]'::jsonb
+  );
+  perform pg_temp.assert_true(
+    (persist_result->>'versionNumber')::integer = 2,
+    'persist_canonical_version appends version 2'
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = 2 from public.canonical_versions where document_version_id = doc_version_id),
+    'canonical versions remain append-only'
+  );
+
+  select count(*) into before_outputs from public.learning_outputs;
+  select count(*) into before_bridges from public.study_sets;
+  select count(*) into before_questions from public.approved_questions;
+
+  begin
+    created := public.create_learning_output(
+      (select workspace_id from workspace_test_ids),
+      'quiz',
+      'Native Quiz',
+      '{}'::jsonb,
+      '[{"ordinal":1,"canonical_markdown":"# snap","sections":[]}]'::jsonb,
+      1,
+      '[{"prompt":"Q?","choices":["A","B","C","D"],"correct_index":0,"front":"bad"}]'::jsonb
+    );
+    perform pg_temp.assert_true(false, 'mixed-kind create_learning_output must fail');
+  exception
+    when others then
+      perform pg_temp.assert_true(
+        sqlerrm like '%mix%',
+        'mixed-kind rejected: ' || sqlerrm
+      );
+  end;
+
+  perform pg_temp.assert_true(
+    (select count(*) = before_outputs from public.learning_outputs),
+    'failed create_learning_output rolls back outputs'
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = before_bridges from public.study_sets),
+    'failed create_learning_output rolls back bridge study_sets'
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = before_questions from public.approved_questions),
+    'failed create_learning_output rolls back items'
+  );
+
+  created := public.create_learning_output(
+    (select workspace_id from workspace_test_ids),
+    'quiz',
+    'Native Quiz',
+    '{"generator":"test"}'::jsonb,
+    jsonb_build_array(
+      jsonb_build_object(
+        'ordinal', 1,
+        'canonical_version_id', (persist_result->>'canonicalVersionId')::uuid,
+        'canonical_content_checksum', persist_result->>'canonicalVersionId',
+        'sections_checksum', encode(digest('[]', 'sha256'), 'hex'),
+        'canonical_markdown', '# Canonical v2',
+        'sections', '[]'::jsonb,
+        'canonical_metadata', '{}'::jsonb,
+        'source_provenance', '{}'::jsonb
+      )
+    ),
+    1,
+    '[{"prompt":"Native Q?","choices":["A","B","C","D"],"correct_index":1,"explanation":"e"}]'::jsonb
+  );
+
+  perform pg_temp.assert_true(created ? 'outputId', 'create_learning_output returns outputId');
+  perform pg_temp.assert_true(created ? 'bridgeStudySetId', 'create_learning_output returns bridgeStudySetId');
+  perform pg_temp.assert_true(
+    (select count(*) = 1 from public.approved_questions aq
+      where aq.output_id = (created->>'outputId')::uuid
+        and aq.study_set_id = (created->>'bridgeStudySetId')::uuid),
+    'native items store bridge study_set_id and output_id'
+  );
+  perform pg_temp.assert_true(
+    (select legacy_parent_study_set_id is null from public.learning_outputs
+      where id = (created->>'outputId')::uuid),
+    'native output has null legacy_parent_study_set_id'
+  );
+end;
+$$;
+
+do $$
+declare
+  created jsonb;
+begin
+  created := public.create_workspace_document_version(
+    null,
+    null,
+    'Fresh Workspace',
+    'Fresh Doc',
+    'paste',
+    null,
+    null,
+    null,
+    null,
+    '# raw',
+    encode(digest('# raw', 'sha256'), 'hex'),
+    '{"via":"test"}'::jsonb
+  );
+  perform pg_temp.assert_true(created ? 'workspaceId', 'first-ingest returns workspaceId');
+  perform pg_temp.assert_true(
+    (created->>'versionNumber')::integer = 1,
+    'first-ingest creates version 1'
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = 1 from public.workspace_members
+      where workspace_id = (created->>'workspaceId')::uuid
+        and user_id = (select owner_id from workspace_test_ids)
+        and role = 'owner'),
+    'first-ingest creates owner membership'
+  );
+
+  created := public.create_workspace_document_version(
+    (created->>'workspaceId')::uuid,
+    (created->>'documentId')::uuid,
+    null,
+    'Fresh Doc',
+    'paste',
+    null,
+    null,
+    null,
+    null,
+    '# raw 2',
+    encode(digest('# raw 2', 'sha256'), 'hex'),
+    '{}'::jsonb
+  );
+  perform pg_temp.assert_true(
+    (created->>'versionNumber')::integer = 2,
+    'replacement appends document version 2'
+  );
+end;
+$$;
+
 rollback;
