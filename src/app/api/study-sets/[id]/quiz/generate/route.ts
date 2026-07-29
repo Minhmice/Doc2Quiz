@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
+import { QuotaExceededError } from "@/lib/server/quota/QuotaExceededError";
+import { assertGenerationQuota } from "@/lib/server/quota/assertGenerationQuota";
+import { recordQuotaConsumption } from "@/lib/server/quota/recordQuotaConsumption";
 import {
   QuizGenerateError,
   QuizGenerateValidationError,
@@ -71,12 +74,25 @@ export async function POST(
   }
 
   try {
+    await assertGenerationQuota({
+      supabase: auth.supabase,
+      user: auth.user,
+      studySetId: id,
+    });
+
     const result = await runQuizGenerate({
       supabase: auth.supabase,
       userId: auth.user.id,
       studySetId: id,
       user: auth.user,
       questionCountOverride,
+    });
+
+    await recordQuotaConsumption({
+      supabase: auth.supabase,
+      user: auth.user,
+      studySetId: id,
+      contentKind: "quiz",
     });
 
     return NextResponse.json({
@@ -90,6 +106,12 @@ export async function POST(
       rejectionSummary: result.rejectionSummary,
     });
   } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: "quota_exceeded", ...error.details },
+        { status: error.statusCode },
+      );
+    }
     if (error instanceof QuizGenerateValidationError) {
       return NextResponse.json(
         { error: "validation_error", message: error.message },

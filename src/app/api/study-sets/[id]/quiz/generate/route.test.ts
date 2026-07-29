@@ -8,6 +8,8 @@ import {
 
 const runQuizGenerateMock = vi.fn();
 const requireApiUserMock = vi.fn();
+const assertGenerationQuotaMock = vi.fn();
+const recordQuotaConsumptionMock = vi.fn();
 
 vi.mock("@/lib/pipeline/quizGenerate", async (importOriginal) => {
   const actual =
@@ -22,6 +24,15 @@ vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
 }));
 
+vi.mock("@/lib/server/quota/assertGenerationQuota", () => ({
+  assertGenerationQuota: (...args: unknown[]) => assertGenerationQuotaMock(...args),
+}));
+
+vi.mock("@/lib/server/quota/recordQuotaConsumption", () => ({
+  recordQuotaConsumption: (...args: unknown[]) => recordQuotaConsumptionMock(...args),
+}));
+
+import { QuotaExceededError } from "@/lib/server/quota/QuotaExceededError";
 import { POST } from "@/app/api/study-sets/[id]/quiz/generate/route";
 
 function jsonRequest(body: unknown = {}) {
@@ -56,6 +67,8 @@ describe("POST /api/study-sets/[id]/quiz/generate", () => {
       supabase: createAuthSupabase(),
       user: { id: "user-1" },
     });
+    assertGenerationQuotaMock.mockResolvedValue(undefined);
+    recordQuotaConsumptionMock.mockResolvedValue(undefined);
     runQuizGenerateMock.mockResolvedValue({
       ok: true,
       requestedCount: 4,
@@ -103,6 +116,21 @@ describe("POST /api/study-sets/[id]/quiz/generate", () => {
     });
 
     expect(response.status).toBe(404);
+    expect(runQuizGenerateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 402 before pipeline when quota is exceeded", async () => {
+    assertGenerationQuotaMock.mockRejectedValue(new QuotaExceededError({
+      weeklyUsed: 10, weeklyLimit: 10, bonusCredits: 0, weekResetsAt: "2026-08-02T17:00:00.000Z",
+    }));
+
+    const response = await POST(jsonRequest(), { params: Promise.resolve({ id: "set-1" }) });
+
+    expect(response.status).toBe(402);
+    expect(await response.json()).toEqual({
+      error: "quota_exceeded", weeklyUsed: 10, weeklyLimit: 10,
+      bonusCredits: 0, weekResetsAt: "2026-08-02T17:00:00.000Z",
+    });
     expect(runQuizGenerateMock).not.toHaveBeenCalled();
   });
 
@@ -209,6 +237,12 @@ describe("POST /api/study-sets/[id]/quiz/generate", () => {
       factReuseCount: 1,
       warnings: [],
       rejectionSummary: {},
+    });
+    expect(recordQuotaConsumptionMock).toHaveBeenCalledWith({
+      supabase: expect.anything(),
+      user: { id: "user-1" },
+      studySetId: "set-1",
+      contentKind: "quiz",
     });
     expect(runQuizGenerateMock).toHaveBeenCalledWith({
       supabase: expect.anything(),
