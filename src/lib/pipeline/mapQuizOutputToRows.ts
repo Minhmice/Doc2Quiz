@@ -5,6 +5,8 @@ export type ApprovedQuestionInsertRow = {
   id: string;
   user_id: string;
   study_set_id: string;
+  /** Set when persisting workspace-native learning outputs (RPC also assigns). */
+  output_id?: string;
   prompt: string;
   choices: [string, string, string, string];
   correct_index: 0 | 1 | 2 | 3;
@@ -30,12 +32,14 @@ export function mapGeneratedQuestionToRow(
     userId: string;
     studySetId: string;
     promptVersion: string;
+    outputId?: string;
   },
 ): ApprovedQuestionInsertRow {
   return {
     id: meta.id,
     user_id: meta.userId,
     study_set_id: meta.studySetId,
+    ...(meta.outputId ? { output_id: meta.outputId } : {}),
     prompt: question.prompt,
     choices: question.choices,
     correct_index: question.correct_index,
@@ -61,6 +65,7 @@ export function mapQuizOutputToRows(
     userId: string;
     studySetId: string;
     promptVersion: string;
+    outputId?: string;
   },
 ): ApprovedQuestionInsertRow[] {
   return questions.map((question) =>
@@ -69,6 +74,7 @@ export function mapQuizOutputToRows(
       userId: meta.userId,
       studySetId: meta.studySetId,
       promptVersion: meta.promptVersion,
+      outputId: meta.outputId,
     }),
   );
 }
