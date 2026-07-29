@@ -1,7 +1,7 @@
 # Phase 9 Validation Matrix — Workspace-Centered Learning & Canonical Provenance
 
-**Phase:** 09-workspace-centered-learning-canonical-provenance  
-**Revision:** 3  
+**Phase:** 09-workspace-centered-learning-canonical-provenance
+**Revision:** 3
 **Scope:** WORK-01–09 only. No Phase 10 invitation, sharing, public-link, anonymous, or friend workflows.
 
 ## Ownership by Wave

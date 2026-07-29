@@ -1,7 +1,7 @@
 # Phase 9: Workspace-Centered Learning & Canonical Provenance - Pattern Map
 
-**Mapped:** 2026-07-30  
-**Files analyzed:** 32 likely new/modified files  
+**Mapped:** 2026-07-30
+**Files analyzed:** 32 likely new/modified files
 **Analogs found:** 32 / 32
 
 ## File Classification
@@ -251,6 +251,6 @@ Keep `study_sets` IDs and routes viable via `learning_outputs.legacy_study_set_i
 
 ## Metadata
 
-**Analog search scope:** `supabase/migrations`, `src/app/api`, `src/lib/{pipeline,client}`, `src/hooks`, `src/components/{edit,canonical,dashboard}`  
-**Files scanned:** 20 focused source/migration/test files  
+**Analog search scope:** `supabase/migrations`, `src/app/api`, `src/lib/{pipeline,client}`, `src/hooks`, `src/components/{edit,canonical,dashboard}`
+**Files scanned:** 20 focused source/migration/test files
 **Pattern extraction date:** 2026-07-30

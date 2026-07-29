@@ -1,7 +1,7 @@
 # Phase 9: Workspace-Centered Learning & Canonical Provenance — Research
 
-**Researched:** 2026-07-30  
-**Domain:** Supabase/Postgres schema migration, immutable source and canonical provenance, multi-source learning generation  
+**Researched:** 2026-07-30
+**Domain:** Supabase/Postgres schema migration, immutable source and canonical provenance, multi-source learning generation
 **Confidence:** HIGH
 
 ## User Constraints
@@ -246,31 +246,31 @@ Phase 9 only establishes roles and policy predicates. Do not allow users to self
 ## Common Pitfalls
 
 ### Pitfall 1: Reusing mutable canonical persistence
-**What goes wrong:** `replace_canonical_content` overwrites canonical text and deletes old sections. Existing output then points at changed evidence.  
+**What goes wrong:** `replace_canonical_content` overwrites canonical text and deletes old sections. Existing output then points at changed evidence.
 **Avoid:** New canonicalization inserts a distinct canonical version; never call legacy replacement RPC for workspace-native data.
 
 ### Pitfall 2: Destructive regenerate semantics
-**What goes wrong:** Current quiz/flashcard services delete existing rows before inserts, and flashcard generation deletes quiz rows. This erases historic output.  
+**What goes wrong:** Current quiz/flashcard services delete existing rows before inserts, and flashcard generation deletes quiz rows. This erases historic output.
 **Avoid:** Generation creates a new `learning_outputs` record. Editing remains item-level inside one output; regeneration is a separate output/revision, never a replace-all source operation.
 
 ### Pitfall 3: Snapshot references without content
-**What goes wrong:** Only recording `canonical_version_id` makes historical provenance depend on present storage/schema/RLS.  
+**What goes wrong:** Only recording `canonical_version_id` makes historical provenance depend on present storage/schema/RLS.
 **Avoid:** Snapshot checksum, canonical metadata, exact canonical markdown, and ordered sections at output creation.
 
 ### Pitfall 4: Hard delete/cascade
-**What goes wrong:** Existing FKs use `on delete cascade`; deleting a legacy set destroys documents, outputs, sessions, and mistake evidence.  
+**What goes wrong:** Existing FKs use `on delete cascade`; deleting a legacy set destroys documents, outputs, sessions, and mistake evidence.
 **Avoid:** Soft delete workspace documents and versions. Historical output fetches snapshots. Keep legacy hard-delete endpoint away from workspace objects.
 
 ### Pitfall 5: Client-created workspace orphan
-**What goes wrong:** Browser creates workspace before upload; upload/conversion failure leaves empty workspaces.  
+**What goes wrong:** Browser creates workspace before upload; upload/conversion failure leaves empty workspaces.
 **Avoid:** Server creates workspace and first document/version only after request input validates. If source upload must precede conversion, retain failed version with explicit conversion status, not a silent orphan.
 
 ### Pitfall 6: RLS recursion or definer overreach
-**What goes wrong:** Membership policies query membership table recursively or a definer function gets default public execute/search path.  
+**What goes wrong:** Membership policies query membership table recursively or a definer function gets default public execute/search path.
 **Avoid:** Use hardened helper with explicit grants/search path and test owner/editor/viewer matrices. [CITED: https://supabase.com/docs/guides/database/functions]
 
 ### Pitfall 7: Dashboard N+1 and full canonical payload
-**What goes wrong:** Current dashboard fetches each bank/mistake after set list; canonical endpoint returns full text. Large workspace libraries will slow and memory-spike.  
+**What goes wrong:** Current dashboard fetches each bank/mistake after set list; canonical endpoint returns full text. Large workspace libraries will slow and memory-spike.
 **Avoid:** Server summary query and section-slice reader endpoints.
 
 ## Validation Architecture
@@ -404,5 +404,5 @@ Run focused Vitest tests per task, `npm run typecheck`, `npm run lint`, `npm run
 - Architecture: HIGH — derived from current schema/services and locked product decisions.
 - Pitfalls: HIGH — confirmed destructive/mutable patterns in current migrations and generation services.
 
-**Research date:** 2026-07-30  
+**Research date:** 2026-07-30
 **Valid until:** 2026-08-29
