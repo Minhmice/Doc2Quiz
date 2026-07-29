@@ -399,10 +399,10 @@ async function requireWorkspaceEditor(
     throw new Error(error.message);
   }
   if (!data) {
-    throw new CanonicalVersionValidationError("Workspace not found.");
+    throw new WorkspaceNotFoundError("Workspace not found.");
   }
   if (data.role === "viewer") {
-    throw new CanonicalVersionValidationError(
+    throw new WorkspaceForbiddenError(
       "Workspace editor access required to canonicalize.",
     );
   }
@@ -448,7 +448,7 @@ export async function runCanonicalVersion(params: {
     version.documents.workspace_id !== workspaceId ||
     version.documents.deleted_at != null
   ) {
-    throw new CanonicalVersionValidationError("Document version not found.");
+    throw new WorkspaceNotFoundError("Document version not found.");
   }
 
   const rawMarkdown = version.raw_markdown?.trim() ?? "";

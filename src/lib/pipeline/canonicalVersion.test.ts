@@ -10,6 +10,10 @@ import {
   CanonicalVersionValidationError,
   runCanonicalVersion,
 } from "@/lib/pipeline/canonicalVersion";
+import {
+  WorkspaceForbiddenError,
+  WorkspaceNotFoundError,
+} from "@/lib/workspaces/errors";
 
 const postChatCompletionAssistantTextMock = vi.fn();
 const loadCanonicalPromptMock = vi.fn();
@@ -218,7 +222,7 @@ describe("runCanonicalVersion", () => {
         documentVersionId: "ver-1",
         user: mockUser,
       }),
-    ).rejects.toBeInstanceOf(CanonicalVersionValidationError);
+    ).rejects.toBeInstanceOf(WorkspaceNotFoundError);
 
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
@@ -235,10 +239,7 @@ describe("runCanonicalVersion", () => {
         documentVersionId: "ver-1",
         user: mockUser,
       }),
-    ).rejects.toMatchObject({
-      name: "CanonicalVersionValidationError",
-      message: expect.stringMatching(/editor/i),
-    });
+    ).rejects.toBeInstanceOf(WorkspaceForbiddenError);
 
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
@@ -255,7 +256,7 @@ describe("runCanonicalVersion", () => {
         documentVersionId: "ver-1",
         user: mockUser,
       }),
-    ).rejects.toBeInstanceOf(CanonicalVersionValidationError);
+    ).rejects.toBeInstanceOf(WorkspaceNotFoundError);
 
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
