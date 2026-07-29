@@ -268,6 +268,130 @@ Plans:
 
 - [ ] 07-09-PLAN.md — Delete legacy routes, deterministic authenticated route smoke, full gates, and human matrix
 
+### Phase 8: Freemium & Coupons
+
+**Goal:** Free users are limited to 10 successful study-set generations per calendar week (Monday 00:00 UTC+7); Pro users are unlimited; users redeem coupon codes for bonus generation credits.
+**Requirements:** PLAN-01–10
+**Depends on:** Phase 7 (or executable in parallel once generate routes stable — no hard IA dependency)
+**Success Criteria:**
+
+  1. Quiz and flashcard generate APIs enforce quota server-side; regenerate on same set does not re-consume
+  2. Free user at weekly limit with zero bonus receives HTTP 402 with structured `quota_exceeded` payload
+  3. `GET /api/usage` drives sidebar and Settings plan card; `/quiz/[setId]` preflights before canonicalize
+  4. User redeems case-insensitive coupon codes in Settings; bonus credits stack; each code once per user
+  5. Vitest + build pass; EN/VI plan copy complete
+
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Migration + quota server lib + GET /api/usage + quiz route hooks + tests (tracer)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 08-02-PLAN.md — Flashcard route + client 402 + sidebar/settings usage + quiz preflight/block UI
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 08-03-PLAN.md — Coupon RPC + redeem API + Settings coupon form + seed codes + locale
+
+### Phase 9: Workspace-Centered Learning & Canonical Provenance
+
+**Goal:** Replace standalone study-set creation with durable workspaces that preserve document and canonical-version provenance while generating multi-source quizzes and flashcards.
+**Requirements:** WORK-01–09
+**Depends on:** Phase 8
+**Success Criteria:**
+
+  1. First upload creates a workspace automatically; dashboard lists workspaces and users can rename them later.
+  2. Source-file replacement creates a new immutable document version; metadata changes do not replace source material.
+  3. Canonical versions store complete reproducibility metadata and render progressive section-based reading views.
+  4. Quiz and flashcard generation supports multiple canonical document versions and persists frozen snapshots.
+  5. Soft-deleting documents or canonical versions preserves existing generated outputs and provenance.
+
+**Plans:** 9 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — Workspace schema, backfill, RLS, atomic RPCs, and checksum contract
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 09-02-PLAN.md — Workspace-native first ingest, immutable document lifecycle, and import client
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 09-03-PLAN.md — Append-only canonical versions and progressive section reader
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 09-04-PLAN.md — Multi-source quiz generation, frozen snapshots, and quiz bridge
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 09-05-PLAN.md — Multi-source flashcard parity, frozen snapshots, and flashcard bridge
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 09-06-PLAN.md — Workspace dashboard summary, detail API, and reader/output navigation
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 09-07-PLAN.md — Legacy non-flashcard adapter resolver contracts and tests
+
+**Wave 8** *(blocked on Wave 7)*
+
+- [ ] 09-08-PLAN.md — Legacy flashcard adapter contract and tests
+
+**Wave 9** *(blocked on Wave 8)*
+
+- [ ] 09-09-PLAN.md — SQL/static compatibility audit, full automated gates, and human verification
+
+### Phase 10: Safe Collaboration, Sharing & Friends
+
+**Goal:** Add secure workspace collaboration and anonymous study without public edit links or provenance-breaking access paths.
+**Requirements:** COLLAB-01–07
+**Depends on:** Phase 9
+**Success Criteria:**
+
+  1. Owner, editor, and viewer roles enforce distinct workspace permissions.
+  2. Public workspace, quiz, and flashcard links allow anonymous view/study only and never confer membership or edit rights.
+  3. Authenticated users receive workspace access only through explicit invitations with a selected role.
+  4. Anonymous quiz attempts persist locally, import safely after login, and avoid duplicates.
+  5. Username-based friend requests use normalized unique usernames, rate limits, and block/report controls.
+
+**Plans:** 10 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 10-01-PLAN.md — Confirm Phase 9 schema, seed RLS fixture, and enforce workspace-role RLS
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 10-02-PLAN.md — Owner invitations, membership authority, and private share lifecycle APIs
+
+**Wave 3** *(blocked on Wave 2 or Wave 1; plans run in parallel)*
+
+- [ ] 10-03-PLAN.md — Build locked opaque share authority, safe study DTO, and SQL coverage
+- [ ] 10-05-PLAN.md — Build locked social safety authority and SQL coverage
+- [ ] 10-09-PLAN.md — Migrate six exact Phase 9 workspace content routes to editor authorization
+
+**Wave 4** *(blocked on prerequisite feature plans; plans run in parallel)*
+
+- [ ] 10-04-PLAN.md — Public share route/UI and literal EN/VI safety copy
+- [ ] 10-07-PLAN.md — Protected profile and friend/block/report API wiring
+
+**Wave 5** *(blocked on public/social feature plans; plans run in parallel)*
+
+- [ ] 10-06-PLAN.md — Anonymous public-quiz outbox, idempotent import, and SQL coverage
+- [ ] 10-08-PLAN.md — Tested reachable role-aware workspace collaboration UI
+
+**Wave 6** *(blocked on social APIs and workspace UI locale ownership)*
+
+- [ ] 10-10-PLAN.md — Tested accessible social safety Settings UI
+
 ---
 
-*Last updated: 2026-07-25 — v2.1 MVP Pipeline from docs/pipeline.md*
+*Last updated: 2026-07-30 — planned Phase 10 safe collaboration, anonymous study, and friend safety*

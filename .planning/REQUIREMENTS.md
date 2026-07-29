@@ -148,15 +148,62 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 
 ---
 
+## Plans & Quota (PLAN)
+
+| ID | Requirement |
+|----|-------------|
+| PLAN-01 | Free users may complete at most **10 successful study-set generations** (quiz or flashcards) per **calendar week** (Monday 00:00 UTC+7) |
+| PLAN-02 | Quota is consumed on the **first successful generation per study set**; regenerating the same set does not consume again |
+| PLAN-03 | Ingest and canonicalize are **not** quota-gated |
+| PLAN-04 | Pro users (`resolveUserAiTier` → `pro`) have **unlimited** generations |
+| PLAN-05 | Quota is enforced **server-side** in quiz and flashcard generate API routes before pipeline work runs |
+| PLAN-06 | UI shows weekly usage, bonus credits, and next reset time in sidebar and Settings |
+| PLAN-07 | When quota is exceeded, API returns structured `quota_exceeded` error for upgrade/redeem CTA |
+| PLAN-08 | User can redeem a **coupon code** in Settings to add **bonus generation credits** |
+| PLAN-09 | Each coupon code is redeemable **once per user**; a user may redeem **multiple different codes** |
+| PLAN-10 | Coupon codes are case-insensitive; support optional global max redemptions and expiry |
+
+---
+
+## Workspaces & Canonical Provenance (WORK)
+
+| ID | Requirement |
+|----|-------------|
+| WORK-01 | First uploaded source automatically creates a workspace; user may rename it later. |
+| WORK-02 | Dashboard lists workspaces containing documents, canonical versions, quizzes, and flashcard sets. |
+| WORK-03 | A document has immutable versions; replacing source file creates a new document version, while metadata edits do not. |
+| WORK-04 | Canonical output belongs to a document version and persists its canonical version, model, prompt, parser, generator settings, and content checksum. |
+| WORK-05 | Canonical content renders section-by-section with pagination or progressive loading; full documents are not mounted at once. |
+| WORK-06 | Quiz and flashcard generation lets user select one or more completed canonical document versions. |
+| WORK-07 | Every generated output stores frozen canonical-version snapshots and source provenance; later document changes cannot alter it. |
+| WORK-08 | Documents and canonical versions soft-delete; existing outputs retain their frozen provenance and remain studyable. |
+| WORK-09 | Workspace ownership is distinct from editor and viewer membership roles. |
+
+---
+
+## Collaboration & Sharing (COLLAB)
+
+| ID | Requirement |
+|----|-------------|
+| COLLAB-01 | Workspace has owner, editor, and viewer roles; owner manages membership and sharing. |
+| COLLAB-02 | Viewers can read canonical documents and study outputs; editors can add/replace source documents and create, edit, or delete outputs. |
+| COLLAB-03 | Public links are permanently anonymous viewer/study access only; they never grant membership or edit access. |
+| COLLAB-04 | Editor and viewer membership requires authenticated, explicit invitation; possession of a URL cannot claim membership. |
+| COLLAB-05 | Users can share a workspace, individual quiz, or individual flashcard set. |
+| COLLAB-06 | Anonymous quiz attempts save locally and import once after login with stable-ID deduplication; local copy clears only after confirmed import. |
+| COLLAB-07 | Users send friend requests by normalized exact username; usernames are unique, requests are rate-limited, and users can block/report others. |
+
+---
+
 ## Out of Scope (v2.1)
 
 | ID | Excluded |
 |----|----------|
 | OOS-01 | Draft / publishing workflow |
-| OOS-02 | Sharing or collaboration |
 | OOS-03 | Separate quality-validation stage before save (save is immediate) |
 | OOS-04 | v1 client-only IndexedDB as primary store (Supabase is source of truth) |
 | OOS-05 | Graphify / custom PDF rasterization pipelines (use MarkItDown) |
+| OOS-06 | Stripe / paid Pro subscription (manual Pro grant via metadata in v1) |
 
 ---
 
@@ -172,7 +219,10 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 | FLASH-01–07, CORE-MIST-01 | 5 |
 | LOCALE-01–05, SLANG-01–04 | 6 |
 | IA-01–10 | 7 |
+| PLAN-01–10 | 8 |
+| WORK-01–09 | 9 |
+| COLLAB-01–07 | 10 |
 
 ---
 
-*Last updated: 2026-07-25 — v2.1 MVP Pipeline*
+*Last updated: 2026-07-30 — added PLAN-01–10 (freemium + coupons)*
