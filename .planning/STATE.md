@@ -65,6 +65,8 @@ Progress: [███████░░░] 72%
 - [Phase 09]: Import client uses `/api/workspaces/ingest`; legacy `ingestStudySet` retained for adapters.
 - [Phase 09]: Workspace canonicalize appends via `persist_canonical_version` only; never `replace_canonical_content`.
 - [Phase 09]: Canonical reader returns metadata + paginated section bodies (limit 1–50); progressive UI uses IntersectionObserver.
+- [Phase 09]: Multi-source quiz posts canonicalVersionIds only; `create_learning_output` freezes snapshots and returns bridgeStudySetId.
+- [Phase 09]: Workspace quiz route is authoritative; study-set quiz generate is a non-destructive bridge adapter.
 
 ## Quick Tasks Completed
 
@@ -74,7 +76,7 @@ Progress: [███████░░░] 72%
 
 ## Next step
 
-Execute Phase 9 Plan 09-04 — multi-source quiz generation from selected canonical version IDs.
+Execute Phase 9 Plan 09-05 — multi-source flashcard parity with frozen snapshots and flashcard bridge.
 
 ## Accumulated Context
 
