@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-26T07:44:32.764Z"
-last_activity: 2026-07-26
+last_updated: "2026-07-29T22:40:56.843Z"
+last_activity: 2026-07-29
 progress:
-  total_phases: 7
+  total_phases: 10
   completed_phases: 5
-  total_plans: 26
-  completed_plans: 25
-  percent: 71
+  total_plans: 60
+  completed_plans: 36
+  percent: 50
 ---
 
 # Doc2Quiz — State
@@ -23,12 +23,12 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 06 (bilingual-en-vi-language-selector-and-reusable-contextual-sl) — EXECUTING
-Plan: 7 of 7
+Phase: 09 (workspace-centered-learning-canonical-provenance) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-07-26
+Last activity: 2026-07-29
 
-Progress: [██████████] 96%
+Progress: [██████░░░░] 60%
 
 ## Decisions
 
@@ -56,6 +56,7 @@ Progress: [██████████] 96%
 - [Phase 06]: Plan 06-06 used user-authorized no-commit safety mode to preserve overlapping dirty dashboard work.
 - [Phase 06]: Deleted dashboard stats components remain deleted; localization follows the live dashboard structure.
 - [Phase 08]: Generation quota reservations serialize per user in Postgres; active reservations expire after seven minutes and refund bonus credits exactly once.
+- [Phase 08]: Server quota modules call typed reservation RPC adapters; direct quota-table mutation is retired pending route lifecycle wiring in Plan 08-06.
 
 ## Quick Tasks Completed
 

@@ -281,20 +281,32 @@ Plans:
   4. User redeems case-insensitive coupon codes in Settings; bonus credits stack; each code once per user
   5. Vitest + build pass; EN/VI plan copy complete
 
-**Plans:** 3 plans
+**Plans:** 3/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Migration + quota server lib + GET /api/usage + quiz route hooks + tests (tracer)
+- [x] 08-01-PLAN.md — Migration + quota server lib + GET /api/usage + quiz route hooks + tests (tracer)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 08-02-PLAN.md — Flashcard route + client 402 + sidebar/settings usage + quiz preflight/block UI
+- [x] 08-02-PLAN.md — Flashcard route + client 402 + sidebar/settings usage + quiz preflight/block UI
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 08-03-PLAN.md — Coupon RPC + redeem API + Settings coupon form + seed codes + locale
+- [x] 08-03-PLAN.md — Coupon RPC + redeem API + Settings coupon form + seed codes + locale
+
+**Wave 4** *(gap closure; blocked on 08-01 and 08-03)*
+
+- [x] 08-04-PLAN.md — Atomic Postgres quota reservation, commit/release lifecycle, RLS hardening, and deterministic concurrency proof
+
+**Wave 5** *(gap closure; blocked on 08-04)*
+
+- [x] 08-05-PLAN.md — Typed reservation RPC adapter and availability-backed quota usage authority
+
+**Wave 6** *(gap closure; blocked on 08-05)*
+
+- [ ] 08-06-PLAN.md — Reserve-before-generation route lifecycle and deterministic failure-release tests for quiz and flashcards
 
 ### Phase 9: Workspace-Centered Learning & Canonical Provenance
 
