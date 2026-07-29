@@ -1,0 +1,12 @@
+{
+  "scenario": "thin_content",
+  "description": "Very short content — generator should produce 1-2 questions, not pad",
+  "canonical_markdown": "# E = mc²\n\nEnergy equals mass times the speed of light squared.",
+  "sections": [
+    { "section_key": "sec_001", "heading": "E = mc²", "body_markdown": "Energy equals mass times the speed of light squared." }
+  ],
+  "expected_min_count": 1,
+  "expected_max_count": 2,
+  "must_not_exceed": 3,
+  "must_include_warning_type": "Limited testable content"
+}

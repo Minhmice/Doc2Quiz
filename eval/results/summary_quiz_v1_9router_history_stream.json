@@ -1,0 +1,57 @@
+{
+  "model": "cx/gpt-5.6-sol",
+  "base_url": "https://9router.minhmice.com/v1",
+  "prompt": "D:\\Projects\\Doc2Quiz-main\\prompt\\quiz_generator_v1.json",
+  "total_cases": 1,
+  "repetitions": 1,
+  "valid_outputs": 1,
+  "judged_outputs": 1,
+  "rates": {
+    "schema_pass_rate": 1.0,
+    "count_pass_rate": 0.0,
+    "structure_pass_rate": 1.0,
+    "duplicate_free_rate": 1.0,
+    "mean_source_excerpt_grounding": 0.0,
+    "mean_groundedness": 0.9,
+    "mean_quality": 0.4,
+    "api_error_count": 0,
+    "judge_error_count": 0
+  },
+  "thresholds": {
+    "schema_pass_rate": 0.99,
+    "count_pass_rate": 0.95,
+    "structure_pass_rate": 0.99,
+    "duplicate_free_rate": 0.95,
+    "mean_source_excerpt_grounding": 0.9,
+    "mean_groundedness": 0.8,
+    "mean_quality": 0.8,
+    "api_error_count": 0,
+    "judge_error_count": 0
+  },
+  "checks": {
+    "schema_pass_rate": true,
+    "count_pass_rate": false,
+    "structure_pass_rate": true,
+    "duplicate_free_rate": true,
+    "mean_source_excerpt_grounding": false,
+    "mean_groundedness": true,
+    "mean_quality": false,
+    "api_error_count": true,
+    "judge_error_count": true
+  },
+  "overall_pass": false,
+  "cases": [
+    {
+      "case_id": "delichsunghean-24_mul_ques",
+      "requested_count": 24,
+      "has_reference_answer_key": false,
+      "runs": 1,
+      "schema_pass_rate": 1.0,
+      "count_pass_rate": 0.0,
+      "mean_generated_count": 25,
+      "count_consistent": true,
+      "mean_groundedness": 0.9,
+      "mean_quality": 0.4
+    }
+  ]
+}

@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-24T00:00:00.000Z",
+  "title": "Design System: Doc2Quiz",
+  "extensions": {
+    "colorMeta": {
+      "oxblood-primary": {
+        "role": "primary",
+        "displayName": "Oxblood Authority",
+        "canonical": "oklch(28% 0.12 35)",
+        "tonalRamp": [
+          "oklch(15% 0.08 35)",
+          "oklch(22% 0.10 35)",
+          "oklch(28% 0.12 35)",
+          "oklch(35% 0.13 35)",
+          "oklch(42% 0.14 38)",
+          "oklch(52% 0.15 42)",
+          "oklch(65% 0.12 45)",
+          "oklch(82% 0.06 50)"
+        ]
+      },
+      "coral-signal": {
+        "role": "primary",
+        "displayName": "Coral Signal",
+        "canonical": "oklch(78% 0.14 35)",
+        "tonalRamp": [
+          "oklch(35% 0.12 35)",
+          "oklch(48% 0.14 35)",
+          "oklch(58% 0.15 35)",
+          "oklch(68% 0.14 35)",
+          "oklch(78% 0.14 35)",
+          "oklch(85% 0.10 40)",
+          "oklch(92% 0.06 45)",
+          "oklch(97% 0.03 50)"
+        ]
+      },
+      "mint-paper": {
+        "role": "neutral",
+        "displayName": "Mint Paper",
+        "canonical": "oklch(98% 0.006 155)",
+        "tonalRamp": [
+          "oklch(18% 0.02 165)",
+          "oklch(28% 0.025 160)",
+          "oklch(38% 0.03 158)",
+          "oklch(55% 0.025 155)",
+          "oklch(72% 0.015 155)",
+          "oklch(85% 0.010 155)",
+          "oklch(94% 0.008 155)",
+          "oklch(98% 0.006 155)"
+        ]
+      },
+      "forest-sage": {
+        "role": "secondary",
+        "displayName": "Forest Sage",
+        "canonical": "oklch(45% 0.06 160)",
+        "tonalRamp": [
+          "oklch(18% 0.04 165)",
+          "oklch(28% 0.05 162)",
+          "oklch(35% 0.055 160)",
+          "oklch(45% 0.06 160)",
+          "oklch(55% 0.055 158)",
+          "oklch(68% 0.04 155)",
+          "oklch(82% 0.025 155)",
+          "oklch(94% 0.012 155)"
+        ]
+      },
+      "study-ink": {
+        "role": "neutral",
+        "displayName": "Study Ink",
+        "canonical": "oklch(20% 0.01 165)",
+        "tonalRamp": [
+          "oklch(12% 0.008 165)",
+          "oklch(16% 0.009 165)",
+          "oklch(20% 0.01 165)",
+          "oklch(30% 0.012 165)",
+          "oklch(42% 0.015 165)",
+          "oklch(55% 0.018 165)",
+          "oklch(72% 0.015 165)",
+          "oklch(90% 0.008 165)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Auth aside headlines and single hero moments per viewport."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles and study-set names in chrome."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles and dialog headers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default reading text; cap at 65–75ch in prose."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Instrument metadata via font-label — uppercase Space Grotesk."
+      }
+    },
+    "shadows": [
+      {
+        "name": "auth-panel-lift",
+        "value": "0 24px 48px -18px color-mix(in srgb, var(--foreground) 12%, transparent)",
+        "purpose": "Login and signup form card elevation only."
+      },
+      {
+        "name": "quiz-play-ambient",
+        "value": "0 40px 100px rgba(0, 53, 45, 0.06)",
+        "purpose": "Scoped quiz-play stitch cards in light mode."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-route-enter",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Route enter animation (380ms) — fade, slide-up, deblur."
+      },
+      {
+        "name": "ease-flip",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Flashcard flip (600ms)."
+      },
+      {
+        "name": "ease-shimmer",
+        "value": "ease-in-out",
+        "purpose": "Parse progress shimmer sweep (2.2s loop)."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main-line actions — upload, save, confirm.",
+      "html": "<button class=\"ds-btn-primary\">Create study set</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; gap: 6px; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1; color: #ffffff; background: var(--primary, #5f0f00); border: 1px solid transparent; border-radius: var(--radius-lg, 4px); cursor: pointer; transition: background 150ms ease, transform 100ms ease; } .ds-btn-primary:hover { background: color-mix(in srgb, var(--primary, #5f0f00) 80%, transparent); } .ds-btn-primary:focus-visible { outline: none; border-color: var(--ring, #ff967d); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #ff967d) 50%, transparent); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions on mint-paper surfaces.",
+      "html": "<button class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: var(--foreground, #181c1b); background: var(--background, #f7faf8); border: 1px solid var(--border, #c0c9c3); border-radius: var(--radius-lg, 4px); cursor: pointer; transition: background 150ms ease; } .ds-btn-outline:hover { background: var(--muted, #f1f4f2); } .ds-btn-outline:focus-visible { outline: none; border-color: var(--ring, #ff967d); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #ff967d) 50%, transparent); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary actions in dense toolbars.",
+      "html": "<button class=\"ds-btn-ghost\">Options</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: var(--foreground, #181c1b); background: transparent; border: 1px solid transparent; border-radius: var(--radius-lg, 4px); cursor: pointer; transition: background 150ms ease; } .ds-btn-ghost:hover { background: var(--muted, #f1f4f2); } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #ff967d) 50%, transparent); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Default field for search, auth, and forms.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search study sets…\" />",
+      "css": ".ds-input { display: block; width: 100%; height: 32px; padding: 4px 10px; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: var(--foreground, #181c1b); background: transparent; border: 1px solid var(--input, #f1f4f2); border-radius: var(--radius-lg, 4px); outline: none; transition: border-color 150ms ease, box-shadow 150ms ease; } .ds-input::placeholder { color: var(--muted-foreground, #404945); } .ds-input:focus-visible { border-color: var(--ring, #ff967d); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #ff967d) 50%, transparent); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Default content container — ring, no shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><div class=\"ds-card-title\">Cell Biology</div><div class=\"ds-card-desc\">24 questions · last studied yesterday</div></div><div class=\"ds-card-body\">Ready to review.</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 16px; padding: 16px 0; font-size: 0.875rem; color: var(--card-foreground, #181c1b); background: var(--card, #ffffff); border-radius: var(--radius-xl, 5.6px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground, #181c1b) 10%, transparent); } .ds-card-header { padding: 0 16px; display: flex; flex-direction: column; gap: 4px; } .ds-card-title { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 1rem; font-weight: 500; line-height: 1.375; } .ds-card-desc { font-size: 0.875rem; color: var(--muted-foreground, #404945); } .ds-card-body { padding: 0 16px; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge-default",
+      "description": "Status and filter chips.",
+      "html": "<span class=\"ds-badge\">Parsing</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; justify-content: center; height: 20px; padding: 2px 8px; font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: #ffffff; background: var(--primary, #5f0f00); border: 1px solid transparent; border-radius: 9999px; }"
+    },
+    {
+      "name": "Section Label",
+      "kind": "custom",
+      "refersTo": "label",
+      "description": "Instrument metadata — dashboard filters, parse status.",
+      "html": "<span class=\"ds-section-label\">Parse progress</span>",
+      "css": ".ds-section-label { font-family: var(--font-label), ui-monospace, system-ui, sans-serif; font-size: 0.625rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground, #404945); }"
+    },
+    {
+      "name": "App Navigation",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "Top bar wayfinding — compact, horizontal.",
+      "html": "<nav class=\"ds-topbar\"><a class=\"ds-topbar-brand\" href=\"#\"><span class=\"ds-topbar-mark\">D2</span><span class=\"ds-topbar-name\">Doc2Quiz</span></a><div class=\"ds-topbar-actions\"><button class=\"ds-btn-ghost\">Library</button><button class=\"ds-btn-primary\">New set</button></div></nav>",
+      "css": ".ds-topbar { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 16px; background: var(--background, #f7faf8); border-bottom: 1px solid var(--border, #c0c9c3); } .ds-topbar-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; } .ds-topbar-mark { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; font-size: 0.75rem; font-weight: 700; color: #ffffff; background: var(--primary, #5f0f00); border-radius: var(--radius-sm, 2.4px); } .ds-topbar-name { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 800; color: var(--d2q-blue, #376757); } .ds-topbar-actions { display: flex; align-items: center; gap: 8px; } .ds-topbar .ds-btn-ghost, .ds-topbar .ds-btn-primary { height: 32px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Study Ledger",
+    "overview": "Doc2Quiz is a document-first study tool: users upload PDFs, the app structures the output into quizzes and flashcards, and the interface stays out of the way. The visual system reads like a precise ledger — mint-tinted paper, forest-green structure, oxblood authority for primary actions, coral for signals and focus rings. Nothing decorative for its own sake; every accent earns its place on a work surface.\n\nDensity is compact but breathable. The app shell uses a technical line grid on main to signal workbench without turning the UI into a blueprint poster. The system explicitly rejects generic SaaS landing-page aesthetics, purple-gradient dark mode, glassmorphism-as-decoration, oversized pill cards, and uppercase eyebrow kickers on every section.",
+    "keyCharacteristics": [
+      "Mint-paper backgrounds with forest-sage structure and oxblood primary actions",
+      "Manrope for reading; Space Grotesk uppercase labels for instrument chrome",
+      "Tight 4px base radius — precise, not playful",
+      "Flat surfaces with 1px rings; shadows reserved for auth panels and elevated modals",
+      "Technical grids opt-in on work surfaces, never as full-page wallpaper",
+      "Light mode is the default design target; dark mode inverts to deep forest with coral signals"
+    ],
+    "rules": [
+      {
+        "name": "The Coral-is-Signal Rule",
+        "body": "Coral (#ff967d) appears on focus rings, parse progress, and accent highlights — never as a page background or card fill. If coral covers more than ~10% of a screen, you've left the ledger.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mint-Paper Rule",
+        "body": "Body backgrounds stay in the cool mint family (#f7faf8 light / #0c1a17 dark). Warm sand, cream, and parchment tones are prohibited in the app shell.",
+        "section": "colors"
+      },
+      {
+        "name": "The Label-is-Instrument Rule",
+        "body": "Uppercase tracked labels are for wayfinding and status — dashboard filters, parse progress, flashcard session chrome. Never stack a label eyebrow above every section heading; one deliberate label per functional cluster is enough.",
+        "section": "typography"
+      },
+      {
+        "name": "The Display Ceiling Rule",
+        "body": "Hero/display text maxes at ~2.25rem (36px). Doc2Quiz is a tool; it does not shout.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at rest. Rings and tonal steps carry structure; shadows are a response to elevation context (auth, modal, play session), not default decoration.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Ghost-Card Rule",
+        "body": "Never pair border: 1px solid with a soft wide drop shadow (blur ≥16px) on the same element. Pick one structural device.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use d2q-technical-grid on app main and full-width work canvases for workbench context.",
+      "Do use font-label (Space Grotesk, 0.08em tracking, uppercase) for status, filters, and instrument metadata.",
+      "Do keep primary actions oxblood (#5f0f00) and focus rings coral (#ff967d).",
+      "Do use ring-1 (ring-foreground/10) on cards instead of drop shadows.",
+      "Do cap body text contrast: Muted Ink (#404945) on Mint Paper, never lighter grays for readable copy.",
+      "Do scope quiz-play stitch tokens to [data-quiz-play-theme=\"stitch\"] — don't leak play-session colors into the library shell."
+    ],
+    "donts": [
+      "Don't use warm cream, sand, beige, or parchment body backgrounds — the mint-paper cool tint is the brand surface.",
+      "Don't add uppercase eyebrow kickers above every section heading — that's AI landing-page grammar, not ledger wayfinding.",
+      "Don't use gradient text, glassmorphism, or decorative grid backgrounds on marketing-style hero sections inside the app.",
+      "Don't exceed 4px base radius on structural containers — cards top out ~6px; pills are for badges/buttons only.",
+      "Don't pair 1px borders with wide soft shadows on the same card — pick ring OR shadow, not both.",
+      "Don't use side-stripe borders (border-left >1px colored accent) on cards, alerts, or list items.",
+      "Don't animate layout properties for route transitions — opacity, transform, and filter only (d2q-route-enter)."
+    ]
+  }
+}

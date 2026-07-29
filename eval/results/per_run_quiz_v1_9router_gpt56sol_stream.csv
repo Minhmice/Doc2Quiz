@@ -1,0 +1,16 @@
+﻿case_id,repetition,schema_valid,count_match,structure_pass,question_count,source_excerpt_grounding,duplicate_question_count,groundedness_score,quality_score,latency_ms
+dedialynghean-18_mul_ques,1,True,True,True,18,0.2777777777777778,0,1.0,0.9,88964
+dedialynghean-18_mul_ques,2,True,True,True,18,0.2777777777777778,0,1.0,0.9,86778
+dedialynghean-18_mul_ques,3,True,True,True,18,0.2777777777777778,0,1.0,0.8,89495
+dedialynghean-18_mul_ques,4,True,True,True,18,0.4444444444444444,0,0.8,0.8,87085
+dedialynghean-18_mul_ques,5,True,True,True,18,0.2777777777777778,0,0.9,0.9,88079
+delichsunghean-24_mul_ques,1,True,True,True,24,0.7916666666666666,0,0.1,0.9,129643
+delichsunghean-24_mul_ques,2,True,False,True,28,0.9642857142857143,0,0.9,0.4,115398
+delichsunghean-24_mul_ques,3,True,True,True,24,0.7916666666666666,0,0.1,0.9,118280
+delichsunghean-24_mul_ques,4,True,True,True,24,0.8333333333333334,0,0.1,0.8,121027
+delichsunghean-24_mul_ques,5,True,True,True,24,0.8333333333333334,0,0.1,0.9,118330
+detienganhnghean-40_mul_ques,1,True,True,True,40,0.525,0,1.0,0.8,109050
+detienganhnghean-40_mul_ques,2,True,True,True,40,0.65,0,0.9,0.8,111408
+detienganhnghean-40_mul_ques,3,True,True,True,40,0.5,0,0.9,1.0,137448
+detienganhnghean-40_mul_ques,4,True,True,True,40,0.575,0,0.9,0.8,121081
+detienganhnghean-40_mul_ques,5,True,True,True,40,0.575,0,1.0,0.7,116284

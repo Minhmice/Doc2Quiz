@@ -1,0 +1,14 @@
+{
+  "scenario": "mixed_vi_en",
+  "description": "Mixed Vietnamese/English document (theory + questions)",
+  "raw_markdown": "# Lập trình Python\n\n## Kiểu dữ liệu (Data Types)\n\nPython supports str, int, float, bool, list, tuple, dict.\n\n## Câu hỏi (Questions)\n\n1. Kiểu dữ liệu nào dùng để lưu chuỗi ký tự?\n   Đáp án: str\n\n2. What type does `3.14` belong to?\n   Đáp án: float",
+  "expected": {
+    "title": "Lập trình Python",
+    "filename": "lap-trinh-python.md",
+    "language": "vi",
+    "document_type": "mixed",
+    "sections_count": 2,
+    "extracted_questions_count": 2,
+    "warnings_include": []
+  }
+}

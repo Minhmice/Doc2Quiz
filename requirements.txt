@@ -1,0 +1,8 @@
+# Python >= 3.10 required for MarkItDown.
+# Install only formats exposed by UnifiedInputZone. The [all] extra also pulls
+# Azure/Outlook integrations that this app does not use and makes Windows setup
+# unnecessarily slow and fragile.
+markitdown[pdf,docx,pptx,xlsx,xls,audio-transcription,youtube-transcription]==0.1.6
+# 4.15.0 causes pip 25.0.1 to spin during dependency resolution on the
+# bundled Windows Python used by this project.
+beautifulsoup4==4.14.3

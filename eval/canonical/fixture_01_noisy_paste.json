@@ -1,0 +1,14 @@
+{
+  "scenario": "clean_noisy_paste",
+  "description": "HTML-to-markdown paste with page numbers, duplicated headers, and navigation cruft",
+  "raw_markdown": "# Introduction to Biology\nPage 1 of 10\n\n## Cell Theory\n\nAll living organisms are composed of cells.\n\n[Next Page]\n\n## Cell Theory\n\nAll living organisms are composed of cells.\n\nPage 2 of 10\n\n## Cell Theory (duplicated)\n\nAll living organisms are composed of cells.\n\n## Organelles\n\nMitochondria produce energy.\n\nRibosomes synthesize proteins.\n\n[Footer: Copyright 2024]",
+  "expected": {
+    "title": "Introduction to Biology",
+    "filename": "introduction-to-biology.md",
+    "language": "en",
+    "document_type": "theory",
+    "topics": ["cell biology"],
+    "sections_count": 2,
+    "warnings_include": []
+  }
+}

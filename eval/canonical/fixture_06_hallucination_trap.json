@@ -1,0 +1,14 @@
+{
+  "scenario": "hallucination_trap",
+  "description": "Short input designed to tempt invented title/facts — tests CANON-08",
+  "raw_markdown": "# Unknown Sample\n\nThe document does not specify a clear topic beyond this heading.",
+  "expected": {
+    "title": "Unknown Sample",
+    "filename": "unknown-sample.md",
+    "language": "en",
+    "document_type": "theory",
+    "sections_count": 1,
+    "warnings_include": [],
+    "must_not_contain": ["artificial intelligence", "machine learning", "chemistry", "biology", "quantum"]
+  }
+}

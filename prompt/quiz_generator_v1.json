@@ -1,0 +1,65 @@
+{
+  "name": "quiz_generator",
+  "version": "1.8",
+  "system": "Write polished standalone multiple-choice questions from supplied accepted atomic facts. Test understanding of the fact; never dump, quote, or disguise raw document blocks as a question. The correct answer and premise must be grounded in the referenced fact. Distractors may be synthetic. Return valid JSON only.",
+  "input": {
+    "study_set_id": "{{study_set_id}}",
+    "title": "{{title}}",
+    "language": "{{language}}",
+    "canonical_markdown": "{{canonical_markdown}}",
+    "sections_json": "{{sections_json}}",
+    "extracted_questions_json": "{{extracted_questions_json}}",
+    "atomic_facts_json": "{{atomic_facts_json}}",
+    "max_supported_count": "{{max_supported_count}}",
+    "requested_count": "{{requested_count}}"
+  },
+  "tasks": [
+    "Treat numeric requested_count as exact TARGET, never as a recommendation.",
+    "Use only atomic_facts where answerable is true. Every question must reference one or more supplied fact_id values.",
+    "Return exactly TARGET questions. Before returning, count questions.length; fill a shortfall with unused supported opportunities and remove weak extras.",
+    "Return one fact_id per question. Different questions may reuse the same fact_id.",
+    "Write prompt as one complete standalone interrogative stem ending with a question mark. Use whatever length the subject and conditions require; never truncate meaning to meet a character target.",
+    "Set context_mode to source_excerpt only when the learner must read the canonical evidence passage to answer; otherwise use none. The server, not the model, will attach the exact canonical excerpt.",
+    "Ask about the relation expressed by the fact: definition, property, condition, classification, comparison, process, rule, or value. Do not ask about document formatting or where text appears.",
+    "Do not paste raw excerpts into prompt; request canonical context with context_mode instead. Do not use fill-in-the-blank, section dumps, option labels, question numbers, administrative headers, or phrases such as 'according to the text above' without a clear subject.",
+    "A reader must understand what is being asked without seeing source_excerpt. Preserve necessary subject, scope, time, unit, and condition from the fact.",
+    "Put the intended correct answer at choices[correct_index]; the server will replace it with the canonical fact answer_text.",
+    "semantic_intent is optional guidance; the server will remap unsupported values.",
+    "Do not return identical prompts. Paraphrased variants from one fact are allowed.",
+    "Write exactly four distinct plausible choices with exactly one correct answer. Each distractor must use the same semantic type as answer_text (for example person/person, date/date, concept/concept), and numeric distractors must preserve the source unit and precision.",
+    "A distractor must be unambiguously wrong for the question under the supplied facts. It must not equal an answer_text of any referenced fact, be entailed by those facts, require external knowledge to disprove, or become correct under another reasonable reading.",
+    "Avoid negative stems. When a negative stem is unavoidable and directly supported, make the negative word explicit and never use double negation.",
+    "Do not copy section_key, source_excerpt, answer_text, concepts, or explanation; the server derives them from fact_id.",
+    "Use extracted questions only when accepted atomic facts contain their answer evidence. Never solve an unanswered source question.",
+    "If requested_count is auto, recommend no more than max_supported_count."
+  ],
+  "output_schema": {
+    "recommended_count": "number",
+    "questions": [
+      {
+        "fact_id": "fact_001",
+        "prompt": "string",
+        "choices": ["string", "string", "string", "string"],
+        "correct_index": 0,
+        "context_mode": "none | source_excerpt",
+        "semantic_intent": "optional supported intent"
+      }
+    ],
+    "warnings": ["string"]
+  },
+  "constraints": [
+    "Canonical accepted facts only; no external knowledge or invented causes, dates, values, examples, or consequences.",
+    "questions.length MUST equal numeric requested_count.",
+    "recommended_count MUST equal numeric requested_count.",
+    "Never exceed max_supported_count.",
+    "Exactly four distinct choices; correct_index 0-3.",
+    "Prompt is exactly one complete question stem and final character is '?'. No arbitrary character limit.",
+    "Each choice is one complete clean value or statement; no A./B./C./D. prefix and no arbitrary character limit.",
+    "fact_id MUST exist in atomic_facts_json and be answerable.",
+    "Every non-correct choice MUST differ from the referenced fact answer_text after Unicode and whitespace normalization.",
+    "Distractors MUST be parallel in semantic type, grammar, unit, and numeric precision to the correct answer.",
+    "No distractor may be source-supported as a correct answer or require external knowledge to reject.",
+    "No all-of-the-above or none-of-the-above choices.",
+    "Return JSON matching the schema exactly."
+  ]
+}

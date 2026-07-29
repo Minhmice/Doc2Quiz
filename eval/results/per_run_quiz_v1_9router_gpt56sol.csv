@@ -1,0 +1,16 @@
+﻿case_id,repetition,schema_valid,count_match,structure_pass,question_count,source_excerpt_grounding,duplicate_question_count,groundedness_score,quality_score,latency_ms
+dedialynghean-18_mul_ques,1,False,False,False,0,0.0,0,,,21491
+dedialynghean-18_mul_ques,2,False,False,False,0,0.0,0,,,21474
+dedialynghean-18_mul_ques,3,False,False,False,0,0.0,0,,,21447
+dedialynghean-18_mul_ques,4,False,False,False,0,0.0,0,,,3190
+dedialynghean-18_mul_ques,5,False,False,False,0,0.0,0,,,3202
+delichsunghean-24_mul_ques,1,False,False,False,0,0.0,0,,,3184
+delichsunghean-24_mul_ques,2,False,False,False,0,0.0,0,,,3183
+delichsunghean-24_mul_ques,3,False,False,False,0,0.0,0,,,3214
+delichsunghean-24_mul_ques,4,False,False,False,0,0.0,0,,,3214
+delichsunghean-24_mul_ques,5,False,False,False,0,0.0,0,,,3187
+detienganhnghean-40_mul_ques,1,False,False,False,0,0.0,0,,,3277
+detienganhnghean-40_mul_ques,2,False,False,False,0,0.0,0,,,3300
+detienganhnghean-40_mul_ques,3,False,False,False,0,0.0,0,,,3224
+detienganhnghean-40_mul_ques,4,False,False,False,0,0.0,0,,,3224
+detienganhnghean-40_mul_ques,5,False,False,False,0,0.0,0,,,3225

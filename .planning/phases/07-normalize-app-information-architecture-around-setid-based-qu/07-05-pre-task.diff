@@ -1,0 +1,207 @@
+diff --git a/src/components/dashboard/DashboardMobileBottomNav.tsx b/src/components/dashboard/DashboardMobileBottomNav.tsx
+index c5bd2bd..aa3de70 100644
+--- a/src/components/dashboard/DashboardMobileBottomNav.tsx
++++ b/src/components/dashboard/DashboardMobileBottomNav.tsx
+@@ -1,6 +1,8 @@
+ import Link from "next/link";
+ import { usePathname } from "next/navigation";
+-import { BarChart3, LayoutDashboard, Library, Plus, Settings } from "lucide-react";
++import { useEffect, useState } from "react";
++import { LayoutDashboard, Library, Plus, Settings } from "lucide-react";
++import { useLocale } from "@/components/locale/LocaleProvider";
+ import { newRoot } from "@/lib/routes/studySetPaths";
+ import { cn } from "@/lib/utils";
+ 
+@@ -12,58 +14,61 @@ export function DashboardMobileBottomNav({
+   className,
+ }: DashboardMobileBottomNavProps) {
+   const pathname = usePathname() ?? "";
++  const { messages } = useLocale();
++  const copy = messages.dashboard.mobile;
+ 
+-  const dashActive = pathname === "/dashboard";
+-  const libActive = pathname === "/dashboard"; /* hash not in pathname — subtle */
++  const [hash, setHash] = useState("");
+ 
++  useEffect(() => {
++    const syncHash = () => setHash(window.location.hash);
++    syncHash();
++    window.addEventListener("hashchange", syncHash);
++    return () => window.removeEventListener("hashchange", syncHash);
++  }, []);
++
++  const dashActive = pathname === "/dashboard" && hash === "";
++  const libActive = pathname === "/dashboard" && hash === "#library";
+   return (
+     <nav
+       className={cn(
+-        "fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-border/30 bg-card/95 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] backdrop-blur-md md:hidden dark:bg-card/95",
++        "fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-border/40 bg-card md:hidden",
+         className,
+       )}
+-      aria-label="Mobile primary"
++      aria-label={copy.aria}
+     >
+       <Link
+         href="/dashboard"
+         className={cn(
+-          "flex cursor-pointer flex-col items-center gap-0.5 font-label text-[10px] font-bold uppercase transition-colors",
++          "flex min-h-11 min-w-11 cursor-pointer flex-col items-center justify-center gap-0.5 text-xs font-semibold transition-colors",
+           dashActive ? "text-[color:var(--d2q-accent)]" : "text-[color:var(--d2q-blue)]",
+         )}
+       >
+         <LayoutDashboard className="size-6" aria-hidden />
+-        Dash
++        {copy.dashboard}
+       </Link>
+       <Link
+         href="/dashboard#library"
+         className={cn(
+-          "flex cursor-pointer flex-col items-center gap-0.5 font-label text-[10px] uppercase transition-colors",
++          "flex min-h-11 min-w-11 cursor-pointer flex-col items-center justify-center gap-0.5 text-xs transition-colors",
+           libActive ? "text-[color:var(--d2q-blue)]" : "text-muted-foreground",
+         )}
+       >
+         <Library className="size-6" aria-hidden />
+-        Library
++        {copy.library}
+       </Link>
+       <Link
+         href={newRoot()}
+-        className="-mt-10 flex size-12 cursor-pointer items-center justify-center rounded-full bg-[color:var(--d2q-accent)] text-primary-foreground shadow-lg transition-transform active:scale-95 dark:text-primary-foreground"
+-        aria-label="Create new study set"
++        className="-mt-10 flex size-12 cursor-pointer items-center justify-center rounded-full bg-[color:var(--d2q-accent)] text-primary-foreground transition-transform active:scale-95 dark:text-primary-foreground"
++        aria-label={copy.create}
+       >
+         <Plus className="size-6" aria-hidden />
+       </Link>
+-      <Link
+-        href="/dashboard#stats"
+-        className="flex cursor-pointer flex-col items-center gap-0.5 font-label text-[10px] uppercase text-[color:var(--d2q-blue)] transition-colors"
+-      >
+-        <BarChart3 className="size-6" aria-hidden />
+-        Stats
+-      </Link>
+       <Link
+         href="/settings"
+-        className="flex cursor-pointer flex-col items-center gap-0.5 font-label text-[10px] uppercase text-[color:var(--d2q-blue)] transition-colors"
++        className="flex min-h-11 min-w-11 cursor-pointer flex-col items-center justify-center gap-0.5 text-xs text-[color:var(--d2q-blue)] transition-colors"
+       >
+         <Settings className="size-6" aria-hidden />
+-        Set
++        {copy.settings}
+       </Link>
+     </nav>
+   );
+diff --git a/src/components/layout/AppTopBar.tsx b/src/components/layout/AppTopBar.tsx
+index d23cdb6..7a38ad1 100644
+--- a/src/components/layout/AppTopBar.tsx
++++ b/src/components/layout/AppTopBar.tsx
+@@ -114,16 +114,11 @@ export function AppTopBar() {
+         <div className="flex min-w-0 flex-1 items-center gap-4 lg:gap-8">
+           <Link
+             href="/dashboard"
+-            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-sm pr-1 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
++            className="flex shrink-0 cursor-pointer items-center rounded-sm pr-1 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
++            aria-label={messages.navigation.brandName}
+           >
+-            <span
+-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-primary text-sm font-bold text-primary-foreground shadow-sm"
+-              aria-hidden
+-            >
+-              D2
+-            </span>
+-            <span className="font-heading text-lg font-bold tracking-tight text-foreground">
+-              Doc2Quiz
++            <span className="font-heading text-xl font-extrabold tracking-[-0.03em] text-foreground text-wrap-balance sm:text-2xl">
++              {messages.navigation.brandName}
+             </span>
+           </Link>
+ 
+diff --git a/src/lib/locale/messages.ts b/src/lib/locale/messages.ts
+index 16ef89c..a0d9b4e 100644
+--- a/src/lib/locale/messages.ts
++++ b/src/lib/locale/messages.ts
+@@ -4,7 +4,7 @@ export const DEFAULT_LOCALE: Locale = "en";
+ export const messageDomains = [
+   "loading", "upload", "conversion", "quizGeneration", "flashcardGeneration", "correct",
+   "wrong", "retry", "success", "empty", "warning", "streak", "score", "navigation",
+-  "toast", "progress", "result", "badge", "secondaryLabel", "settings", "accessibility", "workflows", "pipeline",
++  "toast", "progress", "result", "badge", "secondaryLabel", "settings", "accessibility", "dashboard", "workflows", "pipeline",
+ ] as const satisfies readonly (keyof MessageCatalog)[];
+ 
+ const en = {
+@@ -45,6 +45,22 @@ const en = {
+     vietnameseTooltip: "tày là người việt còn gì",
+   },
+   accessibility: { openMenu: "Open menu", closeDialog: "Close dialog", nextItem: "Next item", previousItem: "Previous item" },
++  dashboard: {
++    library: "Your library", totalSets: (count) => `${count} total`, filterAria: "Filter study sets",
++    filters: { all: "All", ready: "Ready", needs_edit: "Needs edit", in_review: "In review" },
++    sortAria: "Sort study sets", sortRecent: "Sort by: Recent", sortTitle: "Sort by: Title",
++    loadingSets: "Loading your study sets", loadingDashboard: "Loading dashboard",
++    emptyTitle: "No study sets yet.", emptyCta: "Create study set", emptyDescription: "Add study text to create your first set.", emptyAria: "Create a study set. Add study text to build your first set.",
++    addTitle: "Add another set", addDescription: "Add study text to create another set.", addAria: "Add another study set. Paste or upload text to add more content.",
++    noFilterMatch: "No sets match this filter.", noSearchMatch: (query) => `No sets match “${query}” for this filter.`,
++    loadRecovery: "You can still create a set below. If the message mentions a missing database column, apply pending Supabase migrations.",
++    deleteTitle: "Delete study set?", deleteDescription: (title, approved) => `This will remove “${title}” and all of its data${approved ? `, including ${approved} approved items` : ""}. This cannot be undone.`, cancel: "Cancel", deleteAction: "Delete",
++    kinds: { flashcards: "Flip study", quiz: "Multiple choice", studySet: "Study set" }, statuses: { needs_edit: "Needs edit", ready: "Ready", in_progress: "In progress" },
++    units: { cards: (count) => `${count} cards`, questions: (count) => `${count} questions` }, readyPractice: "Ready to practice", percentDone: (percent) => `${percent}% done`, percentComplete: (percent) => `${percent}% complete`,
++    actions: { openEditor: "Open editor", practice: "Practice", resumePractice: "Resume practice", startFlashcards: "Start flashcards", startQuiz: "Start quiz", continueSetup: "Continue setup", review: "Review", drillMistakes: "Drill mistakes", more: "More", moreFor: (title) => `More actions for ${title}`, rename: "Rename", delete: "Delete" },
++    mobile: { aria: "Mobile primary", dashboard: "Dash", library: "Library", create: "Create new study set", settings: "Set" },
++    hero: { welcome: (name) => `Welcome back, ${name}!`, learner: "learner", summary: (editing, ready) => `You have ${editing} ready to edit and ${ready} ready to practice.`, createFirst: "Create your first set", createNew: "Create new set", practice: "Practice", reviewLatest: "Review latest" },
++  },
+   workflows: {
+     import: { eyebrow: "Build a quiz from your material", file: "File", paste: "Paste", sourceText: "Source text", pastePlaceholder: "Paste your notes, article, or study material here…", youtubeHelp: "We'll fetch and convert the transcript when available.", convert: "Convert document", converting: "Converting…", missingInput: "Add a file, paste text, or enter a YouTube URL before continuing.", unsupportedFile: "That file type isn't supported. Use PDF, Office, images, audio, HTML, CSV, JSON, XML, or plain text.", fallbackError: "Conversion failed. Try a different file or paste the text directly." },
+     uploadBox: { drop: "Drag and drop a file here, or", choose: "Choose file", chooseAnother: "Choose another file", formats: "PDF, Word, PowerPoint, Excel, images, audio, HTML, CSV, JSON, XML, or plain text." },
+@@ -140,6 +156,22 @@ const vi = {
+     vietnameseTooltip: "tày là người việt còn gì",
+   },
+   accessibility: { openMenu: "Mở menu", closeDialog: "Đóng hộp thoại", nextItem: "Mục tiếp theo", previousItem: "Mục trước" },
++  dashboard: {
++    library: "Thư viện", totalSets: (count) => `${count} bộ`, filterAria: "Lọc bộ học",
++    filters: { all: "Tất cả", ready: "Sẵn sàng", needs_edit: "Cần sửa", in_review: "Đang duyệt" },
++    sortAria: "Sắp xếp bộ học", sortRecent: "Xếp: Gần đây", sortTitle: "Xếp: Tiêu đề",
++    loadingSets: "Đang tải các bộ học", loadingDashboard: "Đang tải trang chủ",
++    emptyTitle: "Chưa có bộ học nào.", emptyCta: "Tạo bộ học", emptyDescription: "Thêm tài liệu học để tạo bộ đầu tiên.", emptyAria: "Tạo bộ học. Thêm tài liệu để tạo bộ đầu tiên.",
++    addTitle: "Thêm bộ khác", addDescription: "Thêm tài liệu để tạo bộ học khác.", addAria: "Thêm bộ học khác bằng cách dán hoặc tải tài liệu lên.",
++    noFilterMatch: "Không có bộ nào khớp bộ lọc.", noSearchMatch: (query) => `Không có bộ nào khớp “${query}” và bộ lọc này.`,
++    loadRecovery: "Bạn vẫn có thể tạo bộ bên dưới. Nếu thông báo nhắc tới cột cơ sở dữ liệu bị thiếu, hãy áp dụng các migration Supabase đang chờ.",
++    deleteTitle: "Xóa bộ học?", deleteDescription: (title, approved) => `Thao tác này sẽ xóa “${title}” và toàn bộ dữ liệu${approved ? `, gồm ${approved} mục đã duyệt` : ""}. Không thể hoàn tác.`, cancel: "Hủy", deleteAction: "Xóa",
++    kinds: { flashcards: "Học lật thẻ", quiz: "Trắc nghiệm", studySet: "Bộ học" }, statuses: { needs_edit: "Cần sửa", ready: "Sẵn sàng", in_progress: "Đang học" },
++    units: { cards: (count) => `${count} thẻ`, questions: (count) => `${count} câu hỏi` }, readyPractice: "Sẵn sàng luyện", percentDone: (percent) => `Đã làm ${percent}%`, percentComplete: (percent) => `Hoàn thành ${percent}%`,
++    actions: { openEditor: "Mở trình sửa", practice: "Luyện tập", resumePractice: "Tiếp tục luyện", startFlashcards: "Bắt đầu flashcard", startQuiz: "Bắt đầu quiz", continueSetup: "Tiếp tục thiết lập", review: "Xem lại", drillMistakes: "Luyện câu sai", more: "Thêm", moreFor: (title) => `Thêm thao tác cho ${title}`, rename: "Đổi tên", delete: "Xóa" },
++    mobile: { aria: "Điều hướng chính di động", dashboard: "Trang chủ", library: "Thư viện", create: "Tạo bộ học mới", settings: "Cài đặt" },
++    hero: { welcome: (name) => `Chào mừng trở lại, ${name}!`, learner: "bạn", summary: (editing, ready) => `Bạn có ${editing} sẵn sàng chỉnh sửa và ${ready} sẵn sàng luyện tập.`, createFirst: "Tạo bộ đầu tiên", createNew: "Tạo bộ mới", practice: "Luyện tập", reviewLatest: "Xem bộ gần nhất" },
++  },
+   workflows: {
+     import: { eyebrow: "Tạo quiz từ tài liệu", file: "Tệp", paste: "Dán", sourceText: "Văn bản nguồn", pastePlaceholder: "Dán ghi chú, bài viết hoặc tài liệu học vào đây…", youtubeHelp: "Ứng dụng sẽ lấy và chuyển đổi bản chép lời nếu có.", convert: "Chuyển đổi tài liệu", converting: "Đang chuyển đổi…", missingInput: "Hãy thêm tệp, dán văn bản hoặc nhập URL YouTube trước khi tiếp tục.", unsupportedFile: "Loại tệp này không được hỗ trợ. Hãy dùng PDF, Office, hình ảnh, âm thanh, HTML, CSV, JSON, XML hoặc văn bản thuần.", fallbackError: "Chuyển đổi thất bại. Hãy thử tệp khác hoặc dán văn bản trực tiếp." },
+     uploadBox: { drop: "Kéo thả tệp vào đây, hoặc", choose: "Chọn tệp", chooseAnother: "Chọn tệp khác", formats: "PDF, Word, PowerPoint, Excel, hình ảnh, âm thanh, HTML, CSV, JSON, XML hoặc văn bản thuần." },
+diff --git a/src/lib/locale/types.ts b/src/lib/locale/types.ts
+index 88aa48c..e41e0b3 100644
+--- a/src/lib/locale/types.ts
++++ b/src/lib/locale/types.ts
+@@ -63,6 +63,23 @@ export type MessageCatalog = {
+     vietnameseTooltip: string;
+   };
+   accessibility: { openMenu: string; closeDialog: string; nextItem: string; previousItem: string };
++  dashboard: {
++    library: string; totalSets: (count: string) => string; filterAria: string;
++    filters: Record<"all" | "ready" | "needs_edit" | "in_review", string>;
++    sortAria: string; sortRecent: string; sortTitle: string; loadingSets: string; loadingDashboard: string;
++    emptyTitle: string; emptyCta: string; emptyDescription: string; emptyAria: string;
++    addTitle: string; addDescription: string; addAria: string;
++    noFilterMatch: string; noSearchMatch: (query: string) => string; loadRecovery: string;
++    deleteTitle: string; deleteDescription: (title: string, approved: string | null) => string;
++    cancel: string; deleteAction: string;
++    kinds: Record<"flashcards" | "quiz" | "studySet", string>;
++    statuses: Record<"needs_edit" | "ready" | "in_progress", string>;
++    units: { cards: (count: string) => string; questions: (count: string) => string };
++    readyPractice: string; percentDone: (percent: string) => string; percentComplete: (percent: string) => string;
++    actions: { openEditor: string; practice: string; resumePractice: string; startFlashcards: string; startQuiz: string; continueSetup: string; review: string; drillMistakes: string; more: string; moreFor: (title: string) => string; rename: string; delete: string };
++    mobile: { aria: string; dashboard: string; library: string; create: string; settings: string };
++    hero: { welcome: (name: string) => string; learner: string; summary: (editing: string, ready: string) => string; createFirst: string; createNew: string; practice: string; reviewLatest: string };
++  };
+   workflows: {
+     import: Record<"eyebrow" | "file" | "paste" | "sourceText" | "pastePlaceholder" | "youtubeHelp" | "convert" | "converting" | "missingInput" | "unsupportedFile" | "fallbackError", string>;
+     uploadBox: Record<"drop" | "choose" | "chooseAnother" | "formats", string>;

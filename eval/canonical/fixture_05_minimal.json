@@ -1,0 +1,13 @@
+{
+  "scenario": "minimal_input",
+  "description": "Single heading, one paragraph — edge case for thin content",
+  "raw_markdown": "# Meeting Notes\n\nDiscussed Q3 roadmap priorities.",
+  "expected": {
+    "title": "Meeting Notes",
+    "filename": "meeting-notes.md",
+    "language": "en",
+    "document_type": "theory",
+    "sections_count": 1,
+    "warnings_include": []
+  }
+}

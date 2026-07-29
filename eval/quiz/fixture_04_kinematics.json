@@ -1,0 +1,10 @@
+{
+  "scenario": "formula_content",
+  "description": "Content with formulas — tests distractor quality and LaTeX preservation",
+  "canonical_markdown": "# Kinematics\n\n## Equations of Motion\n\n$$ v = u + at $$\n\n$$ s = ut + \\frac{1}{2}at^2 $$\n\n$$ v^2 = u^2 + 2as $$\n\nWhere:\n- u = initial velocity\n- v = final velocity\n- a = acceleration\n- t = time\n- s = displacement",
+  "sections": [
+    { "section_key": "sec_001", "heading": "Equations of Motion", "body_markdown": "$$ v = u + at $$ $$ s = ut + \\frac{1}{2}at^2 $$ $$ v^2 = u^2 + 2as $$" }
+  ],
+  "expected_min_count": 2,
+  "each_question_must_have": ["explanation"]
+}

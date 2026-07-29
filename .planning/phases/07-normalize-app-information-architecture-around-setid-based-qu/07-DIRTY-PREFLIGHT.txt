@@ -1,0 +1,111 @@
+PHASE 7 DIRTY WORKSPACE PRESERVATION BASELINE
+Captured: 2026-07-26T08:16:00Z
+Repository: C:/Users/minhmice/Documents/projects/Doc2Quiz
+Branch: main
+Git dir: .git (primary checkout, not a linked worktree)
+Plan: 07-01
+
+PURPOSE
+This is preservation evidence for Phase 7 Plans 01-09. It records the dirty workspace before any Phase 7 source edit. The workspace contains extensive pre-existing tracked and untracked work, including Phase 6 Plan 06-06 dashboard and locale changes. No source file was edited while preparing this baseline.
+
+MANDATORY SAFETY CONTRACT
+- Prohibited: git reset, git checkout, git clean, git restore, blanket file replacement, staging, and commits.
+- Phase 7 must use no-commit safety mode wherever owned files overlap existing dirty work or an atomic commit cannot isolate Phase 7 changes.
+- Before each downstream task, capture its owned-file scoped diff and compare it with this baseline.
+- After each downstream task, compare its owned-file scoped diff with both its pre-task snapshot and this baseline.
+- Existing hunks remain byte-for-byte unless a Phase 7 task explicitly changes the same lines.
+- Never discard, overwrite, stage, or commit unrelated user or Phase 6 work.
+- Source editing is BLOCKED until the user explicitly types "authorized" or identifies files that must not be touched.
+
+COMMANDS EXECUTED FOR BASELINE
+1. git status --short
+2. git diff --name-status
+3. git diff --check
+4. git diff -- <path> for every path in files_modified across Plans 01-09, plus the explicitly frozen auth/proxy/audit/smoke/package paths
+5. SHA-256 over each captured UTF-8 scoped diff text (PowerShell joined output with LF)
+
+GLOBAL INVENTORY SUMMARY
+The global status contains hundreds of pre-existing tracked deletions/modifications and untracked files. Notable categories include deleted legacy Cursor agent configuration, deleted legacy processing/PDF/AI code, modified planning files, Phase 6 dashboard/locale changes, generated .next artifacts, and many untracked planning/source files. The complete command output was captured during Task 1; this manifest records the Phase 7-owned overlap evidence required for safe continuation.
+
+git diff --check result: FAILED (exit 2) due to pre-existing workspace diff issues/warnings. No remediation was attempted because unrelated dirty work is out of scope and destructive/blanket operations are prohibited.
+
+PHASE 6 PLAN 06-06 PRESERVATION FIXTURES
+The following existing dirty files contain Phase 6 dashboard/locale work and must be preserved surgically:
+- src/components/dashboard/DashboardHomeClient.tsx — modified; SHA256 2977390b4c3ede4aaec111e1d8558429caa97b2c9d74e9d68f37a82b18b7ef81; 148 diff lines
+- src/components/dashboard/DashboardLibraryHeader.tsx — modified; SHA256 4c28dc1a61b5a141afd16cce17cbba84e5999304b23e28932d95f20cb4c4d383; 94 diff lines
+- src/components/dashboard/DashboardMobileBottomNav.tsx — modified; SHA256 12fecf741b75290a25d42232879e27b6de1b88396ebc7512d913554c21f5de1b; 95 diff lines
+- src/components/dashboard/DashboardStudySetCard.tsx — modified; SHA256 2ff278e0516a5eaf5362af1548d75e768926c325c290d7f1beaebc806683a266; 321 diff lines
+- src/lib/locale/messages.ts — modified; SHA256 fa38fdb506dab31e5efe10c0ccf12bcb2d887652e71f456e5d190462b719ddd6; 59 diff lines
+- src/lib/locale/types.ts — modified; SHA256 0c92cbe036849349ced8cb081999d4f555059f073ed6dd4a5e212a7f9ae78296; 28 diff lines
+- src/components/dashboard/DashboardStatsRow.tsx — pre-existing deletion, must remain deleted
+- src/components/dashboard/StatCard.tsx — pre-existing deletion, must remain deleted
+- src/components/dashboard/DashboardHomeSkeleton.tsx — pre-existing untracked Phase 6 file
+
+OTHER DIRTY PHASE 7-OWNED PATHS
+- next.config.ts — modified; SHA256 c0f09aff3cb7ec694d5104040db09d53117dec02cc937f69d0c681538263562d; 53 diff lines
+- package.json — modified; SHA256 f8afe8c7152b37245c7890e362b7d49c8f8598d85f45de07dd178c7c0cc174dd; 48 diff lines
+- src/app/(app)/edit — deleted/modified/untracked descendants; SHA256 a3a8d1a88c11206352424fe078d08cffe92c515c6e289e4705d2001c72ddab77; 413 tracked diff lines
+- src/app/(app)/flashcards — untracked loading.tsx; tracked diff SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- src/app/(app)/quiz/[id] — untracked loading.tsx; tracked diff SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- src/app/(app)/sets — modified plus untracked loading files; SHA256 ca657844ed9e5fe89989ee9c66ecf043d96ab6a2119b427e879190b8c5e32856; 13 tracked diff lines
+- src/components/layout/AppTopBar.tsx — modified; SHA256 e37b0b5a68c54e091e22c53b728d654857b1dd8d119fa940b6a86298d1691129; 25 diff lines
+- src/components/layout/RoutePrefetch.tsx — untracked; tracked diff SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- src/hooks/useDashboardHome.ts — modified; SHA256 53f6235349f4588ce0f8eedb6a932eac4eec8029d2810744f3a4df1ed8fa798c; 145 diff lines
+- src/hooks/useStudySetProductSurfaceRedirect.ts — modified; SHA256 cd27d54709fb8892dbbc8fa28a1fad5f8a5a6dd3d290a3087acbe7f937ab2caa; 13 diff lines
+- src/lib/supabase/middlewareClient.ts — modified; SHA256 9d8c779ca6e9758201c48cb0ced97b9894defd79d4053a9ae20c65b5861a1b9f; 17 diff lines
+- 07-VALIDATION.md — untracked
+
+CLEAN OR NOT-YET-EXISTING PHASE 7-OWNED PATHS
+The following produced an empty tracked diff hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 at baseline (some planned paths do not yet exist):
+- src/lib/routes/studySetPaths.ts
+- src/lib/routes/studySetPaths.test.ts
+- src/lib/dashboard/studySetDashboardLinks.ts
+- src/lib/dashboard/studySetDashboardLinks.test.ts
+- src/lib/client/activityTracking.ts
+- src/lib/client/activityTracking.test.ts
+- src/types/studySession.ts
+- supabase/migrations/20260726150000_resumable_study_sessions.sql
+- src/app/(app)/create/page.tsx
+- src/app/(app)/quiz/create/page.tsx
+- src/app/(app)/flashcard/create/page.tsx
+- src/components/create/StudySetCreateWizard.tsx
+- src/components/edit/new/import/UnifiedInputZone.tsx
+- src/app/(app)/dashboard/page.tsx
+- src/components/dashboard/DashboardStudySetCard.test.tsx
+- src/components/dashboard/dashboardStudySetCardModel.ts
+- src/components/layout/AppShell.tsx
+- src/components/layout/AppSidebar.tsx
+- src/components/layout/CommandPalette.tsx
+- src/app/(app)/help/page.tsx
+- all planned src/app/(app)/quiz/[setId] route pages
+- src/components/quiz/QuizSetOverview.tsx
+- src/components/quiz/QuizSession.tsx
+- all planned src/app/(app)/flashcard/[setId] route pages
+- src/components/flashcards/FlashcardSetOverview.tsx
+- src/components/flashcards/FlashcardSession.tsx
+- src/lib/routing/studySetContentKindRedirects.ts
+- scripts/audit-phase7-route-callers.mjs
+- scripts/audit-phase7-route-references.mjs
+- scripts/verify-phase7-route-smoke.mjs
+
+EXPLICIT FROZEN AUTH/PROXY BOUNDARY
+- src/lib/supabase/auth-guard.ts — clean/empty diff hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855; must remain unmodified by frozen smoke design
+- src/lib/supabase/middlewareClient.ts — DIRTY; SHA256 9d8c779ca6e9758201c48cb0ced97b9894defd79d4053a9ae20c65b5861a1b9f; must remain unmodified by frozen smoke design
+- src/proxy.ts — clean/empty diff hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855; must remain unmodified by frozen smoke design
+
+PLAN 01 SOURCE OVERLAP DECISION
+The four Task 3 source/test paths are currently clean or absent, but Phase 7 as a whole overlaps extensive user and Phase 6 work, and downstream route migration necessarily touches dirty owned files. Therefore Phase 7 must enter explicit user-authorized no-commit surgical mode before any source edit. This baseline artifact itself is intentionally untracked and MUST NOT be staged or committed before authorization.
+
+AUTHORIZATION STATUS
+AUTHORIZED — user explicitly replied "authorized" on 2026-07-26.
+Execution mode: surgical no-commit safety mode. No staging or commits permitted; all preservation rules above remain binding.
+
+PLAN 07-01 TASK 3 POST-TASK SCOPED DIFF
+Pre-task state: all four Task 3 paths had empty tracked diffs; both test files were absent.
+- src/lib/routes/studySetPaths.ts — modified only by Task 3; post-diff SHA256 cc17225c403a45d78cee1e94caa0dd02396986612b31500570b3632243023925; 93 diff lines
+- src/lib/routes/studySetPaths.test.ts — new untracked Task 3 contract test; no pre-existing content overwritten
+- src/lib/dashboard/studySetDashboardLinks.ts — modified only by Task 3; post-diff SHA256 b56db9890c811fb9c69da7b2cd318afb6e55cb8d6eb4d2c88b3dcda374073e32; 97 diff lines
+- src/lib/dashboard/studySetDashboardLinks.test.ts — new untracked Task 3 contract test; no pre-existing content overwritten
+Scoped git diff --check: PASSED.
+Focused tests: PASSED — 2 files, 18 tests.
+Preservation result: no pre-existing hunk existed in the four Task 3 paths, and no other source path was edited by Plan 07-01.

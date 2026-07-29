@@ -1,0 +1,13 @@
+{
+  "scenario": "formula_table_heavy",
+  "description": "Theory content with tables, LaTeX formulas, and code blocks",
+  "raw_markdown": "# Chemical Kinetics\n\n## Rate Law\n\nFor a reaction aA + bB → cC + dD, the rate law is:\n\n$$ \\text{rate} = k[A]^m[B]^n $$\n\n| Order | Units of k       | Example         |\n|-------|------------------|-----------------|\n| 0     | mol·L⁻¹·s⁻¹     | Decomposition   |\n| 1     | s⁻¹              | Radioactive decay |\n| 2     | L·mol⁻¹·s⁻¹     | Bimolecular reaction |\n\n## Code computation\n\n```python\ndef half_life_first_order(k):\n    return 0.693 / k\n```\n\n## Key Concepts\n\n- Activation energy is the minimum energy required for a reaction.\n- Catalysts lower activation energy without being consumed.",
+  "expected": {
+    "title": "Chemical Kinetics",
+    "filename": "chemical-kinetics.md",
+    "language": "en",
+    "document_type": "theory",
+    "sections_count": 3,
+    "warnings_include": []
+  }
+}

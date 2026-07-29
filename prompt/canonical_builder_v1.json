@@ -1,0 +1,93 @@
+{
+  "name": "canonical_knowledge_builder",
+  "version": "1.6",
+  "system": "Transform extracted Markdown into canonical knowledge and a validated atomic-fact artifact. Preserve source meaning. Never invent, solve unanswered questions, or use external knowledge. Return valid JSON only.",
+  "input": {
+    "source_id": "{{source_id}}",
+    "source_type": "{{source_type}}",
+    "original_filename": "{{original_filename}}",
+    "raw_markdown": "{{raw_markdown}}"
+  },
+  "tasks": [
+    "Remove extraction noise, duplicate blocks, headers, footers, navigation, and irrelevant metadata.",
+    "Preserve facts, headings, lists, tables, formulas, examples, questions, and answer keys. Repair Markdown without changing meaning.",
+    "Fix encoding damage only when source context makes the original text unambiguous; otherwise mark it unreadable.",
+    "Detect ISO language and classify document_type as theory, exam, or mixed.",
+    "Extract every existing question and explicit answer key without solving unanswered questions.",
+    "When an explicit answer key maps to a question, append an exact canonical line such as Answer: <answer text> inside that question section while also preserving the original answer-key section.",
+    "For short-answer questions, use options [] and copy only an explicit source answer.",
+    "Create stable sequential sections sec_001, sec_002, ... and preserve answer-key sections.",
+    "After canonical_markdown is final, extract self-contained atomic facts with exact evidence and locator.",
+    "Never create an atomic fact from a cover page, exam instructions, candidate fields, page footer, question stem, unanswered option, or a block containing multiple unrelated questions.",
+    "Each answerable fact must express one clear subject-relation-answer proposition. answer_text must be the complete answer value or phrase, never an arbitrary first word copied only to satisfy substring validation.",
+    "Keep the complete context required to prove the fact. Do not truncate a proposition, passage, condition, formula, table row, or answer merely because it is long.",
+    "Each source_excerpt must be copied verbatim from canonical_markdown. Each answer_text must be copied verbatim from its source_excerpt.",
+    "For exam facts, source_excerpt must include enough question/answer-key context to prove answer_text. If that context cannot be represented exactly, mark the fact unanswerable.",
+    "List only independent supported question opportunities. A simple proposition supports one opportunity by default.",
+    "Use the primary intent mapping definition=identify_definition, property=match_property, rule=supported_statement, comparison=compare, process=process_order, numeric=direct_calculation, classification=classify. source_question is allowed for explicit answered source questions; identify_condition is additionally allowed only when conditions is non-empty.",
+    "Set max_supported_count to unique answerable fact_id plus question_opportunity pairs.",
+    "Set source_readiness.pass true when at least one answerable atomic fact exists OR at least one intact extracted question can be resolved later. Missing source answers remain null and are warnings, not canonical facts.",
+    "Set source_readiness.pass false only when neither usable facts nor intact question stems exist; include precise reasons for damaged OCR, broken tables/images/formulas, or unresolved references.",
+    "Generate a concise title and lowercase filesystem-safe .md filename."
+  ],
+  "output_schema": {
+    "title": "string",
+    "filename": "string.md",
+    "language": "ISO 639 code",
+    "document_type": "theory | exam | mixed",
+    "topics": ["string"],
+    "canonical_markdown": "string",
+    "sections": [
+      {
+        "id": "sec_001",
+        "title": "string",
+        "content": "string",
+        "content_type": "theory | question | answer_key | example | reference"
+      }
+    ],
+    "extracted_questions": [
+      {
+        "question": "string",
+        "options": ["string"],
+        "answer": "string | null",
+        "section_id": "sec_001"
+      }
+    ],
+    "atomic_facts": [
+      {
+        "fact_id": "fact_001",
+        "section_key": "sec_001",
+        "statement": "self-contained normalized proposition",
+        "source_excerpt": "exact canonical_markdown substring",
+        "answer_text": "exact source_excerpt substring usable as correct choice",
+        "fact_type": "definition | property | rule | comparison | process | numeric | classification",
+        "entities": ["string"],
+        "conditions": ["string"],
+        "question_opportunities": ["identify_definition | match_property | classify | compare | supported_statement | identify_condition | process_order | direct_calculation | apply_rule | source_question"],
+        "answerable": true
+      }
+    ],
+    "source_readiness": {
+      "pass": true,
+      "reasons": []
+    },
+    "max_supported_count": 1,
+    "warnings": ["string"]
+  },
+  "constraints": [
+    "No invented facts, answers, examples, or external knowledge.",
+    "Do not discard meaningful content or answer keys.",
+    "Return JSON matching the schema exactly.",
+    "Filename lowercase, no spaces, .md suffix.",
+    "Section IDs sequential sec_001, sec_002, ...",
+    "Theory documents have extracted_questions [].",
+    "Unanswered questions keep answer null and produce no answerable source_question fact.",
+    "Every atomic fact section_key must exist.",
+    "Every source_excerpt must be an exact canonical_markdown substring and belong to its section.",
+    "Every answer_text must be an exact source_excerpt substring.",
+    "Do not mark facts answerable when context, evidence, relations, units, or conditions are missing.",
+    "A source_excerpt containing two or more question stems or four or more option labels is not an atomic fact.",
+    "max_supported_count must exactly equal unique supported fact opportunities.",
+    "Ready source must have at least one answerable fact opportunity or one intact extracted question."
+  ]
+}

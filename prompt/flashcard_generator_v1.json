@@ -1,0 +1,278 @@
+{
+  "name": "flashcard_generator",
+  "version": "1.0",
+  "system": "Generate flashcards from canonical knowledge only. Use only facts present in the supplied canonical markdown and sections. Never use raw extraction text or external knowledge. Return valid JSON only.",
+  "input": {
+    "study_set_id": "{{study_set_id}}",
+    "title": "{{title}}",
+    "language": "{{language}}",
+    "learning_goal": "{{learning_goal}}",
+    "canonical_markdown": "{{canonical_markdown}}",
+    "sections_json": "{{sections_json}}",
+    "extracted_questions_json": "{{extracted_questions_json}}",
+    "requested_count": "{{requested_count}}",
+    "coverage_mode": "{{coverage_mode}}"
+  },
+  "tasks": [
+    "Detect the best card format for this content: term_definition, question_answer, cloze, or mixed. Set detected_format to the dominant style.",
+    "Identify distinct learnable concepts from the canonical knowledge. Assign stable concept_id values: concept_001, concept_002, ...",
+    "Recommend an appropriate card count based on content depth and learning_goal. When requested_count is a number, treat it as the target unless content is insufficient.",
+    "For each concept, generate one flashcard with non-empty front and back grounded in the canonical text.",
+    "Adapt card style per learning_goal: memorize uses term→definition pairs; understand uses why/how prompts; exam_preparation uses exam-style question→answer pairs.",
+    "Prefer concepts from theory and example sections; reuse extracted_questions as hints when they match canonical content (do not copy verbatim if ambiguous).",
+    "When content is thin, recommend and generate fewer cards rather than inventing topics."
+  ],
+  "output_schema": {
+    "detected_format": "term_definition | question_answer | cloze | mixed",
+    "recommended_count": "number",
+    "concepts": [
+      {
+        "concept_id": "concept_001",
+        "label": "string",
+        "section_key": "sec_001",
+        "importance": "high | medium | low"
+      }
+    ],
+    "cards": [
+      {
+        "front": "string",
+        "back": "string",
+        "format": "term_definition | question_answer | cloze | mixed",
+        "concept_id": "concept_001",
+        "section_key": "sec_001",
+        "source_excerpt": "string"
+      }
+    ],
+    "warnings": ["string"]
+  },
+  "constraints": [
+    "Canonical knowledge only — no raw_markdown, no original file, no external facts.",
+    "Every card must have non-empty front and back text.",
+    "No duplicate concept_id across concepts array.",
+    "Do not invent information not supported by canonical_markdown or sections.",
+    "Return JSON matching the schema exactly.",
+    "Each concept must reference an existing section_key from the sections provided.",
+    "Each card must reference an existing concept_id from the concepts array.",
+    "Front and back must be different (not identical text)."
+  ],
+  "examples": [
+    {
+      "name": "Term-definition format (memorize goal)",
+      "input": {
+        "study_set_id": "set_001",
+        "title": "Cell Biology Terms",
+        "language": "en",
+        "learning_goal": "memorize",
+        "canonical_markdown": "# Cell Biology\n\n## Mitochondria\n\nMitochondria are organelles that produce energy through cellular respiration.\n\n## Ribosomes\n\nRibosomes are organelles that synthesize proteins from amino acids.\n\n## Nucleus\n\nThe nucleus is the control center of the cell containing DNA.",
+        "sections_json": "[{\"id\":\"sec_001\",\"title\":\"Mitochondria\",\"content\":\"Mitochondria are organelles that produce energy through cellular respiration.\"},{\"id\":\"sec_002\",\"title\":\"Ribosomes\",\"content\":\"Ribosomes are organelles that synthesize proteins from amino acids.\"},{\"id\":\"sec_003\",\"title\":\"Nucleus\",\"content\":\"The nucleus is the control center of the cell containing DNA.\"}]",
+        "extracted_questions_json": "[]",
+        "requested_count": 3,
+        "coverage_mode": "balanced"
+      },
+      "expected_output": {
+        "detected_format": "term_definition",
+        "recommended_count": 3,
+        "concepts": [
+          {
+            "concept_id": "concept_001",
+            "label": "Mitochondria",
+            "section_key": "sec_001",
+            "importance": "high"
+          },
+          {
+            "concept_id": "concept_002",
+            "label": "Ribosomes",
+            "section_key": "sec_002",
+            "importance": "high"
+          },
+          {
+            "concept_id": "concept_003",
+            "label": "Nucleus",
+            "section_key": "sec_003",
+            "importance": "high"
+          }
+        ],
+        "cards": [
+          {
+            "front": "Mitochondria",
+            "back": "Organelles that produce energy through cellular respiration",
+            "format": "term_definition",
+            "concept_id": "concept_001",
+            "section_key": "sec_001",
+            "source_excerpt": "Mitochondria are organelles that produce energy through cellular respiration."
+          },
+          {
+            "front": "Ribosomes",
+            "back": "Organelles that synthesize proteins from amino acids",
+            "format": "term_definition",
+            "concept_id": "concept_002",
+            "section_key": "sec_002",
+            "source_excerpt": "Ribosomes are organelles that synthesize proteins from amino acids."
+          },
+          {
+            "front": "Nucleus",
+            "back": "The control center of the cell containing DNA",
+            "format": "term_definition",
+            "concept_id": "concept_003",
+            "section_key": "sec_003",
+            "source_excerpt": "The nucleus is the control center of the cell containing DNA."
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "Question-answer format (understand goal)",
+      "input": {
+        "study_set_id": "set_002",
+        "title": "Photosynthesis",
+        "language": "en",
+        "learning_goal": "understand",
+        "canonical_markdown": "# Photosynthesis\n\n## Light-Dependent Reactions\n\nLight energy is absorbed by chlorophyll and converted into ATP and NADPH. Water is split, releasing oxygen as a byproduct.\n\n## Calvin Cycle\n\nCarbon dioxide is fixed and reduced using ATP and NADPH to produce glucose.",
+        "sections_json": "[{\"id\":\"sec_001\",\"title\":\"Light-Dependent Reactions\",\"content\":\"Light energy is absorbed by chlorophyll and converted into ATP and NADPH. Water is split, releasing oxygen as a byproduct.\"},{\"id\":\"sec_002\",\"title\":\"Calvin Cycle\",\"content\":\"Carbon dioxide is fixed and reduced using ATP and NADPH to produce glucose.\"}]",
+        "extracted_questions_json": "[]",
+        "requested_count": 2,
+        "coverage_mode": "balanced"
+      },
+      "expected_output": {
+        "detected_format": "question_answer",
+        "recommended_count": 2,
+        "concepts": [
+          {
+            "concept_id": "concept_001",
+            "label": "Light-Dependent Reactions",
+            "section_key": "sec_001",
+            "importance": "high"
+          },
+          {
+            "concept_id": "concept_002",
+            "label": "Calvin Cycle",
+            "section_key": "sec_002",
+            "importance": "high"
+          }
+        ],
+        "cards": [
+          {
+            "front": "Why is oxygen released during the light-dependent reactions?",
+            "back": "Water is split to provide electrons, releasing oxygen as a byproduct",
+            "format": "question_answer",
+            "concept_id": "concept_001",
+            "section_key": "sec_001",
+            "source_excerpt": "Water is split, releasing oxygen as a byproduct."
+          },
+          {
+            "front": "How does the Calvin Cycle produce glucose?",
+            "back": "Carbon dioxide is fixed and reduced using ATP and NADPH",
+            "format": "question_answer",
+            "concept_id": "concept_002",
+            "section_key": "sec_002",
+            "source_excerpt": "Carbon dioxide is fixed and reduced using ATP and NADPH to produce glucose."
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "Exam preparation format",
+      "input": {
+        "study_set_id": "set_003",
+        "title": "Newton's Laws",
+        "language": "en",
+        "learning_goal": "exam_preparation",
+        "canonical_markdown": "# Newton's Laws of Motion\n\n## First Law\n\nAn object at rest stays at rest, and an object in motion stays in motion unless acted upon by an external force.\n\n## Second Law\n\nForce equals mass times acceleration: F = ma.\n\n## Third Law\n\nFor every action, there is an equal and opposite reaction.",
+        "sections_json": "[{\"id\":\"sec_001\",\"title\":\"First Law\",\"content\":\"An object at rest stays at rest, and an object in motion stays in motion unless acted upon by an external force.\"},{\"id\":\"sec_002\",\"title\":\"Second Law\",\"content\":\"Force equals mass times acceleration: F = ma.\"},{\"id\":\"sec_003\",\"title\":\"Third Law\",\"content\":\"For every action, there is an equal and opposite reaction.\"}]",
+        "extracted_questions_json": "[]",
+        "requested_count": 3,
+        "coverage_mode": "comprehensive"
+      },
+      "expected_output": {
+        "detected_format": "question_answer",
+        "recommended_count": 3,
+        "concepts": [
+          {
+            "concept_id": "concept_001",
+            "label": "Newton's First Law",
+            "section_key": "sec_001",
+            "importance": "high"
+          },
+          {
+            "concept_id": "concept_002",
+            "label": "Newton's Second Law",
+            "section_key": "sec_002",
+            "importance": "high"
+          },
+          {
+            "concept_id": "concept_003",
+            "label": "Newton's Third Law",
+            "section_key": "sec_003",
+            "importance": "high"
+          }
+        ],
+        "cards": [
+          {
+            "front": "Q: What does Newton's First Law state about an object at rest?",
+            "back": "A: It stays at rest unless acted upon by an external force",
+            "format": "question_answer",
+            "concept_id": "concept_001",
+            "section_key": "sec_001",
+            "source_excerpt": "An object at rest stays at rest... unless acted upon by an external force."
+          },
+          {
+            "front": "Q: What is the formula for Newton's Second Law?",
+            "back": "A: Force equals mass times acceleration (F = ma)",
+            "format": "question_answer",
+            "concept_id": "concept_002",
+            "section_key": "sec_002",
+            "source_excerpt": "Force equals mass times acceleration: F = ma."
+          },
+          {
+            "front": "Q: What does Newton's Third Law state?",
+            "back": "A: For every action, there is an equal and opposite reaction",
+            "format": "question_answer",
+            "concept_id": "concept_003",
+            "section_key": "sec_003",
+            "source_excerpt": "For every action, there is an equal and opposite reaction."
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "Thin content fallback",
+      "input": {
+        "study_set_id": "set_004",
+        "title": "Single Fact",
+        "language": "en",
+        "learning_goal": "memorize",
+        "canonical_markdown": "# Basic Fact\n\n## Definition\n\nA photon is a particle of light.",
+        "sections_json": "[{\"id\":\"sec_001\",\"title\":\"Definition\",\"content\":\"A photon is a particle of light.\"}]",
+        "extracted_questions_json": "[]",
+        "requested_count": 5,
+        "coverage_mode": "balanced"
+      },
+      "expected_output": {
+        "detected_format": "term_definition",
+        "recommended_count": 1,
+        "concepts": [
+          {
+            "concept_id": "concept_001",
+            "label": "Photon",
+            "section_key": "sec_001",
+            "importance": "high"
+          }
+        ],
+        "cards": [
+          {
+            "front": "Photon",
+            "back": "A particle of light",
+            "format": "term_definition",
+            "concept_id": "concept_001",
+            "section_key": "sec_001",
+            "source_excerpt": "A photon is a particle of light."
+          }
+        ],
+        "warnings": ["Content is thin; recommended 1 card instead of requested 5"]
+      }
+    }
+  ]
+}

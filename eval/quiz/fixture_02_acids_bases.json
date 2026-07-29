@@ -1,0 +1,13 @@
+{
+  "scenario": "exam_has_answers",
+  "description": "Exam content with existing answer key — quiz generator should reuse as hints",
+  "canonical_markdown": "# Acids and Bases\n\n## pH Scale\n\npH below 7 is acidic, pH above 7 is basic, pH 7 is neutral.\n\n## Questions\n\n1. What pH is neutral?\n   Answer: 7\n\n2. What is the pH of lemon juice?\n   Answer: ~2 (acidic)",
+  "sections": [
+    { "section_key": "sec_001", "heading": "pH Scale", "body_markdown": "pH below 7 is acidic, pH above 7 is basic, pH 7 is neutral." }
+  ],
+  "extracted_questions": [
+    { "question": "What pH is neutral?", "options": ["5", "7", "9", "14"], "answer": "7", "section_id": "sec_001" }
+  ],
+  "expected_min_count": 2,
+  "each_question_must_have": ["prompt", "4 choices", "explanation"]
+}

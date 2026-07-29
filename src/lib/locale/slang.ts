@@ -1,0 +1,48 @@
+import type { SlangCatalog, SlangEntry, SlangTone } from "./types";
+
+const entry = (tone: SlangTone, ...texts: string[]): readonly SlangEntry[] => texts.map((text) => ({ text, tone }));
+
+export const slangCatalog = {
+  en: {
+    loading: entry("playful", "Let it cook", "Parsing the lore"),
+    upload: entry("playful", "Drop the study material", "New lore incoming"),
+    conversion: entry("playful", "Turning pages into knowledge", "Lore extraction in progress"),
+    quizGeneration: entry("playful", "Cooking the question bank", "Questions are taking shape"),
+    flashcardGeneration: entry("playful", "Cards are taking shape", "Study deck loading"),
+    correct: entry("praise", "You ate", "Clean work"),
+    wrong: entry("encourage", "We move", "Run it back when ready"),
+    retry: entry("encourage", "Lock back in", "One more round"),
+    success: entry("praise", "Massive W", "Knowledge acquired"),
+    empty: entry("playful", "No lore found", "Fresh shelf, fresh start"),
+    warning: entry("warning", "Worth a quick review", "Give this one another look"),
+    streak: entry("praise", "Streak secured", "Study arc going strong"),
+    score: entry("praise", "Clean score", "Academic comeback secured"),
+    navigation: entry("playful", "Back to the main quest", "Continue the study arc"),
+    toast: entry("praise", "Saved and secured", "Clean work"),
+    progress: entry("encourage", "Still cooking", "Locked in"),
+    result: entry("praise", "You finished strong", "Session secured"),
+    badge: entry("praise", "Certified progress", "Lore unlocked"),
+    secondaryLabel: entry("playful", "Low-key useful", "Worth a look"),
+  },
+  vi: {
+    loading: entry("playful", "Để nó cook", "Đang moi lore"),
+    upload: entry("playful", "Thả tài liệu vào", "Lore mới đang tới"),
+    conversion: entry("playful", "Đang biến trang thành kiến thức", "Đang lọc lore"),
+    quizGeneration: entry("playful", "Đang cook ngân hàng câu hỏi", "Câu hỏi đang thành hình"),
+    flashcardGeneration: entry("playful", "Flashcard đang thành hình", "Bộ thẻ đang tải"),
+    correct: entry("praise", "Ăn trọn câu này", "Làm sạch đấy"),
+    wrong: entry("encourage", "Đi tiếp thôi", "Sẵn sàng thì chạy lại"),
+    retry: entry("encourage", "Lock in lại", "Thêm một lượt nữa"),
+    success: entry("praise", "W cực mạnh", "Nạp kiến thức thành công"),
+    empty: entry("playful", "Không có lore", "Kệ mới, khởi đầu mới"),
+    warning: entry("warning", "Nên xem lại một chút", "Kiểm tra thêm lần nữa"),
+    streak: entry("praise", "Giữ chuỗi thành công", "Arc học tập đang mạnh"),
+    score: entry("praise", "Điểm sạch đấy", "Comeback học thuật thành công"),
+    navigation: entry("playful", "Quay lại nhiệm vụ chính", "Tiếp tục arc học tập"),
+    toast: entry("praise", "Đã lưu gọn gàng", "Làm sạch đấy"),
+    progress: entry("encourage", "Vẫn đang cook", "Đang lock in"),
+    result: entry("praise", "Kết thúc quá ổn", "Buổi học đã hoàn tất"),
+    badge: entry("praise", "Tiến độ certified", "Mở khóa lore"),
+    secondaryLabel: entry("playful", "Khá hữu ích đó", "Đáng xem nha"),
+  },
+} satisfies SlangCatalog;

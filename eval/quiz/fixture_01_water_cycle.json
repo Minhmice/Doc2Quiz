@@ -1,0 +1,15 @@
+{
+  "scenario": "theory_facts",
+  "description": "Straightforward theory content — should yield clear MCQs with distinct distractors",
+  "canonical_markdown": "# The Water Cycle\n\n## Evaporation\n\nWater turns from liquid to vapor when heated by the sun.\n\n## Condensation\n\nWater vapor cools and forms clouds.\n\n## Precipitation\n\nWater falls as rain, snow, or hail.\n\n## Collection\n\nWater gathers in oceans, rivers, and lakes.",
+  "sections": [
+    { "section_key": "sec_001", "heading": "Evaporation", "body_markdown": "Water turns from liquid to vapor when heated by the sun." },
+    { "section_key": "sec_002", "heading": "Condensation", "body_markdown": "Water vapor cools and forms clouds." },
+    { "section_key": "sec_003", "heading": "Precipitation", "body_markdown": "Water falls as rain, snow, or hail." },
+    { "section_key": "sec_004", "heading": "Collection", "body_markdown": "Water gathers in oceans, rivers, and lakes." }
+  ],
+  "expected_min_count": 3,
+  "expected_max_count": 6,
+  "must_have_concepts": true,
+  "each_question_must_have": ["prompt", "choices with 4 items", "explanation"]
+}

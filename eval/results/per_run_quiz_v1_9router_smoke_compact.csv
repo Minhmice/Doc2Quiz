@@ -1,0 +1,2 @@
+﻿case_id,repetition,schema_valid,count_match,structure_pass,question_count,source_excerpt_grounding,duplicate_question_count,groundedness_score,quality_score,latency_ms
+dedialynghean-18_mul_ques,1,False,False,False,0,0.0,0,,,3799
