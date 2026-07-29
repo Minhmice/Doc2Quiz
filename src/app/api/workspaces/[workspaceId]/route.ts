@@ -9,6 +9,47 @@ import {
   WorkspaceValidationError,
 } from "@/lib/workspaces/errors";
 import { workspacePatchSchema } from "@/lib/workspaces/schemas";
+import { getWorkspaceDetail } from "@/lib/workspaces/workspaceSummary";
+
+export async function GET(
+  _request: Request,
+  ctx: { params: Promise<{ workspaceId: string }> },
+) {
+  const auth = await requireApiUser();
+  if ("error" in auth) {
+    return auth.error as Response;
+  }
+
+  const { workspaceId } = await ctx.params;
+
+  try {
+    const data = await getWorkspaceDetail({
+      supabase: auth.supabase,
+      userId: auth.user.id,
+      workspaceId,
+    });
+    return NextResponse.json({ data });
+  } catch (error) {
+    if (error instanceof WorkspaceNotFoundError) {
+      return NextResponse.json(
+        { error: "not_found", message: error.message },
+        { status: 404 },
+      );
+    }
+
+    console.error("workspace detail route error", error);
+    return NextResponse.json(
+      {
+        error: "internal_error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to load workspace.",
+      },
+      { status: 500 },
+    );
+  }
+}
 
 export async function PATCH(
   request: Request,

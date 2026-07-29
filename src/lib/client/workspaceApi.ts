@@ -1,6 +1,10 @@
 import type { DocumentPatch, WorkspacePatch } from "@/lib/workspaces/schemas";
 import type { WorkspaceIngestIdentity } from "@/lib/client/ingestWorkspace";
 import type { WorkspaceIngestJsonBody } from "@/lib/workspaces/schemas";
+import type {
+  WorkspaceDetail,
+  WorkspaceSummary,
+} from "@/lib/workspaces/workspaceSummary";
 
 type ApiErrorPayload = {
   error?: string;
@@ -20,6 +24,42 @@ function mapNetworkError(error: unknown): Error {
 async function parseJsonError(res: Response, fallback: string): Promise<never> {
   const payload = (await res.json().catch(() => ({}))) as ApiErrorPayload;
   throw new Error(payload.message ?? payload.error ?? fallback);
+}
+
+export async function fetchWorkspaceSummaries(options?: {
+  signal?: AbortSignal;
+}): Promise<WorkspaceSummary[]> {
+  try {
+    const res = await fetch("/api/workspaces", { signal: options?.signal });
+    if (!res.ok) {
+      await parseJsonError(res, "Could not load workspaces.");
+    }
+    const body = (await res.json()) as { data: WorkspaceSummary[] };
+    return Array.isArray(body.data) ? body.data : [];
+  } catch (error) {
+    throw mapNetworkError(error);
+  }
+}
+
+export async function fetchWorkspaceDetail(
+  workspaceId: string,
+  options?: { signal?: AbortSignal },
+): Promise<WorkspaceDetail> {
+  try {
+    const res = await fetch(`/api/workspaces/${workspaceId}`, {
+      signal: options?.signal,
+    });
+    if (!res.ok) {
+      await parseJsonError(res, "Could not load workspace.");
+    }
+    const body = (await res.json()) as { data: WorkspaceDetail };
+    if (!body.data?.id) {
+      throw new Error("Workspace detail response missing data.");
+    }
+    return body.data;
+  } catch (error) {
+    throw mapNetworkError(error);
+  }
 }
 
 export async function patchWorkspace(
