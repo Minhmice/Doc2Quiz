@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-29T22:54:00.479Z"
-last_activity: 2026-07-29
+last_updated: "2026-07-30T06:35:00.000Z"
+last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 60
   completed_plans: 40
-  percent: 60
+  percent: 67
 ---
 
 # Doc2Quiz — State
@@ -24,9 +24,9 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 09 (workspace-centered-learning-canonical-provenance) — EXECUTING
-Plan: 3 of 9
-Status: Ready to execute
-Last activity: 2026-07-29
+Plan: 09-01 complete; next 09-02 (2 of 9)
+Status: Ready to execute 09-02
+Last activity: 2026-07-30
 
 Progress: [███████░░░] 67%
 
@@ -57,6 +57,10 @@ Progress: [███████░░░] 67%
 - [Phase 06]: Deleted dashboard stats components remain deleted; localization follows the live dashboard structure.
 - [Phase 08]: Generation quota reservations serialize per user in Postgres; active reservations expire after seven minutes and refund bonus credits exactly once.
 - [Phase 08]: Server quota modules call typed reservation RPC adapters; direct quota-table mutation is retired pending route lifecycle wiring in Plan 08-06.
+- [Phase 09]: Workspace migration timestamps 150000/150100 (140000 collided with quota reservations).
+- [Phase 09]: Versioned sections live in `canonical_version_sections`; legacy `canonical_sections` untouched.
+- [Phase 09]: Output bridge uses new study_sets row per learning_output; historic parent history stays parent-keyed.
+- [Phase 09]: Native outputs use null `legacy_parent_study_set_id`; backfill always sets immutable parent.
 
 ## Quick Tasks Completed
 
@@ -66,7 +70,7 @@ Progress: [███████░░░] 67%
 
 ## Next step
 
-Execute Phase 6 Plan 06-07 coverage audit and manual verification gate.
+Execute Phase 9 Plan 09-02 — workspace-native first ingest, immutable document lifecycle, and import client.
 
 ## Accumulated Context
 

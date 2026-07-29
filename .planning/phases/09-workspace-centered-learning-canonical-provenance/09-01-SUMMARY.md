@@ -77,7 +77,7 @@ Each task was committed atomically:
 3. **Task 2: workspace foundation schema RLS and backfill** - `45bfd83` (feat)
 4. **Task 3: atomic workspace append-only RPCs** - `fca66bf` (feat)
 
-**Plan metadata:** _(this commit)_
+**Plan metadata:** `531655d` (docs: complete plan); tracking `a31dbb7`
 
 _Note: TDD tasks may have multiple commits (test → feat → refactor)_
 
