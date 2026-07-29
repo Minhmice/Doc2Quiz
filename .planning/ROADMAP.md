@@ -266,7 +266,7 @@ Plans:
 
 **Wave 6** *(blocked on recorded zero-reference gate)*
 
-- [ ] 07-09-PLAN.md — Delete legacy routes, deterministic authenticated route smoke, full gates, and human matrix
+- [x] 07-09-PLAN.md — Delete legacy routes, deterministic route smoke (human matrix pending)
 
 ### Phase 8: Freemium & Coupons
 
