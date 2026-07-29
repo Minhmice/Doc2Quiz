@@ -281,7 +281,7 @@ Plans:
   4. User redeems case-insensitive coupon codes in Settings; bonus credits stack; each code once per user
   5. Vitest + build pass; EN/VI plan copy complete
 
-**Plans:** 3/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**
@@ -306,7 +306,7 @@ Plans:
 
 **Wave 6** *(gap closure; blocked on 08-05)*
 
-- [ ] 08-06-PLAN.md — Reserve-before-generation route lifecycle and deterministic failure-release tests for quiz and flashcards
+- [x] 08-06-PLAN.md — Reserve-before-generation route lifecycle and deterministic failure-release tests for quiz and flashcards
 
 ### Phase 9: Workspace-Centered Learning & Canonical Provenance
 
