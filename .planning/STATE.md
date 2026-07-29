@@ -56,6 +56,12 @@ Progress: [██████████] 96%
 - [Phase 06]: Plan 06-06 used user-authorized no-commit safety mode to preserve overlapping dirty dashboard work.
 - [Phase 06]: Deleted dashboard stats components remain deleted; localization follows the live dashboard structure.
 
+## Quick Tasks Completed
+
+| Date | Task | Summary | Commits |
+| --- | --- | --- | --- |
+| 2026-07-30 | Remove duplicate topbar profile link and account trigger | `.planning/quick/260730-43p-remove-duplicate-topbar-profile-link-and/SUMMARY.md` | `acc8303`, `928773e` |
+
 ## Next step
 
 Execute Phase 6 Plan 06-07 coverage audit and manual verification gate.
