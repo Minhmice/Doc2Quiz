@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-29T23:45:33.670Z"
-last_activity: 2026-07-30
+last_updated: "2026-07-29T23:49:17.958Z"
+last_activity: 2026-07-29 -- Phase 07 execution started
 progress:
   total_phases: 10
   completed_phases: 6
@@ -23,10 +23,10 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 09 (workspace-centered-learning-canonical-provenance) — EXECUTING
-Plan: 09-04 complete; next 09-05 (5 of 9)
-Status: Ready to execute 09-05
-Last activity: 2026-07-30
+Phase: 07 (normalize-app-information-architecture-around-setid-based-qu) — EXECUTING
+Plan: 1 of 9
+Status: Executing Phase 07
+Last activity: 2026-07-29 -- Phase 07 execution started
 
 Progress: [███████░░░] 72%
 
