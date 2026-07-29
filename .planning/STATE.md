@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-29T22:40:56.843Z"
+last_updated: "2026-07-29T22:54:00.479Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 60
-  completed_plans: 36
-  percent: 50
+  completed_plans: 40
+  percent: 60
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 09 (workspace-centered-learning-canonical-provenance) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-07-29
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 67%
 
 ## Decisions
 
