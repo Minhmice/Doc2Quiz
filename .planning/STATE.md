@@ -55,6 +55,7 @@ Progress: [██████████] 96%
 - [Phase 06]: Slang history stays session-only and is isolated by locale plus context.
 - [Phase 06]: Plan 06-06 used user-authorized no-commit safety mode to preserve overlapping dirty dashboard work.
 - [Phase 06]: Deleted dashboard stats components remain deleted; localization follows the live dashboard structure.
+- [Phase 08]: Generation quota reservations serialize per user in Postgres; active reservations expire after seven minutes and refund bonus credits exactly once.
 
 ## Quick Tasks Completed
 
