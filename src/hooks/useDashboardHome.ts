@@ -46,7 +46,8 @@ export function useDashboardData() {
     const background = options?.background === true;
     const seq = ++refreshSeqRef.current;
     setLoadError(null);
-    background ? setRevalidating(true) : setLoading(true);
+    if (background) setRevalidating(true);
+    else setLoading(true);
     try {
       const [list, nextActivity] = await Promise.all([fetchWorkspaceSummaries(), getActivityStats()]);
       if (refreshSeqRef.current !== seq) return;

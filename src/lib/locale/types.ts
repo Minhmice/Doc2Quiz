@@ -32,8 +32,9 @@ export type MessageCatalog = {
     settings: string;
     back: string;
     logout: string;
+    searchWorkspaces: string;
+    searchWorkspacesPlaceholder: string;
     searchStudySets: string;
-    searchStudySetsPlaceholder: string;
     newSet: string;
     createNewSet: string;
     accountMenu: string;
@@ -83,21 +84,19 @@ export type MessageCatalog = {
   };
   accessibility: { openMenu: string; closeDialog: string; nextItem: string; previousItem: string };
   dashboard: {
-    library: string; totalSets: (count: string) => string; filterAria: string;
-    filters: Record<"all" | "ready" | "needs_edit" | "in_review", string>;
-    sortAria: string; sortRecent: string; sortTitle: string; loadingSets: string; loadingDashboard: string;
-    emptyTitle: string; emptyCta: string; emptyDescription: string; emptyAria: string;
-    addTitle: string; addDescription: string; addAria: string;
-    noFilterMatch: string; noSearchMatch: (query: string) => string; loadRecovery: string;
-    deleteTitle: string; deleteDescription: (title: string, approved: string | null) => string;
-    cancel: string; deleteAction: string;
+    workspaces: string; totalWorkspaces: (count: string) => string; filterAria: string;
+    filters: Record<"all" | "processing" | "ready" | "needs_review" | "empty", string>;
+    sortAria: string; sortRecent: string; sortTitle: string; loadingDashboard: string;
+    emptyDescription: string; noFilterMatch: string; noSearchMatch: (query: string) => string;
+    newWorkspace: string; openWorkspace: string; tryAgain: string;
+    metrics: { sources: string; quiz: string; flashcards: string; lastActivity: string };
+    statuses: Record<"processing" | "ready" | "needs_review" | "empty" | "needs_edit" | "in_progress", string>;
     kinds: Record<"flashcards" | "quiz" | "studySet", string>;
-    statuses: Record<"needs_edit" | "ready" | "in_progress", string>;
     units: { cards: (count: string) => string; questions: (count: string) => string };
     readyPractice: string; percentDone: (percent: string) => string; percentComplete: (percent: string) => string;
     actions: { openEditor: string; practice: string; resumePractice: string; startFlashcards: string; startQuiz: string; continueSetup: string; review: string; drillMistakes: string; more: string; moreFor: (title: string) => string; rename: string; delete: string };
     mobile: { aria: string; dashboard: string; library: string; create: string; settings: string };
-    hero: { welcome: (name: string) => string; learner: string; summary: (editing: string, ready: string) => string; createFirst: string; createNew: string; practice: string; reviewLatest: string };
+    hero: { welcome: (name: string) => string; learner: string; workspaceCount: (count: string) => string; emptyGuidance: string; continueStudying: string; reviewPending: string; newWorkspace: string };
   };
   workflows: {
     import: Record<"eyebrow" | "file" | "paste" | "sourceText" | "pastePlaceholder" | "youtubeHelp" | "convert" | "converting" | "missingInput" | "unsupportedFile" | "fallbackError", string>;
@@ -285,6 +284,7 @@ export type MessageCatalog = {
     reportSubmit: string;
     reportAcknowledgement: string;
     rateLimited: (seconds: number) => string;
+    requestUnavailable: string;
     genericError: string;
     loading: string;
     cancel: string;
