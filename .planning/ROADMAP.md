@@ -377,7 +377,7 @@ Plans:
   4. Anonymous quiz attempts persist locally, import safely after login, and avoid duplicates.
   5. Username-based friend requests use normalized unique usernames, rate limits, and block/report controls.
 
-**Plans:** 4/10 plans executed
+**Plans:** 6/10 plans executed
 
 Plans:
 **Wave 1**
@@ -390,14 +390,14 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 or Wave 1; plans run in parallel)*
 
-- [ ] 10-03-PLAN.md — Build locked opaque share authority, safe study DTO, and SQL coverage
+- [x] 10-03-PLAN.md — Build locked opaque share authority, safe study DTO, and SQL coverage
 - [x] 10-05-PLAN.md — Build locked social safety authority and SQL coverage
 - [x] 10-09-PLAN.md — Migrate six exact Phase 9 workspace content routes to editor authorization
 
 **Wave 4** *(blocked on prerequisite feature plans; plans run in parallel)*
 
 - [ ] 10-04-PLAN.md — Public share route/UI and literal EN/VI safety copy
-- [ ] 10-07-PLAN.md — Protected profile and friend/block/report API wiring
+- [x] 10-07-PLAN.md — Protected profile and friend/block/report API wiring
 
 **Wave 5** *(blocked on public/social feature plans; plans run in parallel)*
 
