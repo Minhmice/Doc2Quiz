@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T00:06:53.364Z"
+last_updated: "2026-07-30T00:15:00.000Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 8
   total_plans: 61
-  completed_plans: 51
-  percent: 84
+  completed_plans: 50
+  percent: 80
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 09 (workspace-centered-learning-canonical-provenance) — EXECUTING
-Plan: 3 of 9
-Status: Ready to execute
+Plan: 09-09 Task 1 complete; Task 2 human-verify checkpoint pending
+Status: Awaiting human verification resume signal (`approved` / failures)
 Last activity: 2026-07-30
 
-Progress: [████████░░] 84%
+Progress: [████████░░] 82%
 
 ## Decisions
 
@@ -77,7 +77,7 @@ Progress: [████████░░] 84%
 
 ## Next step
 
-Execute Phase 9 Plan 09-08 — legacy flashcard adapter on shared `resolveLegacyStudySetBridge`.
+Discuss and execute Phase 10 — safe collaboration, sharing, and friends (`COLLAB-01` through `COLLAB-07`).
 
 ## Accumulated Context
 

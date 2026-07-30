@@ -325,7 +325,7 @@ Plans:
   4. Quiz and flashcard generation supports multiple canonical document versions and persists frozen snapshots.
   5. Soft-deleting documents or canonical versions preserves existing generated outputs and provenance.
 
-**Plans:** 9/9 plans complete
+**Plans:** 8/9 plans executed
 
 Plans:
 **Wave 1**
@@ -362,7 +362,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8)*
 
-- [x] 09-09-PLAN.md — SQL/static compatibility audit, full automated gates, and human verification
+- [ ] 09-09-PLAN.md — SQL/static compatibility audit, full automated gates, and human verification
 
 ### Phase 10: Safe Collaboration, Sharing & Friends
 
@@ -382,7 +382,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [x] 10-01-PLAN.md — Confirm Phase 9 schema, seed RLS fixture, and enforce workspace-role RLS (completed 2026-07-30)
+- [ ] 10-01-PLAN.md — Confirm Phase 9 schema, seed RLS fixture, and enforce workspace-role RLS
 
 **Wave 2** *(blocked on Wave 1)*
 
