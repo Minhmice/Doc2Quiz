@@ -362,7 +362,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8)*
 
-- [ ] 09-09-PLAN.md — SQL/static compatibility audit, full automated gates, and human verification
+- [x] 09-09-PLAN.md — SQL/static compatibility audit, full automated gates, and human verification
 
 ### Phase 10: Safe Collaboration, Sharing & Friends
 
@@ -377,7 +377,7 @@ Plans:
   4. Anonymous quiz attempts persist locally, import safely after login, and avoid duplicates.
   5. Username-based friend requests use normalized unique usernames, rate limits, and block/report controls.
 
-**Plans:** 1/10 plans executed
+**Plans:** 2/10 plans executed
 
 Plans:
 **Wave 1**
@@ -386,7 +386,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 10-02-PLAN.md — Owner invitations, membership authority, and private share lifecycle APIs
+- [x] 10-02-PLAN.md — Owner invitations, membership authority, and private share lifecycle APIs
 
 **Wave 3** *(blocked on Wave 2 or Wave 1; plans run in parallel)*
 
