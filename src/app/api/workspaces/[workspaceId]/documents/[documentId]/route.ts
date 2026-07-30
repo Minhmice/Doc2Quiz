@@ -3,6 +3,10 @@ import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import {
+  requireWorkspacePermission,
+  WorkspacePermissionError,
+} from "@/lib/server/workspaces/permissions";
+import {
   patchDocumentMetadata,
   softDeleteDocument,
 } from "@/lib/workspaces/documentVersions";
@@ -12,6 +16,11 @@ import {
   WorkspaceValidationError,
 } from "@/lib/workspaces/errors";
 import { documentPatchSchema } from "@/lib/workspaces/schemas";
+
+function mapPermissionError(error: WorkspacePermissionError) {
+  const status = error.code === "forbidden" ? 403 : 404;
+  return NextResponse.json({ error: error.code }, { status });
+}
 
 export async function PATCH(
   request: Request,
@@ -36,6 +45,12 @@ export async function PATCH(
 
   try {
     const patch = documentPatchSchema.parse(jsonBody);
+    await requireWorkspacePermission(
+      auth.supabase,
+      workspaceId,
+      "edit",
+      auth.user.id,
+    );
     const data = await patchDocumentMetadata({
       supabase: auth.supabase,
       userId: auth.user.id,
@@ -45,6 +60,9 @@ export async function PATCH(
     });
     return NextResponse.json({ data });
   } catch (error) {
+    if (error instanceof WorkspacePermissionError) {
+      return mapPermissionError(error);
+    }
     if (error instanceof ZodError || error instanceof WorkspaceValidationError) {
       return NextResponse.json(
         {
@@ -94,6 +112,12 @@ export async function DELETE(
   const { workspaceId, documentId } = await ctx.params;
 
   try {
+    await requireWorkspacePermission(
+      auth.supabase,
+      workspaceId,
+      "edit",
+      auth.user.id,
+    );
     await softDeleteDocument({
       supabase: auth.supabase,
       userId: auth.user.id,
@@ -102,6 +126,9 @@ export async function DELETE(
     });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof WorkspacePermissionError) {
+      return mapPermissionError(error);
+    }
     if (error instanceof WorkspaceNotFoundError) {
       return NextResponse.json(
         { error: "not_found", message: error.message },

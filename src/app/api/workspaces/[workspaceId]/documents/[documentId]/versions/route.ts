@@ -3,6 +3,10 @@ import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import {
+  requireWorkspacePermission,
+  WorkspacePermissionError,
+} from "@/lib/server/workspaces/permissions";
+import {
   WorkspaceIngestConversionError,
   WorkspaceIngestValidationError,
 } from "@/lib/workspaces/createWorkspaceIngest";
@@ -21,6 +25,11 @@ import {
 import { formatSupabaseNetworkError } from "@/lib/supabase/networkErrors";
 import type { SupportedMimeType } from "@/lib/pipeline/validation";
 
+function mapPermissionError(error: WorkspacePermissionError) {
+  const status = error.code === "forbidden" ? 403 : 404;
+  return NextResponse.json({ error: error.code }, { status });
+}
+
 export async function POST(
   request: Request,
   ctx: { params: Promise<{ workspaceId: string; documentId: string }> },
@@ -34,6 +43,13 @@ export async function POST(
   const contentType = request.headers.get("content-type") ?? "";
 
   try {
+    await requireWorkspacePermission(
+      auth.supabase,
+      workspaceId,
+      "edit",
+      auth.user.id,
+    );
+
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
       const file = form.get("file");
@@ -95,6 +111,9 @@ export async function POST(
       title: result.title,
     });
   } catch (error) {
+    if (error instanceof WorkspacePermissionError) {
+      return mapPermissionError(error);
+    }
     if (error instanceof WorkspaceIngestValidationError) {
       return NextResponse.json(
         { error: "validation_error", message: error.message },
@@ -153,6 +172,12 @@ export async function DELETE(
 
   try {
     const params = softDeleteVersionParamsSchema.parse({ documentVersionId });
+    await requireWorkspacePermission(
+      auth.supabase,
+      workspaceId,
+      "edit",
+      auth.user.id,
+    );
     await softDeleteDocumentVersion({
       supabase: auth.supabase,
       userId: auth.user.id,
@@ -162,6 +187,9 @@ export async function DELETE(
     });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof WorkspacePermissionError) {
+      return mapPermissionError(error);
+    }
     if (error instanceof ZodError) {
       return NextResponse.json(
         {

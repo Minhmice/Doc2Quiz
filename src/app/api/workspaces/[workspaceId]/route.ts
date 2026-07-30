@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
+import {
+  requireWorkspacePermission,
+  WorkspacePermissionError,
+} from "@/lib/server/workspaces/permissions";
 import { patchWorkspaceMetadata } from "@/lib/workspaces/documentVersions";
 import {
   WorkspaceForbiddenError,
@@ -10,6 +14,11 @@ import {
 } from "@/lib/workspaces/errors";
 import { workspacePatchSchema } from "@/lib/workspaces/schemas";
 import { getWorkspaceDetail } from "@/lib/workspaces/workspaceSummary";
+
+function mapPermissionError(error: WorkspacePermissionError) {
+  const status = error.code === "forbidden" ? 403 : 404;
+  return NextResponse.json({ error: error.code }, { status });
+}
 
 export async function GET(
   _request: Request,
@@ -74,6 +83,12 @@ export async function PATCH(
 
   try {
     const patch = workspacePatchSchema.parse(jsonBody);
+    await requireWorkspacePermission(
+      auth.supabase,
+      workspaceId,
+      "edit",
+      auth.user.id,
+    );
     const data = await patchWorkspaceMetadata({
       supabase: auth.supabase,
       userId: auth.user.id,
@@ -82,6 +97,9 @@ export async function PATCH(
     });
     return NextResponse.json({ data });
   } catch (error) {
+    if (error instanceof WorkspacePermissionError) {
+      return mapPermissionError(error);
+    }
     if (error instanceof ZodError || error instanceof WorkspaceValidationError) {
       return NextResponse.json(
         {

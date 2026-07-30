@@ -3,6 +3,10 @@ import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import {
+  requireWorkspacePermission,
+  WorkspacePermissionError,
+} from "@/lib/server/workspaces/permissions";
+import {
   CanonicalVersionError,
   CanonicalVersionPersistenceError,
   CanonicalVersionValidationError,
@@ -13,6 +17,11 @@ import {
   WorkspaceForbiddenError,
   WorkspaceNotFoundError,
 } from "@/lib/workspaces/errors";
+
+function mapPermissionError(error: WorkspacePermissionError) {
+  const status = error.code === "forbidden" ? 403 : 404;
+  return NextResponse.json({ error: error.code }, { status });
+}
 
 export async function POST(
   _req: Request,
@@ -32,6 +41,12 @@ export async function POST(
   const { workspaceId, documentId, documentVersionId } = await ctx.params;
 
   try {
+    await requireWorkspacePermission(
+      auth.supabase,
+      workspaceId,
+      "edit",
+      auth.user.id,
+    );
     const result = await runCanonicalVersion({
       supabase: auth.supabase,
       userId: auth.user.id,
@@ -52,6 +67,9 @@ export async function POST(
       createdAt: result.createdAt,
     });
   } catch (error) {
+    if (error instanceof WorkspacePermissionError) {
+      return mapPermissionError(error);
+    }
     if (error instanceof CanonicalVersionValidationError) {
       return NextResponse.json(
         { error: "validation_error", message: error.message },
