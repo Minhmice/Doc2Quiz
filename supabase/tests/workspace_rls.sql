@@ -663,8 +663,8 @@ begin
   persist_result := public.persist_canonical_version(
     doc_version_id,
     '# Canonical v2',
-    encode(digest('# Canonical v2', 'sha256'), 'hex'),
-    encode(digest('[]', 'sha256'), 'hex'),
+    private.sha256_utf8_hex('# Canonical v2'),
+    private.sha256_utf8_hex('[]'),
     'test-model',
     'prompt-1',
     'parser-1',
@@ -729,7 +729,7 @@ begin
         'ordinal', 1,
         'canonical_version_id', (persist_result->>'canonicalVersionId')::uuid,
         'canonical_content_checksum', persist_result->>'canonicalVersionId',
-        'sections_checksum', encode(digest('[]', 'sha256'), 'hex'),
+        'sections_checksum', private.sha256_utf8_hex('[]'),
         'canonical_markdown', '# Canonical v2',
         'sections', '[]'::jsonb,
         'canonical_metadata', '{}'::jsonb,
@@ -806,7 +806,7 @@ begin
     null,
     null,
     '# raw',
-    encode(digest('# raw', 'sha256'), 'hex'),
+    private.sha256_utf8_hex('# raw'),
     '{"via":"test"}'::jsonb
   );
   perform pg_temp.assert_true(created ? 'workspaceId', 'first-ingest returns workspaceId');
@@ -833,7 +833,7 @@ begin
     null,
     null,
     '# raw 2',
-    encode(digest('# raw 2', 'sha256'), 'hex'),
+    private.sha256_utf8_hex('# raw 2'),
     '{}'::jsonb
   );
   perform pg_temp.assert_true(

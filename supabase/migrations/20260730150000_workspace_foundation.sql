@@ -5,6 +5,24 @@
 begin;
 
 create schema if not exists private;
+create schema if not exists extensions;
+-- Prefer existing install (baseline may put pgcrypto in public or extensions).
+create extension if not exists pgcrypto;
+
+-- SHA-256 of UTF-8 bytes after caller normalizes line endings.
+-- pgcrypto lives in extensions on Supabase; functions with search_path=public
+-- cannot resolve bare digest(text, unknown) — qualify via this helper.
+create or replace function private.sha256_utf8_hex(p_text text)
+returns text
+language sql
+immutable
+parallel safe
+set search_path = public, extensions
+as $$
+  select encode(digest(convert_to(coalesce(p_text, ''), 'UTF8'), 'sha256'::text), 'hex');
+$$;
+
+revoke all on function private.sha256_utf8_hex(text) from public;
 
 -- ---------------------------------------------------------------------------
 -- Tables
@@ -570,7 +588,7 @@ create or replace function private.backfill_legacy_study_set(p_study_set_id uuid
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions, private
 as $$
 declare
   r record;
@@ -663,7 +681,9 @@ begin
     coalesce(r.raw_markdown, ''),
     case
       when coalesce(r.raw_markdown, '') = '' then null
-      else encode(digest(replace(replace(r.raw_markdown, E'\r\n', E'\n'), E'\r', E'\n'), 'sha256'), 'hex')
+      else private.sha256_utf8_hex(
+        replace(replace(r.raw_markdown, E'\r\n', E'\n'), E'\r', E'\n')
+      )
     end,
     jsonb_build_object('migrated_from', 'canonical_documents', 'study_set_id', r.study_set_id),
     r.user_id,
@@ -676,9 +696,8 @@ begin
 
   if r.canonical_document_id is not null
      and nullif(btrim(coalesce(r.canonical_markdown, '')), '') is not null then
-    v_canonical_checksum := encode(
-      digest(replace(replace(r.canonical_markdown, E'\r\n', E'\n'), E'\r', E'\n'), 'sha256'),
-      'hex'
+    v_canonical_checksum := private.sha256_utf8_hex(
+      replace(replace(r.canonical_markdown, E'\r\n', E'\n'), E'\r', E'\n')
     );
 
     select coalesce(
@@ -698,10 +717,7 @@ begin
     from public.canonical_sections cs
     where cs.canonical_document_id = r.canonical_document_id;
 
-    select encode(
-      digest(coalesce(v_sections_json::text, '[]'), 'sha256'),
-      'hex'
-    )
+    select private.sha256_utf8_hex(coalesce(v_sections_json::text, '[]'))
     into v_sections_checksum;
 
     insert into public.canonical_versions (
@@ -722,7 +738,7 @@ begin
       'completed',
       r.canonical_markdown,
       v_canonical_checksum,
-      coalesce(v_sections_checksum, encode(digest('[]', 'sha256'), 'hex')),
+      coalesce(v_sections_checksum, private.sha256_utf8_hex('[]')),
       jsonb_build_object(
         'migrated_from', 'canonical_documents',
         'study_set_id', r.study_set_id,
