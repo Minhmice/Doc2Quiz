@@ -69,7 +69,7 @@ completed: 2026-07-30
 1. **Task 1: Guard workspace document and canonical mutations** - `598736e` (test), `11f2606` (feat)
 2. **Task 2: Guard workspace quiz and flashcard output generation** - `162412d` (feat)
 
-**Plan metadata:** pending (docs commit)
+**Plan metadata:** `f1dd90e` (docs)
 
 ## Files Created/Modified
 
