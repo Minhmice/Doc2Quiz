@@ -377,7 +377,7 @@ Plans:
   4. Anonymous quiz attempts persist locally, import safely after login, and avoid duplicates.
   5. Username-based friend requests use normalized unique usernames, rate limits, and block/report controls.
 
-**Plans:** 6/10 plans executed
+**Plans:** 7/10 plans executed
 
 Plans:
 **Wave 1**
@@ -396,7 +396,7 @@ Plans:
 
 **Wave 4** *(blocked on prerequisite feature plans; plans run in parallel)*
 
-- [ ] 10-04-PLAN.md — Public share route/UI and literal EN/VI safety copy
+- [x] 10-04-PLAN.md — Public share route/UI and literal EN/VI safety copy
 - [x] 10-07-PLAN.md — Protected profile and friend/block/report API wiring
 
 **Wave 5** *(blocked on public/social feature plans; plans run in parallel)*

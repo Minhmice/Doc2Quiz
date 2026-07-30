@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T09:08:00.000Z"
+last_updated: "2026-07-30T09:10:00.000Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 61
-  completed_plans: 57
-  percent: 93
+  completed_plans: 58
+  percent: 95
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 10
-Plan: 03 completed
+Plan: 04 completed
 Status: Executing
 Last activity: 2026-07-30
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Decisions
 
@@ -71,6 +71,8 @@ Progress: [█████████░] 93%
 - [Phase 10]: Social tables are RPC-only; friend sends use generic `request_unavailable` except explicit `rate_limited` with retry detail.
 - [Phase 10]: Workspace content mutation routes use route-level `requireWorkspacePermission(edit)` before lib/pipeline side effects.
 - [Phase 10]: Public share resolver is service-role RPC only; digest lookup returns locked study DTO with identical not_found failures.
+- [Phase 10]: Public share page/API consume allowlisted DTO only with identical unavailable UI and generic not_found API responses.
+- [Phase 10]: Collaboration safety copy uses literal EN/VI message catalog domain, not slang mappings.
 
 ## Quick Tasks Completed
 
@@ -80,7 +82,7 @@ Progress: [█████████░] 93%
 
 ## Next step
 
-Execute Phase 10 plan 10-04 (public share route/UI) or remaining collaboration plans (`10-06`–`10-08`, `10-10`).
+Execute Phase 10 plan 10-06 (anonymous quiz attempt outbox) or remaining collaboration plans (`10-08`, `10-10`).
 
 ## Accumulated Context
 
