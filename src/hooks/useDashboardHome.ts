@@ -3,178 +3,59 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
 import {
-  ACTIVITY_STATS_CHANGED_EVENT,
-  STUDY_SETS_LIST_CHANGED_EVENT,
-} from "@/lib/appEvents";
-import {
-  getDashboardCache,
-  invalidateDashboardCache,
-  setDashboardCache,
-  type DashboardSetCounts,
-} from "@/lib/client/appDataCache";
-import {
-  getActivityStats,
-  selectSmartResume,
-  type ActivityStats,
-} from "@/lib/client/activityTracking";
+  buildWorkspaceCardModel,
+  filterAndSortWorkspaceCards,
+  selectResumeRecommendation,
+  selectReviewRecommendation,
+  type WorkspaceFilter,
+  type WorkspaceSort,
+} from "@/components/dashboard/workspaceDashboardModel";
+import { ACTIVITY_STATS_CHANGED_EVENT, STUDY_SETS_LIST_CHANGED_EVENT } from "@/lib/appEvents";
+import { getDashboardCache, invalidateDashboardCache, setDashboardCache } from "@/lib/client/appDataCache";
+import { getActivityStats, type ActivityStats } from "@/lib/client/activityTracking";
 import { fetchWorkspaceSummaries } from "@/lib/client/workspaceApi";
 import type { WorkspaceSummary } from "@/lib/workspaces/workspaceSummary";
 
-export type { DashboardSetCounts } from "@/lib/client/appDataCache";
-export type DashboardFilter = "all" | "ready" | "needs_edit" | "in_review";
-export type DashboardType = "all" | "quiz" | "flashcards";
-export type DashboardStatus =
-  | "all"
-  | "ready"
-  | "needs_review"
-  | "generating"
-  | "failed";
-export type DashboardPractice = "all" | "mistakes";
-export type SmartResumeSelection = ReturnType<typeof selectSmartResume>;
-export type DashboardSort = "recent" | "title";
+export type DashboardFilter = WorkspaceFilter;
+export type DashboardSort = WorkspaceSort;
 
-export function parseDashboardParams(
-  params: URLSearchParams | Readonly<Record<string, string | undefined>>,
-) {
-  const get = (key: string) =>
-    params instanceof URLSearchParams
-      ? (params.get(key) ?? undefined)
-      : params[key];
-  const type = get("type");
+export function parseDashboardParams(params: URLSearchParams | Readonly<Record<string, string | undefined>>) {
+  const get = (key: string) => params instanceof URLSearchParams ? (params.get(key) ?? undefined) : params[key];
+  const status = get("status");
   return {
-    type:
-      type === "quiz" || type === "flashcards"
-        ? type
-        : ("all" as DashboardType),
     search: get("search") ?? "",
-    status: (get("status") === "ready" ||
-    get("status") === "needs_review" ||
-    get("status") === "generating" ||
-    get("status") === "failed"
-      ? get("status")
-      : "all") as DashboardStatus,
-    sort:
-      get("sort") === "title"
-        ? ("title" as DashboardSort)
-        : ("recent" as DashboardSort),
-    practice:
-      get("practice") === "mistakes"
-        ? ("mistakes" as DashboardPractice)
-        : ("all" as DashboardPractice),
+    status: (status === "processing" || status === "ready" || status === "needs_review" || status === "empty" ? status : "all") as DashboardFilter,
+    sort: (get("sort") === "title" ? "title" : "recent") as DashboardSort,
   };
-}
-
-function classifyWorkspace(workspace: WorkspaceSummary): DashboardFilter {
-  const outputCount =
-    workspace.quizOutputCount + workspace.flashcardOutputCount;
-  if (outputCount > 0) {
-    return "ready";
-  }
-  if (workspace.canonicalVersionCount > 0) {
-    return "in_review";
-  }
-  return "needs_edit";
-}
-
-function isNeedsEditWorkspace(workspace: WorkspaceSummary): boolean {
-  const category = classifyWorkspace(workspace);
-  return category === "needs_edit" || category === "in_review";
 }
 
 export function dispatchStudySetsChanged(): void {
   invalidateDashboardCache();
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(STUDY_SETS_LIST_CHANGED_EVENT));
-  }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(STUDY_SETS_LIST_CHANGED_EVENT));
 }
 
-export function useDashboardHome() {
-  const { search } = useLibrarySearch();
-  const [urlState, setUrlState] = useState(() =>
-    parseDashboardParams(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search,
-      ),
-    ),
-  );
-  const updateUrl = useCallback(
-    (patch: Partial<typeof urlState>) => {
-      const next = { ...urlState, ...patch };
-      const query = new URLSearchParams();
-      query.set("type", next.type);
-      if (next.search) query.set("search", next.search);
-      if (next.status !== "all") query.set("status", next.status);
-      if (next.sort !== "recent") query.set("sort", next.sort);
-      if (next.practice !== "all") query.set("practice", next.practice);
-      window.history.replaceState(null, "", `/dashboard?${query.toString()}`);
-      setUrlState(next);
-    },
-    [urlState],
-  );
+export function useDashboardData() {
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [activity, setActivity] = useState<ActivityStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [revalidating, setRevalidating] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const filter: DashboardFilter =
-    urlState.status === "needs_review"
-      ? "needs_edit"
-      : urlState.status === "all"
-        ? "all"
-        : urlState.status === "ready"
-          ? "ready"
-          : "in_review";
-  const setFilter = useCallback(
-    (value: DashboardFilter) =>
-      updateUrl({
-        status:
-          value === "needs_edit"
-            ? "needs_review"
-            : value === "in_review"
-              ? "needs_review"
-              : value === "all"
-                ? "all"
-                : value,
-      }),
-    [updateUrl],
-  );
-  const sort = urlState.sort;
-  const setSort = useCallback(
-    (value: DashboardSort) => updateUrl({ sort: value }),
-    [updateUrl],
-  );
   const refreshSeqRef = useRef(0);
 
   const refresh = useCallback(async (options?: { background?: boolean }) => {
     const background = options?.background === true;
-    setLoadError(null);
     const seq = ++refreshSeqRef.current;
-    if (!background) {
-      setLoading(true);
-    } else {
-      setRevalidating(true);
-    }
+    setLoadError(null);
+    background ? setRevalidating(true) : setLoading(true);
     try {
-      const [list, act] = await Promise.all([
-        fetchWorkspaceSummaries(),
-        getActivityStats(),
-      ]);
-      if (refreshSeqRef.current !== seq) {
-        return;
-      }
+      const [list, nextActivity] = await Promise.all([fetchWorkspaceSummaries(), getActivityStats()]);
+      if (refreshSeqRef.current !== seq) return;
       setWorkspaces(list);
-      setActivity(act);
-      setDashboardCache({
-        workspaces: list,
-        activity: act,
-      });
-    } catch (e) {
-      if (refreshSeqRef.current !== seq) {
-        return;
-      }
-      setLoadError(
-        e instanceof Error ? e.message : "Could not load workspaces.",
-      );
+      setActivity(nextActivity);
+      setDashboardCache({ workspaces: list, activity: nextActivity });
+    } catch (error) {
+      if (refreshSeqRef.current !== seq) return;
+      setLoadError(error instanceof Error ? error.message : "Could not load workspaces.");
     } finally {
       if (refreshSeqRef.current === seq) {
         setLoading(false);
@@ -190,162 +71,67 @@ export function useDashboardHome() {
       setActivity(cached.activity);
       setLoading(false);
       void refresh({ background: true });
-      return;
+    } else {
+      void refresh();
     }
-    void refresh({ background: false });
   }, [refresh]);
 
   useEffect(() => {
-    const onActivity = () => {
+    const onChange = () => {
       invalidateDashboardCache();
-      void refresh({ background: false });
+      void refresh({ background: workspaces.length > 0 });
     };
-    const onList = () => {
-      invalidateDashboardCache();
-      void refresh({ background: false });
-    };
-    window.addEventListener(ACTIVITY_STATS_CHANGED_EVENT, onActivity);
-    window.addEventListener(STUDY_SETS_LIST_CHANGED_EVENT, onList);
+    window.addEventListener(ACTIVITY_STATS_CHANGED_EVENT, onChange);
+    window.addEventListener(STUDY_SETS_LIST_CHANGED_EVENT, onChange);
     return () => {
-      window.removeEventListener(ACTIVITY_STATS_CHANGED_EVENT, onActivity);
-      window.removeEventListener(STUDY_SETS_LIST_CHANGED_EVENT, onList);
+      window.removeEventListener(ACTIVITY_STATS_CHANGED_EVENT, onChange);
+      window.removeEventListener(STUDY_SETS_LIST_CHANGED_EVENT, onChange);
     };
-  }, [refresh]);
+  }, [refresh, workspaces.length]);
 
-  const setsNeedingEditsCount = useMemo(
-    () => workspaces.filter((workspace) => isNeedsEditWorkspace(workspace)).length,
-    [workspaces],
-  );
+  return { workspaces, activity, loading, revalidating, loadError, refresh };
+}
 
-  const setsWithApproved = useMemo(
-    () =>
-      workspaces.filter(
-        (workspace) =>
-          workspace.quizOutputCount + workspace.flashcardOutputCount > 0,
-      ).length,
-    [workspaces],
-  );
-
-  const featuredNeedsEdit = useMemo(() => {
-    const candidates = workspaces.filter((workspace) =>
-      isNeedsEditWorkspace(workspace),
-    );
-    if (candidates.length === 0) {
-      return null;
-    }
-    const sorted = [...candidates].sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
-    return sorted[0] ?? null;
-  }, [workspaces]);
-
-  const resumeLatest = useMemo(() => {
-    const playable = workspaces.filter(
-      (workspace) =>
-        workspace.quizOutputCount + workspace.flashcardOutputCount > 0,
-    );
-    if (playable.length === 0) {
-      return null;
-    }
-    return [...playable].sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    )[0]!;
-  }, [workspaces]);
-
-  const streakRingPercent = useMemo(() => {
-    if (!activity) {
-      return 0;
-    }
-    const activeDays = activity.dailyAnsweredLast7Days.filter(
-      (d) => d.count > 0,
-    ).length;
-    return Math.min(100, Math.round((activeDays / 7) * 100));
-  }, [activity]);
-
-  const searchFiltered = useMemo(() => {
-    const q = (urlState.search || search).trim().toLowerCase();
-    if (!q) {
-      return workspaces;
-    }
-    return workspaces.filter((workspace) => {
-      const title = workspace.title.toLowerCase();
-      const subtitle = (workspace.subtitle ?? "").toLowerCase();
-      return title.includes(q) || subtitle.includes(q);
+export function useWorkspaceFilters(workspaces: readonly WorkspaceSummary[]) {
+  const { search: sharedSearch } = useLibrarySearch();
+  const [urlState, setUrlState] = useState(() => parseDashboardParams(new URLSearchParams(typeof window === "undefined" ? "" : window.location.search)));
+  const updateUrl = useCallback((patch: Partial<typeof urlState>) => {
+    setUrlState((current) => {
+      const next = { ...current, ...patch };
+      const query = new URLSearchParams();
+      if (next.search) query.set("search", next.search);
+      if (next.status !== "all") query.set("status", next.status);
+      if (next.sort !== "recent") query.set("sort", next.sort);
+      const suffix = query.toString();
+      window.history.replaceState(null, "", suffix ? `/dashboard?${suffix}` : "/dashboard");
+      return next;
     });
-  }, [workspaces, search, urlState.search]);
-
-  const chipFiltered = useMemo(() => {
-    return searchFiltered.filter((workspace) => {
-      if (urlState.type === "quiz" && workspace.quizOutputCount <= 0) {
-        return false;
-      }
-      if (
-        urlState.type === "flashcards" &&
-        workspace.flashcardOutputCount <= 0
-      ) {
-        return false;
-      }
-      // Mistakes drill requires per-set reads; aggregate summary omits them.
-      if (urlState.practice === "mistakes") {
-        return false;
-      }
-      if (filter === "all") {
-        return true;
-      }
-      return classifyWorkspace(workspace) === filter;
-    });
-  }, [searchFiltered, filter, urlState.type, urlState.practice]);
-
-  const filteredSortedWorkspaces = useMemo(() => {
-    const list = [...chipFiltered];
-    if (sort === "title") {
-      list.sort((a, b) =>
-        a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
-      );
-    } else {
-      list.sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
-    }
-    return list;
-  }, [chipFiltered, sort]);
-
-  /** Legacy empty counts map — library consumers that still expect the shape. */
-  const counts: DashboardSetCounts = {};
-  const mistakes: Record<string, boolean> = {};
-
+  }, []);
+  const cards = useMemo(() => workspaces.map(buildWorkspaceCardModel), [workspaces]);
+  const filteredSortedWorkspaces = useMemo(
+    () => filterAndSortWorkspaceCards(cards, { search: urlState.search || sharedSearch, filter: urlState.status, sort: urlState.sort }),
+    [cards, sharedSearch, urlState],
+  );
   return {
-    loading,
-    revalidating,
-    loadError,
-    workspaces,
-    counts,
-    mistakes,
-    activity,
-    filter,
-    setFilter,
-    sort,
-    setSort,
-    refresh,
-    setsNeedingEditsCount,
-    setsWithApproved,
-    featuredNeedsEdit,
-    resumeLatest,
-    streakRingPercent,
+    filter: urlState.status,
+    setFilter: (status: DashboardFilter) => updateUrl({ status }),
+    sort: urlState.sort,
+    setSort: (sort: DashboardSort) => updateUrl({ sort }),
     filteredSortedWorkspaces,
     urlState,
-    setType: (type: DashboardType) => updateUrl({ type }),
-    setPractice: (practice: DashboardPractice) => updateUrl({ practice }),
-    resume: async () => {
-      const recent = resumeLatest?.recentOutputs[0];
-      if (!recent) return selectSmartResume(null);
-      return selectSmartResume({
-        studySetId: recent.bridgeStudySetId,
-        mode: recent.kind === "flashcards" ? "flashcard" : "quiz",
-      });
-    },
   };
+}
+
+export function useResumeRecommendation(workspaces: readonly WorkspaceSummary[]) {
+  return useMemo(() => ({
+    resume: selectResumeRecommendation(workspaces),
+    review: selectReviewRecommendation(workspaces),
+  }), [workspaces]);
+}
+
+export function useDashboardHome() {
+  const data = useDashboardData();
+  const filters = useWorkspaceFilters(data.workspaces);
+  const recommendations = useResumeRecommendation(data.workspaces);
+  return { ...data, ...filters, ...recommendations };
 }
