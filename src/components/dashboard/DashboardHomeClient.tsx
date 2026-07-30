@@ -2,128 +2,49 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
-import { DashboardMobileBottomNav } from "@/components/dashboard/DashboardMobileBottomNav";
 import { DashboardLibraryHeader } from "@/components/dashboard/DashboardLibraryHeader";
+import { DashboardMobileBottomNav } from "@/components/dashboard/DashboardMobileBottomNav";
 import { formatRelativeShort } from "@/components/dashboard/dashboardFormat";
-import {
-  createStudySet,
-  flashcardOverview,
-  quizOverview,
-} from "@/lib/routes/studySetPaths";
+import type { WorkspaceCardModel } from "@/components/dashboard/workspaceDashboardModel";
+import { useLocale } from "@/components/locale/LocaleProvider";
+import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
 import { useDashboardHome } from "@/hooks/useDashboardHome";
-import type { WorkspaceSummary } from "@/lib/workspaces/workspaceSummary";
+import { createStudySet } from "@/lib/routes/studySetPaths";
 
-function workspaceHref(workspace: WorkspaceSummary): string {
-  return `/workspace/${workspace.id}`;
-}
-
-function resumeHrefFor(workspace: WorkspaceSummary | null): string | null {
-  if (!workspace) return null;
-  const recent = workspace.recentOutputs[0];
-  if (!recent) return workspaceHref(workspace);
-  return recent.kind === "flashcards"
-    ? flashcardOverview(recent.bridgeStudySetId)
-    : quizOverview(recent.bridgeStudySetId);
-}
-
-function WorkspaceCard({
-  workspace,
-  updatedLabel,
-}: {
-  workspace: WorkspaceSummary;
-  updatedLabel: string;
-}) {
-  const href = workspaceHref(workspace);
-  const outputCount =
-    workspace.quizOutputCount + workspace.flashcardOutputCount;
-
+function WorkspaceCard({ workspace }: { workspace: WorkspaceCardModel }) {
+  const { messages } = useLocale();
+  const copy = messages.dashboard;
   return (
-    <Link
-      href={href}
-      className="block rounded-xl border border-border/70 bg-card p-5 shadow-sm transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <h3 className="truncate font-heading text-lg font-bold">
-            {workspace.title}
-          </h3>
-          {workspace.subtitle ? (
-            <p className="truncate text-sm text-muted-foreground">
-              {workspace.subtitle}
-            </p>
-          ) : null}
-        </div>
-        <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
-          {workspace.role}
-        </span>
-      </div>
-      <dl className="mt-4 grid grid-cols-2 gap-2 text-sm text-muted-foreground sm:grid-cols-4">
-        <div>
-          <dt className="text-xs uppercase tracking-wide">Docs</dt>
-          <dd className="font-medium text-foreground">
-            {workspace.documentCount}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide">Canonical</dt>
-          <dd className="font-medium text-foreground">
-            {workspace.canonicalVersionCount}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide">Quiz</dt>
-          <dd className="font-medium text-foreground">
-            {workspace.quizOutputCount}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide">Cards</dt>
-          <dd className="font-medium text-foreground">
-            {workspace.flashcardOutputCount}
-          </dd>
-        </div>
-      </dl>
-      <p className="mt-4 text-xs text-muted-foreground">
-        {outputCount > 0
-          ? `${outputCount} output${outputCount === 1 ? "" : "s"} · `
-          : "No outputs yet · "}
-        Updated {updatedLabel}
+    <article className="flex min-h-56 flex-col rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+      <p className="font-label text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        <span aria-hidden>● </span>{copy.statuses[workspace.status]}
       </p>
-    </Link>
+      <h3 className="mt-2 truncate font-heading text-base font-semibold">{workspace.title}</h3>
+      {workspace.subtitle ? <p className="mt-1 truncate text-sm text-muted-foreground">{workspace.subtitle}</p> : null}
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        <div><dt className="text-xs text-muted-foreground">{copy.metrics.sources}</dt><dd className="font-medium">{workspace.sourceCount}</dd></div>
+        <div><dt className="text-xs text-muted-foreground">{copy.metrics.quiz}</dt><dd className="font-medium">{workspace.quizCount}</dd></div>
+        <div><dt className="text-xs text-muted-foreground">{copy.metrics.flashcards}</dt><dd className="font-medium">{workspace.flashcardCount}</dd></div>
+        <div><dt className="text-xs text-muted-foreground">{copy.metrics.lastActivity}</dt><dd className="font-medium">{formatRelativeShort(workspace.updatedAt)}</dd></div>
+      </dl>
+      <Link href={workspace.href} className="mt-auto inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {copy.openWorkspace}
+      </Link>
+    </article>
   );
 }
 
 export function DashboardHomeClient() {
   const { search } = useLibrarySearch();
-  const {
-    loading,
-    loadError,
-    workspaces,
-    filter,
-    setFilter,
-    sort,
-    setSort,
-    refresh,
-    setsNeedingEditsCount,
-    setsWithApproved,
-    featuredNeedsEdit,
-    resumeLatest,
-    filteredSortedWorkspaces,
-  } = useDashboardHome();
+  const { messages } = useLocale();
+  const copy = messages.dashboard;
+  const { loading, revalidating, loadError, workspaces, filter, setFilter, sort, setSort, refresh, resume, review, filteredSortedWorkspaces } = useDashboardHome();
 
   useEffect(() => {
     const scrollToHash = () => {
-      if (typeof window === "undefined") {
-        return;
-      }
-      if (window.location.hash === "#library") {
-        queueMicrotask(() =>
-          document
-            .getElementById("library")
-            ?.scrollIntoView({ behavior: "smooth" }),
-        );
+      if (window.location.hash === "#library" || window.location.hash === "#workspaces") {
+        queueMicrotask(() => document.getElementById("workspaces")?.scrollIntoView({ behavior: "smooth" }));
       }
     };
     scrollToHash();
@@ -131,85 +52,34 @@ export function DashboardHomeClient() {
     return () => window.removeEventListener("hashchange", scrollToHash);
   }, []);
 
-  const resumeHref = resumeHrefFor(resumeLatest);
-  const featuredEditHref = featuredNeedsEdit
-    ? workspaceHref(featuredNeedsEdit)
-    : null;
-
-  if (loading) {
-    return (
-      <p className="py-6 text-sm text-muted-foreground" role="status">
-        Loading study dashboard…
-      </p>
-    );
+  if (loading && workspaces.length === 0) {
+    return <p className="px-4 py-6 text-sm text-muted-foreground" role="status">{copy.loadingDashboard}</p>;
   }
 
   return (
     <>
-      <div className="relative z-[1] mx-auto w-full max-w-7xl min-w-0 space-y-8 py-6 sm:py-8">
-        <DashboardHero
-          totalSets={workspaces.length}
-          setsNeedingEdits={setsNeedingEditsCount}
-          setsWithApproved={setsWithApproved}
-          resumePlayHref={resumeHref}
-          editSetHref={featuredEditHref}
-          createHref={createStudySet()}
-        />
-
-        <section
-          id="library"
-          className="space-y-4"
-          aria-label={search || "Library"}
-        >
-          <DashboardLibraryHeader
-            filter={filter}
-            onFilterChange={setFilter}
-            sort={sort}
-            onSortChange={setSort}
-            totalSets={workspaces.length}
-          />
-
+      <div className="relative z-1 w-full min-w-0 space-y-5 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+        <DashboardHero totalWorkspaces={workspaces.length} resumeHref={resume?.href ?? null} reviewHref={review?.href ?? null} createHref={createStudySet()} />
+        <section id="workspaces" className="space-y-4 scroll-mt-24" aria-label={search || copy.workspaces} aria-busy={revalidating}>
+          <DashboardLibraryHeader filter={filter} onFilterChange={setFilter} sort={sort} onSortChange={setSort} totalWorkspaces={workspaces.length} />
           {loadError ? (
-            <div className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-              <p className="text-sm text-destructive" role="alert">
-                {loadError}
-              </p>
-              <button
-                type="button"
-                className="text-sm underline"
-                onClick={() => void refresh()}
-              >
-                Try again
-              </button>
+            <div className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4" role="alert">
+              <p className="text-sm text-destructive">{loadError}</p>
+              <button type="button" className="min-h-11 text-sm underline" onClick={() => void refresh()}>{copy.tryAgain}</button>
             </div>
           ) : null}
-
           {filteredSortedWorkspaces.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {workspaces.length === 0
-                ? "No workspaces yet. Import a source to create one."
-                : "No workspaces match these filters."}
-            </p>
+            <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
+              <p className="text-sm text-muted-foreground">{workspaces.length === 0 ? copy.emptyDescription : search.trim() ? copy.noSearchMatch(search.trim()) : copy.noFilterMatch}</p>
+              {workspaces.length === 0 ? <Link href={createStudySet()} className="mt-3 inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline">{copy.newWorkspace}</Link> : null}
+            </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {filteredSortedWorkspaces.map((workspace) => (
-                <WorkspaceCard
-                  key={workspace.id}
-                  workspace={workspace}
-                  updatedLabel={formatRelativeShort(workspace.updatedAt)}
-                />
-              ))}
-              <Link
-                href={createStudySet()}
-                className="flex min-h-[10rem] items-center justify-center rounded-xl border-2 border-dashed border-border/90 bg-muted/25 p-6 text-center text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted/40"
-              >
-                Add workspace
-              </Link>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {filteredSortedWorkspaces.map((workspace) => <WorkspaceCard key={workspace.id} workspace={workspace} />)}
             </div>
           )}
         </section>
       </div>
-
       <DashboardMobileBottomNav />
       <div className="h-16 md:hidden" aria-hidden />
     </>
