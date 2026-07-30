@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T09:30:00.000Z"
+last_updated: "2026-07-30T09:23:00.000Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 61
-  completed_plans: 58
-  percent: 95
+  completed_plans: 59
+  percent: 97
 ---
 
 # Doc2Quiz — State
@@ -26,9 +26,9 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 Phase: 10
 Plan: 08 checkpoint (human role matrix)
 Status: Awaiting human verification
-Last activity: 2026-07-30
+Last activity: 2026-07-30 — completed 10-06 anonymous quiz import
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Decisions
 
@@ -72,7 +72,7 @@ Progress: [██████████] 95%
 - [Phase 10]: Workspace content mutation routes use route-level `requireWorkspacePermission(edit)` before lib/pipeline side effects.
 - [Phase 10]: Public share resolver is service-role RPC only; digest lookup returns locked study DTO with identical not_found failures.
 - [Phase 10]: Public share page/API consume allowlisted DTO only with identical unavailable UI and generic not_found API responses.
-- [Phase 10]: Workspace collaboration panel gates mutations on server-provided membershipRole; share tokens exist only in ephemeral copy flow.
+- [Phase 10]: Anonymous quiz outbox imports via `import_anonymous_quiz_attempts` with stable clientAttemptId dedupe and ack-only local deletion.
 
 ## Quick Tasks Completed
 
@@ -82,7 +82,7 @@ Progress: [██████████] 95%
 
 ## Next step
 
-Execute Phase 10 plan 10-08 Task 3 human role matrix on `/workspace/[workspaceId]`, then 10-06 or 10-10.
+Execute Phase 10 plan 10-08 Task 3 human role matrix on `/workspace/[workspaceId]`, then 10-10.
 
 ## Accumulated Context
 

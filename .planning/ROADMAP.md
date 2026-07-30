@@ -401,7 +401,7 @@ Plans:
 
 **Wave 5** *(blocked on public/social feature plans; plans run in parallel)*
 
-- [ ] 10-06-PLAN.md — Anonymous public-quiz outbox, idempotent import, and SQL coverage
+- [x] 10-06-PLAN.md — Anonymous public-quiz outbox, idempotent import, and SQL coverage
 - [~] 10-08-PLAN.md — Workspace collaboration UI implemented; human role matrix pending
 
 **Wave 6** *(blocked on social APIs and workspace UI locale ownership)*
