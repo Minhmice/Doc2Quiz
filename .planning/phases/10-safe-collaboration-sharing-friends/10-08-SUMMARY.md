@@ -80,7 +80,7 @@ completed: 2026-07-30
 2. **Task 2: Build reachable accessible workspace panel** - `78cced3` (feat)
 3. **Task 3: Verify workspace role UI matrix** - human verified (no code commit)
 
-**Plan metadata:** `08ba258` (checkpoint summary), completion update in final docs commit
+**Plan metadata:** `08ba258` (checkpoint summary), `92a282d` (complete)
 
 ## Files Created/Modified
 
