@@ -51,6 +51,23 @@ export type MessageCatalog = {
     create: string; allSets: string; quizzes: string; flashcards: string; continueStudying: string; mistakeDrills: string; help: string; primaryNavigation: string; collapseSidebar: string; expandSidebar: string; openNavigation: string; planUsage: string;
   };
   toast: { saved: string; failed: string };
+  plan: {
+    remainingUsage: (remaining: number) => string;
+    proUsage: string;
+    bonus: (credits: number) => string;
+    resetLabel: (date: string) => string;
+    quotaExceededTitle: string;
+    quotaExceededBody: string;
+    goToSettings: string;
+    weeklyLimitLabel: string;
+    redeemCoupon: string;
+    couponPlaceholder: string;
+    couponInvalid: string;
+    couponExpired: string;
+    couponExhausted: string;
+    couponAlreadyRedeemed: string;
+    couponSuccess: (credits: number) => string;
+  };
   help: { intro: string; workflow: string; workflowBody: string; shortcuts: string; shortcutsBody: string; faq: string; faqBody: string };
   progress: { label: string; processing: string; steps: string; percent: (value: number) => string };
   result: { title: string; review: string };
@@ -148,6 +165,53 @@ export type MessageCatalog = {
       format: (value: string) => string; subtitle: string; thinContent: string;
       formats: Record<"term_definition" | "question_answer" | "cloze" | "mixed", string>;
       steps: { detecting: string; building: string; saving: string };
+    };
+  };
+  collaboration: {
+    publicShare: {
+      readOnlyBadge: string;
+      studyOnlyBadge: string;
+      privacyNotice: string;
+      workspaceDescription: string;
+      outputsHeading: string;
+      emptyWorkspace: string;
+      emptyStudy: string;
+      quizKind: string;
+      flashcardKind: string;
+      chooseAnswer: string;
+      correct: string;
+      incorrect: string;
+      next: string;
+      previous: string;
+      flipCard: string;
+      seeResults: string;
+      sessionComplete: string;
+      flashcardComplete: string;
+      restart: string;
+      questionProgress: (current: string, total: string) => string;
+      cardProgress: (current: string, total: string) => string;
+      scoreSummary: (correct: number, total: number) => string;
+    };
+    unavailable: {
+      title: string;
+      description: string;
+    };
+    roles: {
+      owner: string;
+      editor: string;
+      viewer: string;
+    };
+    invitation: {
+      pending: string;
+      accepted: string;
+      expired: string;
+      revoked: string;
+      sent: string;
+    };
+    revocation: {
+      shareRevoked: string;
+      shareExpired: string;
+      linkInvalid: string;
     };
   };
 };
