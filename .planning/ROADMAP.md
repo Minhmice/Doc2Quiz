@@ -377,12 +377,12 @@ Plans:
   4. Anonymous quiz attempts persist locally, import safely after login, and avoid duplicates.
   5. Username-based friend requests use normalized unique usernames, rate limits, and block/report controls.
 
-**Plans:** 10 plans
+**Plans:** 1/10 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Confirm Phase 9 schema, seed RLS fixture, and enforce workspace-role RLS
+- [x] 10-01-PLAN.md — Confirm Phase 9 schema, seed RLS fixture, and enforce workspace-role RLS
 
 **Wave 2** *(blocked on Wave 1)*
 
