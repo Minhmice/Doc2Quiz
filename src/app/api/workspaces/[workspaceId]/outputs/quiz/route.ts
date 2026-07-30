@@ -3,6 +3,10 @@ import { ZodError } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import {
+  requireWorkspacePermission,
+  WorkspacePermissionError,
+} from "@/lib/server/workspaces/permissions";
+import {
   MultiSourceGenerateError,
   MultiSourceGenerateValidationError,
   runMultiSourceQuizGenerate,
@@ -21,6 +25,11 @@ import {
   WorkspaceNotFoundError,
 } from "@/lib/workspaces/errors";
 import { workspaceQuizGenerateBodySchema } from "@/lib/workspaces/schemas";
+
+function mapPermissionError(error: WorkspacePermissionError) {
+  const status = error.code === "forbidden" ? 403 : 404;
+  return NextResponse.json({ error: error.code }, { status });
+}
 
 export async function POST(
   request: Request,
@@ -52,6 +61,20 @@ export async function POST(
       );
     }
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  try {
+    await requireWorkspacePermission(
+      auth.supabase,
+      workspaceId,
+      "edit",
+      auth.user.id,
+    );
+  } catch (error) {
+    if (error instanceof WorkspacePermissionError) {
+      return mapPermissionError(error);
+    }
+    throw error;
   }
 
   let reservationToken: string | null = null;
