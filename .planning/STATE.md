@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T08:54:35.194Z"
+last_updated: "2026-07-30T09:08:00.000Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 61
-  completed_plans: 56
-  percent: 92
+  completed_plans: 57
+  percent: 93
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 10
-Plan: 09 completed
+Plan: 03 completed
 Status: Executing
 Last activity: 2026-07-30
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 93%
 
 ## Decisions
 
@@ -70,6 +70,7 @@ Progress: [█████████░] 92%
 - [Phase 09]: Legacy adapters resolve via `legacyBridge.resolveLegacyStudySetBridge` with explicit routeKind; bridge history never falls back to parent.
 - [Phase 10]: Social tables are RPC-only; friend sends use generic `request_unavailable` except explicit `rate_limited` with retry detail.
 - [Phase 10]: Workspace content mutation routes use route-level `requireWorkspacePermission(edit)` before lib/pipeline side effects.
+- [Phase 10]: Public share resolver is service-role RPC only; digest lookup returns locked study DTO with identical not_found failures.
 
 ## Quick Tasks Completed
 
@@ -79,7 +80,7 @@ Progress: [█████████░] 92%
 
 ## Next step
 
-Execute Phase 10 plan 10-10 or continue remaining collaboration plans (`10-03`–`10-08`).
+Execute Phase 10 plan 10-04 (public share route/UI) or remaining collaboration plans (`10-06`–`10-08`, `10-10`).
 
 ## Accumulated Context
 
