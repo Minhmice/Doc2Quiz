@@ -21,7 +21,7 @@ import {
   releaseGenerationQuota,
   reserveGenerationQuota,
 } from "@/lib/server/quota/generationQuotaReservation";
-import { resolveLegacyStudySetBridge } from "@/lib/workspaces/documentVersions";
+import { resolveLegacyStudySetBridge } from "@/lib/workspaces/legacyBridge";
 import {
   WorkspaceForbiddenError,
   WorkspaceNotFoundError,
@@ -49,91 +49,47 @@ async function resolveWorkspaceSources(params: {
 > {
   const { supabase, userId, studySetId, explicitVersionIds } = params;
 
-  const { data: ownedSet, error: ownedError } = await supabase
-    .from("study_sets")
-    .select("id")
-    .eq("id", studySetId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  const bridge = await resolveLegacyStudySetBridge({
+    supabase,
+    studySetId,
+    routeKind: "flashcards",
+    userId,
+  });
 
-  if (ownedError) {
-    return {
-      error: NextResponse.json({ error: ownedError.message }, { status: 500 }),
-    };
-  }
-  if (!ownedSet) {
+  if (!bridge) {
     return {
       error: NextResponse.json({ error: "Not found" }, { status: 404 }),
     };
   }
 
-  const bridge = await resolveLegacyStudySetBridge({
-    supabase,
-    legacyStudySetId: studySetId,
-  });
-
-  let workspaceId = bridge?.workspaceId ?? null;
-  let learningOutputId = bridge?.learningOutputId ?? null;
-
-  if (!workspaceId) {
-    const { data: parentOutputs, error: parentError } = await supabase
-      .from("learning_outputs")
-      .select("id, workspace_id")
-      .eq("legacy_parent_study_set_id", studySetId)
-      .eq("kind", "flashcards")
-      .is("deleted_at", null)
-      .limit(1)
-      .maybeSingle();
-
-    if (parentError) {
-      return {
-        error: NextResponse.json(
-          { error: parentError.message },
-          { status: 500 },
-        ),
-      };
-    }
-    workspaceId = parentOutputs?.workspace_id ?? null;
-    learningOutputId = parentOutputs?.id ?? null;
-  }
-
-  if (!workspaceId) {
+  if (explicitVersionIds && explicitVersionIds.length > 0) {
     return {
-      error: NextResponse.json(
-        {
-          error: "validation_error",
-          message:
-            "Study set is not linked to a workspace learning output. Use the workspace flashcards route with explicit canonicalVersionIds.",
-        },
-        { status: 400 },
-      ),
+      workspaceId: bridge.workspaceId,
+      canonicalVersionIds: explicitVersionIds,
     };
   }
 
-  if (explicitVersionIds && explicitVersionIds.length > 0) {
-    return { workspaceId, canonicalVersionIds: explicitVersionIds };
+  const { data: snapshots, error: snapError } = await supabase
+    .from("output_source_snapshots")
+    .select("canonical_version_id, ordinal")
+    .eq("output_id", bridge.outputId)
+    .order("ordinal", { ascending: true });
+
+  if (snapError) {
+    return {
+      error: NextResponse.json({ error: snapError.message }, { status: 500 }),
+    };
   }
 
-  if (learningOutputId) {
-    const { data: snapshots, error: snapError } = await supabase
-      .from("output_source_snapshots")
-      .select("canonical_version_id, ordinal")
-      .eq("output_id", learningOutputId)
-      .order("ordinal", { ascending: true });
+  const fromSnapshots = (snapshots ?? [])
+    .map((row) => row.canonical_version_id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
 
-    if (snapError) {
-      return {
-        error: NextResponse.json({ error: snapError.message }, { status: 500 }),
-      };
-    }
-
-    const fromSnapshots = (snapshots ?? [])
-      .map((row) => row.canonical_version_id)
-      .filter((id): id is string => typeof id === "string" && id.length > 0);
-
-    if (fromSnapshots.length > 0) {
-      return { workspaceId, canonicalVersionIds: fromSnapshots };
-    }
+  if (fromSnapshots.length > 0) {
+    return {
+      workspaceId: bridge.workspaceId,
+      canonicalVersionIds: fromSnapshots,
+    };
   }
 
   return {
@@ -149,9 +105,9 @@ async function resolveWorkspaceSources(params: {
 }
 
 /**
- * Narrow legacy adapter: resolve workspace/bridge sources and delegate to
- * workspace-native multi-source flashcard generation.
- * Does not delete quiz or prior flashcard banks.
+ * Narrow legacy adapter: resolve workspace/bridge sources via kind-aware
+ * flashcards resolver and delegate to workspace-native multi-source generation.
+ * Does not delete quiz or prior flashcard banks. New quota rows key to bridge IDs.
  */
 export async function POST(
   request: Request,
