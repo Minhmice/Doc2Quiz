@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T09:10:00.000Z"
+last_updated: "2026-07-30T09:30:00.000Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
@@ -24,8 +24,8 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 10
-Plan: 04 completed
-Status: Executing
+Plan: 08 checkpoint (human role matrix)
+Status: Awaiting human verification
 Last activity: 2026-07-30
 
 Progress: [██████████] 95%
@@ -72,7 +72,7 @@ Progress: [██████████] 95%
 - [Phase 10]: Workspace content mutation routes use route-level `requireWorkspacePermission(edit)` before lib/pipeline side effects.
 - [Phase 10]: Public share resolver is service-role RPC only; digest lookup returns locked study DTO with identical not_found failures.
 - [Phase 10]: Public share page/API consume allowlisted DTO only with identical unavailable UI and generic not_found API responses.
-- [Phase 10]: Collaboration safety copy uses literal EN/VI message catalog domain, not slang mappings.
+- [Phase 10]: Workspace collaboration panel gates mutations on server-provided membershipRole; share tokens exist only in ephemeral copy flow.
 
 ## Quick Tasks Completed
 
@@ -82,7 +82,7 @@ Progress: [██████████] 95%
 
 ## Next step
 
-Execute Phase 10 plan 10-06 (anonymous quiz attempt outbox) or remaining collaboration plans (`10-08`, `10-10`).
+Execute Phase 10 plan 10-08 Task 3 human role matrix on `/workspace/[workspaceId]`, then 10-06 or 10-10.
 
 ## Accumulated Context
 
