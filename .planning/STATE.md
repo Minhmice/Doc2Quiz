@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-30T09:10:00.000Z"
+last_updated: "2026-07-30T08:54:35.194Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 61
-  completed_plans: 55
-  percent: 90
+  completed_plans: 56
+  percent: 92
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 10
-Plan: 05 completed
+Plan: 09 completed
 Status: Executing
 Last activity: 2026-07-30
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 92%
 
 ## Decisions
 
@@ -69,6 +69,7 @@ Progress: [█████████░] 90%
 - [Phase 09]: Workspace quiz route is authoritative; study-set quiz generate is a non-destructive bridge adapter.
 - [Phase 09]: Legacy adapters resolve via `legacyBridge.resolveLegacyStudySetBridge` with explicit routeKind; bridge history never falls back to parent.
 - [Phase 10]: Social tables are RPC-only; friend sends use generic `request_unavailable` except explicit `rate_limited` with retry detail.
+- [Phase 10]: Workspace content mutation routes use route-level `requireWorkspacePermission(edit)` before lib/pipeline side effects.
 
 ## Quick Tasks Completed
 
@@ -78,7 +79,7 @@ Progress: [█████████░] 90%
 
 ## Next step
 
-Execute Phase 10 plan 10-06 or continue remaining collaboration plans (`10-07` social APIs, `10-10` settings UI).
+Execute Phase 10 plan 10-10 or continue remaining collaboration plans (`10-03`–`10-08`).
 
 ## Accumulated Context
 
