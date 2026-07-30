@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CanonicalSourceReview } from "@/components/canonical/CanonicalSourceReview";
+import { WorkspaceCollaborationPanel } from "@/components/workspaces/WorkspaceCollaborationPanel";
 import { Button } from "@/components/ui/button";
 import {
   postWorkspaceFlashcardGenerate,
@@ -391,6 +392,11 @@ export function WorkspaceDetailClient({
           </ul>
         )}
       </section>
+
+      <WorkspaceCollaborationPanel
+        workspaceId={workspaceId}
+        membershipRole={detail.role}
+      />
 
       <p>
         <Link href="/dashboard" className="text-sm text-muted-foreground underline">

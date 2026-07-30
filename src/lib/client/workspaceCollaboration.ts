@@ -182,9 +182,14 @@ export async function createWorkspaceShare(
     throw new Error(GENERIC_UNAVAILABLE);
   }
 
-  const { token: _omit, ...share } = data;
   return {
-    ...share,
+    id: data.id,
+    targetKind: data.targetKind,
+    targetId: data.targetId,
+    permission: data.permission,
+    expiresAt: data.expiresAt,
+    revokedAt: data.revokedAt,
+    createdAt: data.createdAt,
     shareUrl: buildPublicShareUrl(token),
   };
 }
