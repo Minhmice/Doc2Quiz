@@ -24,6 +24,7 @@ const quizPayload = {
   permission: "study" as const,
   target: {
     kind: "quiz" as const,
+    outputId: "out-1",
     title: "Shared quiz",
     questions: [
       {

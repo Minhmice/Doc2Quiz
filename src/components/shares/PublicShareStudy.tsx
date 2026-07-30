@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { enqueueAnonymousQuizAttempt } from "@/lib/client/anonymousQuizAttempts";
 import { cn } from "@/lib/utils";
 import type {
   PublicShareDto,
@@ -85,7 +86,13 @@ function PublicShareWorkspaceView({ target }: { target: PublicShareWorkspaceTarg
   );
 }
 
-function PublicShareQuizStudy({ target }: { target: PublicShareQuizTarget }) {
+function PublicShareQuizStudy({
+  shareId,
+  target,
+}: {
+  shareId: string;
+  target: PublicShareQuizTarget;
+}) {
   const { locale, messages } = useLocale();
   const copy = messages.collaboration.publicShare;
   const formatNumber = useCallback(
@@ -97,6 +104,8 @@ function PublicShareQuizStudy({ target }: { target: PublicShareQuizTarget }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [answers, setAnswers] = useState<{ questionId: string; selectedIndex: number }[]>([]);
+  const [imported, setImported] = useState(false);
 
   const current = questions[index];
   const revealed = picked !== null;
@@ -107,10 +116,23 @@ function PublicShareQuizStudy({ target }: { target: PublicShareQuizTarget }) {
     setPicked(null);
     setCorrectCount(0);
     setFinished(false);
+    setAnswers([]);
+    setImported(false);
   };
 
   const goNext = () => {
     if (index + 1 >= questions.length) {
+      if (!imported && answers.length > 0) {
+        enqueueAnonymousQuizAttempt({
+          shareId,
+          outputId: target.outputId,
+          completedAt: new Date().toISOString(),
+          correctCount,
+          totalQuestions: questions.length,
+          answers,
+        });
+        setImported(true);
+      }
       setFinished(true);
       return;
     }
@@ -176,6 +198,12 @@ function PublicShareQuizStudy({ target }: { target: PublicShareQuizTarget }) {
                     disabled={revealed}
                     onClick={() => {
                       setPicked(choiceIndex);
+                      setAnswers((existing) => {
+                        const withoutCurrent = existing.filter(
+                          (entry) => entry.questionId !== current.id,
+                        );
+                        return [...withoutCurrent, { questionId: current.id, selectedIndex: choiceIndex }];
+                      });
                       if (choiceIndex === current.correctIndex) {
                         setCorrectCount((value) => value + 1);
                       }
@@ -322,7 +350,7 @@ export function PublicShareStudy({ share }: PublicShareStudyProps) {
       case "workspace":
         return <PublicShareWorkspaceView target={share.target} />;
       case "quiz":
-        return <PublicShareQuizStudy target={share.target} />;
+        return <PublicShareQuizStudy shareId={share.shareId} target={share.target} />;
       case "flashcard":
         return <PublicShareFlashcardStudy target={share.target} />;
       default:

@@ -24,6 +24,7 @@ describe("resolvePublicShare", () => {
     permission: "study" as const,
     target: {
       kind: "quiz" as const,
+      outputId: "out-1",
       title: "Quiz title",
       questions: [
         {

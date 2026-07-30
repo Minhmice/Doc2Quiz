@@ -12,6 +12,7 @@ export type PublicShareQuizQuestion = {
 
 export type PublicShareQuizTarget = {
   kind: "quiz";
+  outputId: string;
   title: string;
   questions: PublicShareQuizQuestion[];
 };

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { importPendingAnonymousQuizAttempts } from "@/lib/client/anonymousQuizAttempts";
 import { AppShell } from "@/components/layout/AppShell";
 import { RoutePrefetch } from "@/components/layout/RoutePrefetch";
 import { LocaleProvider } from "@/components/locale/LocaleProvider";
@@ -30,17 +31,30 @@ function DeferredCommandPalette() {
   return ready ? <CommandPalette /> : null;
 }
 
+function AnonymousQuizAttemptImporter() {
+  useEffect(() => {
+    void importPendingAnonymousQuizAttempts();
+  }, []);
+
+  return null;
+}
+
 export function AppProviders({
   children,
+  initialLocale,
+  initialUsage,
 }: {
   children: React.ReactNode;
+  initialLocale?: import("@/lib/locale/types").Locale;
+  initialUsage?: import("@/lib/client/fetchUserUsage").UserUsage;
 }) {
   return (
-    <LocaleProvider>
+    <LocaleProvider initialLocale={initialLocale}>
       <DisplayNameProvider>
         <RoutePrefetch />
+        <AnonymousQuizAttemptImporter />
         {/* CommandPalette must mount after AppShell so ssr:false does not shift useId for Base UI in the shell. */}
-        <AppShell>{children}</AppShell>
+        <AppShell initialUsage={initialUsage}>{children}</AppShell>
         <DeferredCommandPalette />
       </DisplayNameProvider>
     </LocaleProvider>
