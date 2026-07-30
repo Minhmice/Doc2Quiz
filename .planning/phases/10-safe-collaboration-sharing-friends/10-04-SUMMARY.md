@@ -72,7 +72,7 @@ completed: 2026-07-30
 1. **Task 1: Render anonymous share route from safe resolver DTO** - `44b434e` (test), `9f2cddb` (feat)
 2. **Task 2: Localize public share safety states** - `211aeee` (feat)
 
-**Plan metadata:** `f626d81` (docs)
+**Plan metadata:** `7faeb02` (docs)
 
 ## Files Created/Modified
 
