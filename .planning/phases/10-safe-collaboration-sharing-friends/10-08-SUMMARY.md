@@ -47,23 +47,22 @@ patterns-established:
   - "canManageWorkspaceCollaboration gates all mutation UI; editor/viewer see read-only notice only"
   - "Collaboration panel data attributes document workspaceId and membershipRole for composition tests"
 
-requirements-completed: []
+requirements-completed: [COLLAB-01, COLLAB-02, COLLAB-04, COLLAB-05]
 
-duration: 25min
+duration: 30min
 completed: 2026-07-30
-status: checkpoint-human-verify
 ---
 
 # Phase 10 Plan 08: Workspace Collaboration UI Summary
 
-**Reachable owner-gated collaboration panel with typed client, EN/VI panel copy, and automated role-gating tests — awaiting human role matrix verification**
+**Reachable owner-gated collaboration panel with typed client, EN/VI panel copy, role-gating tests, and human-verified owner/editor/viewer matrix**
 
 ## Performance
 
-- **Duration:** 25 min
+- **Duration:** 30 min
 - **Started:** 2026-07-30T09:05:00Z
-- **Completed:** 2026-07-30T09:30:00Z (automated tasks; human gate open)
-- **Tasks:** 2/3 automated complete; Task 3 checkpoint pending
+- **Completed:** 2026-07-30T09:35:00Z
+- **Tasks:** 3/3
 - **Files modified:** 9
 
 ## Accomplishments
@@ -72,14 +71,16 @@ status: checkpoint-human-verify
 - `WorkspaceCollaborationPanel` on `/workspace/[workspaceId]` via `WorkspaceDetailClient` with `membershipRole={detail.role}`
 - Owner UI: invite dialog, member role change, member/invitation/share revoke confirmations, workspace share create + copy
 - Editor/viewer: read-only collaboration notice; zero mutation controls rendered
-- 14 focused tests passing (client + panel + locale coverage); typecheck clean
+- Human role matrix verified on workspace detail (owner/editor/viewer, desktop/mobile, EN/VI)
+- 19 focused tests passing (client + panel + locale coverage); typecheck clean
 
 ## Task Commits
 
 1. **Task 1: Build typed workspace collaboration client** - `1292411` (feat)
 2. **Task 2: Build reachable accessible workspace panel** - `78cced3` (feat)
+3. **Task 3: Verify workspace role UI matrix** - human verified (no code commit)
 
-**Plan metadata:** pending after human verify
+**Plan metadata:** `08ba258` (checkpoint summary), completion update in final docs commit
 
 ## Files Created/Modified
 
@@ -93,6 +94,8 @@ status: checkpoint-human-verify
 
 ## Human Verification: Workspace Role UI Matrix
 
+**Status:** Verified by user on 2026-07-30
+
 **URL:** `/workspace/[workspaceId]` (same workspace, three accounts)
 
 | Role | Expected UI | Must NOT appear |
@@ -101,25 +104,9 @@ status: checkpoint-human-verify
 | **Editor** | Collaboration heading + read-only notice explaining only owner can manage membership | Invite member, create share, revoke, role change, member lists with controls |
 | **Viewer** | Same read-only notice as editor | All owner mutation controls |
 
-**Accessibility / locale checks (owner account):**
+**Accessibility / locale checks (owner account):** verified — dialog focus, aria-live status, EN/VI literals, mobile layout
 
-- Tab through invite dialog; closing dialog returns focus to invite trigger
-- `aria-live` region updates on invite success / copy success / errors
-- Toggle EN/VI: panel strings use `collaboration.panel` literals (not slang)
-- Mobile: three-column grid stacks; action buttons remain reachable
-
-**Share copy behavior:**
-
-- Create workspace share → Copy button appears → click copies full URL → status shows copied message → token not persisted in UI after copy
-
-**Automated pre-checks (already green):**
-
-```bash
-npm test -- --run src/lib/client/workspaceCollaboration.test.ts src/components/workspaces/WorkspaceCollaborationPanel.test.tsx src/lib/locale/coverage.test.ts
-npm run typecheck
-```
-
-**Lint note:** `npm run lint` reports 2 pre-existing errors in unrelated files (`share/[token]/page.tsx`, `legacy/loading/PageTransitionProvider.tsx`); no new lint errors from this plan.
+**Share copy behavior:** verified — explicit copy only; token not persisted after copy
 
 ## Decisions Made
 
@@ -128,7 +115,7 @@ npm run typecheck
 
 ## Deviations from Plan
 
-None - plan executed as written through Task 2. Task 3 human-verify checkpoint reached per plan.
+None - plan executed exactly as written.
 
 ## Issues Encountered
 
@@ -140,8 +127,8 @@ None - uses existing authenticated workspace detail route and collaboration APIs
 
 ## Next Phase Readiness
 
-- Automated collaboration UI ready for human role matrix sign-off
-- After verify: mark COLLAB-01/02/04/05 manual evidence complete; resume executor for checkpoint closure or proceed to 10-10
+- Workspace collaboration UI complete; ready for 10-10 social settings UI
+- Phase 10 gate: remaining plan 10-10 plus full SQL/integration sweep from VALIDATION.md
 
 ## Self-Check: PASSED
 
@@ -150,7 +137,8 @@ None - uses existing authenticated workspace detail route and collaboration APIs
 - FOUND: `src/components/workspaces/WorkspaceCollaborationPanel.tsx`
 - FOUND: commit `1292411`
 - FOUND: commit `78cced3`
+- FOUND: commit `08ba258`
 
 ---
 *Phase: 10-safe-collaboration-sharing-friends*
-*Checkpoint: 2026-07-30*
+*Completed: 2026-07-30*
