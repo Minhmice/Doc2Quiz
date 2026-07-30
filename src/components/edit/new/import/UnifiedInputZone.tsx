@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ingestStudySetSource,
+  ingestWorkspaceSource,
   type IngestUiStep,
-} from "@/lib/client/ingestStudySet";
+  type WorkspaceIngestIdentity,
+} from "@/lib/client/ingestWorkspace";
 import {
   formatBytesForError,
   MAX_UPLOAD_BYTES_BY_MIME,
@@ -50,7 +51,7 @@ export type UnifiedInputZoneProps = Readonly<{
   contentKind: StudyContentKind;
   pageHeading: string;
   pageSubcopy: string;
-  getPostIngestHref: (studySetId: string) => string;
+  getPostIngestHref: (identity: WorkspaceIngestIdentity) => string;
 }>;
 
 type InputTab = "file" | "paste" | "youtube";
@@ -134,8 +135,7 @@ export function UnifiedInputZone({
           : { kind: "youtube" as const, url: youtubeUrl.trim() };
 
     try {
-      const studySetId = await ingestStudySetSource({
-        contentKind,
+      const identity = await ingestWorkspaceSource({
         input,
         onStep: (step) => {
           setIngestStep(step);
@@ -152,11 +152,12 @@ export function UnifiedInputZone({
       });
 
       setTechnicalDetails([
-        `Study set: ${studySetId}`,
+        `Workspace: ${identity.workspaceId}`,
+        `Document: ${identity.documentId}`,
+        `Version: ${identity.documentVersionId}`,
         `Input: ${tab}`,
-        `Pipeline stage: raw`,
       ]);
-      router.push(getPostIngestHref(studySetId));
+      router.push(getPostIngestHref(identity));
     } catch (error) {
       const message =
         error instanceof Error
@@ -169,7 +170,6 @@ export function UnifiedInputZone({
       setIngestStep("idle");
     }
   }, [
-    contentKind,
     copy,
     file,
     getPostIngestHref,

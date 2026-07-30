@@ -9,6 +9,11 @@ const deferredRoots = [
   "src/app/(app)/quiz/[id]/",
 ];
 const ignored = ["node_modules", ".next", ".git", ".planning", ".impeccable"];
+const ignoredFiles = new Set([
+  "scripts/audit-phase7-route-callers.mjs",
+  "scripts/audit-phase7-route-references.mjs",
+  "scripts/verify-phase7-route-smoke.mjs",
+]);
 const legacy = /(?:["'`]\/edit(?:\/|["'`])|["'`]\/sets(?:\/|["'`])|["'`]\/flashcards(?:\/|["'`])|review(?:[=])mistakes|["'`]\/done(?:\/|["'`])|\bnewRoot\b|\bnewQuiz\b|\bnewFlashcards\b|\bstudySetSource\b|\beditQuiz\b|\beditFlashcards\b|\bflashcardsPlay\b|\bquizDone\b|\bflashcardsDone\b)/;
 const allowed = [/\/api\/study-sets\/\[id\]\/flashcards\/generate/, /\bflashcards\b/];
 
@@ -18,6 +23,7 @@ function filesIn(dir) {
     if (ignored.some((part) => rel === part || rel.startsWith(`${part}/`))) return [];
     if (entry.isDirectory()) return filesIn(path.join(dir, entry.name));
     if (!/\.(ts|tsx|js|mjs|json)$/.test(entry.name)) return [];
+    if (ignoredFiles.has(rel)) return [];
     if (deferredRoots.some((prefix) => rel.startsWith(prefix))) return [];
     return [rel];
   });

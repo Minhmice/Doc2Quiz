@@ -200,7 +200,7 @@ Plans:
   4. Literal product copy stays primary; destructive, privacy, auth, accessibility, serious-error, and shaming copy contains no slang
   5. Lint, typecheck, tests, build, route matrix, and mobile/desktop layout verification pass with existing functionality unchanged
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -223,7 +223,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 06-07-PLAN.md — Coverage audit, full automated gates, and human EN/VI route/layout verification
+- [x] 06-07-PLAN.md — Coverage audit, full automated gates, and human EN/VI route/layout verification
 
 ### Phase 7: Normalize app information architecture around setId-based quiz and flashcard routes, unified creation flows, library filtering, set-detail navigation, and a responsive sidebar that persists, collapses, or hides by workflow context
 
@@ -266,7 +266,7 @@ Plans:
 
 **Wave 6** *(blocked on recorded zero-reference gate)*
 
-- [ ] 07-09-PLAN.md — Delete legacy routes, deterministic authenticated route smoke, full gates, and human matrix
+- [x] 07-09-PLAN.md — Delete legacy routes, deterministic route smoke (human matrix pending)
 
 ### Phase 8: Freemium & Coupons
 
@@ -281,20 +281,36 @@ Plans:
   4. User redeems case-insensitive coupon codes in Settings; bonus credits stack; each code once per user
   5. Vitest + build pass; EN/VI plan copy complete
 
-**Plans:** 3 plans
+**Plans:** 6/7 plans complete
 
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Migration + quota server lib + GET /api/usage + quiz route hooks + tests (tracer)
+- [x] 08-01-PLAN.md — Migration + quota server lib + GET /api/usage + quiz route hooks + tests (tracer)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 08-02-PLAN.md — Flashcard route + client 402 + sidebar/settings usage + quiz preflight/block UI
+- [x] 08-02-PLAN.md — Flashcard route + client 402 + sidebar/settings usage + quiz preflight/block UI
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 08-03-PLAN.md — Coupon RPC + redeem API + Settings coupon form + seed codes + locale
+- [x] 08-03-PLAN.md — Coupon RPC + redeem API + Settings coupon form + seed codes + locale
+
+**Wave 4** *(gap closure; blocked on 08-01 and 08-03)*
+
+- [x] 08-04-PLAN.md — Atomic Postgres quota reservation, commit/release lifecycle, RLS hardening, and deterministic concurrency proof
+
+**Wave 5** *(gap closure; blocked on 08-04)*
+
+- [x] 08-05-PLAN.md — Typed reservation RPC adapter and availability-backed quota usage authority
+
+**Wave 6** *(gap closure; blocked on 08-05)*
+
+- [x] 08-06-PLAN.md — Reserve-before-generation route lifecycle and deterministic failure-release tests for quiz and flashcards
+
+**Wave 7** *(gap closure; blocked on 08-06)*
+
+- [ ] 08-07-PLAN.md — Fix GET /api/usage TypeScript build failure (TS2589) without runtime behavior change
 
 ### Phase 9: Workspace-Centered Learning & Canonical Provenance
 
@@ -309,44 +325,44 @@ Plans:
   4. Quiz and flashcard generation supports multiple canonical document versions and persists frozen snapshots.
   5. Soft-deleting documents or canonical versions preserves existing generated outputs and provenance.
 
-**Plans:** 9 plans
+**Plans:** 8/9 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 09-01-PLAN.md — Workspace schema, backfill, RLS, atomic RPCs, and checksum contract
+- [x] 09-01-PLAN.md — Workspace schema, backfill, RLS, atomic RPCs, and checksum contract
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 09-02-PLAN.md — Workspace-native first ingest, immutable document lifecycle, and import client
+- [x] 09-02-PLAN.md — Workspace-native first ingest, immutable document lifecycle, and import client
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 09-03-PLAN.md — Append-only canonical versions and progressive section reader
+- [x] 09-03-PLAN.md — Append-only canonical versions and progressive section reader
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 09-04-PLAN.md — Multi-source quiz generation, frozen snapshots, and quiz bridge
+- [x] 09-04-PLAN.md — Multi-source quiz generation, frozen snapshots, and quiz bridge
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 09-05-PLAN.md — Multi-source flashcard parity, frozen snapshots, and flashcard bridge
+- [x] 09-05-PLAN.md — Multi-source flashcard parity, frozen snapshots, and flashcard bridge
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 09-06-PLAN.md — Workspace dashboard summary, detail API, and reader/output navigation
+- [x] 09-06-PLAN.md — Workspace dashboard summary, detail API, and reader/output navigation
 
 **Wave 7** *(blocked on Wave 6)*
 
-- [ ] 09-07-PLAN.md — Legacy non-flashcard adapter resolver contracts and tests
+- [x] 09-07-PLAN.md — Legacy non-flashcard adapter resolver contracts and tests
 
 **Wave 8** *(blocked on Wave 7)*
 
-- [ ] 09-08-PLAN.md — Legacy flashcard adapter contract and tests
+- [x] 09-08-PLAN.md — Legacy flashcard adapter contract and tests
 
 **Wave 9** *(blocked on Wave 8)*
 
-- [ ] 09-09-PLAN.md — SQL/static compatibility audit, full automated gates, and human verification
+- [x] 09-09-PLAN.md — SQL/static compatibility audit, full automated gates, and human verification
 
 ### Phase 10: Safe Collaboration, Sharing & Friends
 
@@ -361,36 +377,36 @@ Plans:
   4. Anonymous quiz attempts persist locally, import safely after login, and avoid duplicates.
   5. Username-based friend requests use normalized unique usernames, rate limits, and block/report controls.
 
-**Plans:** 10 plans
+**Plans:** 10/10 plans complete
 
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Confirm Phase 9 schema, seed RLS fixture, and enforce workspace-role RLS
+- [x] 10-01-PLAN.md — Confirm Phase 9 schema, seed RLS fixture, and enforce workspace-role RLS
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 10-02-PLAN.md — Owner invitations, membership authority, and private share lifecycle APIs
+- [x] 10-02-PLAN.md — Owner invitations, membership authority, and private share lifecycle APIs
 
 **Wave 3** *(blocked on Wave 2 or Wave 1; plans run in parallel)*
 
-- [ ] 10-03-PLAN.md — Build locked opaque share authority, safe study DTO, and SQL coverage
-- [ ] 10-05-PLAN.md — Build locked social safety authority and SQL coverage
-- [ ] 10-09-PLAN.md — Migrate six exact Phase 9 workspace content routes to editor authorization
+- [x] 10-03-PLAN.md — Build locked opaque share authority, safe study DTO, and SQL coverage
+- [x] 10-05-PLAN.md — Build locked social safety authority and SQL coverage
+- [x] 10-09-PLAN.md — Migrate six exact Phase 9 workspace content routes to editor authorization
 
 **Wave 4** *(blocked on prerequisite feature plans; plans run in parallel)*
 
-- [ ] 10-04-PLAN.md — Public share route/UI and literal EN/VI safety copy
-- [ ] 10-07-PLAN.md — Protected profile and friend/block/report API wiring
+- [x] 10-04-PLAN.md — Public share route/UI and literal EN/VI safety copy
+- [x] 10-07-PLAN.md — Protected profile and friend/block/report API wiring
 
 **Wave 5** *(blocked on public/social feature plans; plans run in parallel)*
 
-- [ ] 10-06-PLAN.md — Anonymous public-quiz outbox, idempotent import, and SQL coverage
-- [ ] 10-08-PLAN.md — Tested reachable role-aware workspace collaboration UI
+- [x] 10-06-PLAN.md — Anonymous public-quiz outbox, idempotent import, and SQL coverage
+- [x] 10-08-PLAN.md — Tested reachable role-aware workspace collaboration UI
 
 **Wave 6** *(blocked on social APIs and workspace UI locale ownership)*
 
-- [ ] 10-10-PLAN.md — Tested accessible social safety Settings UI
+- [x] 10-10-PLAN.md — Tested accessible social safety Settings UI
 
 ---
 

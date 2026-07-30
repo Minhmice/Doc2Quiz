@@ -54,6 +54,8 @@ describe("phase-wide locale coverage", () => {
       "src/components/processing/conversion-progress.tsx": [/useLocale/, /messages\.progress/],
       "src/components/quiz/QuizSession.tsx": [/useLocale/, /LocalizedSlangLine/, /context=\{answerCorrect \? "correct" : "wrong"\}/],
       "src/components/dashboard/DashboardLibraryClient.tsx": [/useLocale/, /messages\.dashboard/, /context="empty"/],
+      "src/components/workspaces/WorkspaceCollaborationPanel.tsx": [/useLocale/, /messages\.collaboration\.panel/, /canManageWorkspaceCollaboration/],
+      "src/components/settings/SocialSafetySettings.tsx": [/useLocale/, /messages\.socialSafety/, /fetchProfileUsername/],
     };
     for (const [file, patterns] of Object.entries(markers)) {
       const contents = source(file);

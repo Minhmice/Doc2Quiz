@@ -1,3 +1,8 @@
+/**
+ * Legacy study-set ingest client.
+ * New owned create flow uses `ingestWorkspaceSource` → POST /api/workspaces/ingest.
+ * Keep this module for existing study-set routes until 09-07/09-08 adapters retire it.
+ */
 import { createSupabaseBrowserClient } from "@/lib/client/supabase";
 import { createStudySetEarlyMeta } from "@/lib/client/studySetDb";
 import type { IngestJsonBody } from "@/lib/pipeline/ingestSchemas";

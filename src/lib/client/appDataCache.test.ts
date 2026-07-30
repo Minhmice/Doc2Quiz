@@ -9,18 +9,21 @@ import {
 } from "@/lib/client/appDataCache";
 
 const samplePayload: DashboardCachePayload = {
-  sets: [
+  workspaces: [
     {
-      id: "set-1",
+      id: "ws-1",
       title: "Biology",
+      subtitle: null,
+      role: "owner",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
-      pipelineStage: "quiz",
-      contentKind: "quiz",
+      documentCount: 1,
+      canonicalVersionCount: 1,
+      quizOutputCount: 1,
+      flashcardOutputCount: 0,
+      recentOutputs: [],
     },
   ],
-  counts: { "set-1": { editorStaging: 0, approved: 3 } },
-  mistakes: { "set-1": false },
   activity: null,
 };
 

@@ -1,18 +1,17 @@
 import type { ActivityStats } from "@/lib/client/activityTracking";
-import type { StudySetMeta } from "@/types/studySet";
+import type { WorkspaceSummary } from "@/lib/workspaces/workspaceSummary";
 
 /** How long cached page data is shown instantly before a background refresh. */
 export const APP_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
 
+/** @deprecated Study-set N+1 counts — retained for legacy library consumers. */
 export type DashboardSetCounts = Record<
   string,
   { editorStaging: number; approved: number }
 >;
 
 export type DashboardCachePayload = {
-  sets: StudySetMeta[];
-  counts: DashboardSetCounts;
-  mistakes: Record<string, boolean>;
+  workspaces: WorkspaceSummary[];
   activity: ActivityStats | null;
 };
 
@@ -21,7 +20,7 @@ type CacheEnvelope<T> = {
   fetchedAt: number;
 };
 
-const DASHBOARD_STORAGE_KEY = "d2q-cache-dashboard-v1";
+const DASHBOARD_STORAGE_KEY = "d2q-cache-dashboard-v2-workspaces";
 
 let dashboardMemory: CacheEnvelope<DashboardCachePayload> | null = null;
 
@@ -43,7 +42,7 @@ function readDashboardFromSession(): CacheEnvelope<DashboardCachePayload> | null
       !parsed ||
       typeof parsed.fetchedAt !== "number" ||
       !parsed.data ||
-      !Array.isArray(parsed.data.sets)
+      !Array.isArray(parsed.data.workspaces)
     ) {
       return null;
     }
@@ -93,6 +92,8 @@ export function invalidateDashboardCache(): void {
   if (typeof window !== "undefined") {
     try {
       sessionStorage.removeItem(DASHBOARD_STORAGE_KEY);
+      // Drop legacy study-set cache key from prior dashboard shape.
+      sessionStorage.removeItem("d2q-cache-dashboard-v1");
     } catch {
       // ignore
     }

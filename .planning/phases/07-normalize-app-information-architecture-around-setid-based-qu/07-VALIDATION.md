@@ -1,7 +1,8 @@
 ---
 phase: 07-normalize-app-information-architecture-around-setid-based-qu
-status: planned
+status: human-verify-pending
 nyquist: enabled
+last_gate_run: 2026-07-30
 ---
 # Phase 7 Validation
 
@@ -20,6 +21,20 @@ Plan 01 creates `07-DIRTY-PREFLIGHT.txt` from scoped status/diffs and obtains ex
 | IA-04, IA-08, IA-09 | URL, smart resume, durable mistake ordering/destinations | `npm test -- src/hooks/useDashboardHome.test.ts src/lib/client/activityTracking.test.ts --run` |
 | IA-10 | EN/VI parity and slang safety | `npm test -- src/lib/locale --run` |
 | IA-01–10 | Final integrity, strictly after deletion/full audit | `npm run verify:phase7-callers && npm run verify:phase7-references && npm run verify:phase7-routes && npm run typecheck && npm run lint && npm test -- --run && npm run build` |
+
+## Plan 07-09 Gate Run (2026-07-30)
+
+| Command | Result | Evidence |
+|---------|--------|----------|
+| `npm run verify:phase7-callers` | PASS | `0 forbidden caller references` |
+| `npm run verify:phase7-references` | PASS | `0 forbidden route references` |
+| `npm run verify:phase7-routes` | PASS | `Phase 7 route smoke passed: manifest inventory, fail-closed negatives, canonical authenticated routes, and exact legacy 404s.` |
+| `npm run typecheck` | PASS | Clean after local layout/quota typing workaround (uncommitted) |
+| `npm run lint` | FAIL | 4 errors in unrelated dirty files (workspace reader hooks, `workspaceSummary.ts` prefer-const) |
+| `npm test -- --run` | FAIL | 17 failures in phase 9 legacy-bridge API route tests |
+| `npm run build` | PASS | Included in `verify:phase7-routes` |
+
+**Human matrix:** Pending — follow Manual Route and Layout Matrix below at 1440px/375px EN/VI. Resume signal: `approved` or list failing cells.
 
 ## Deterministic Route Smoke Contract
 `scripts/verify-phase7-route-smoke.mjs` must parse `.next/server/app-paths-manifest.json`, assert all D-02 route keys and absence of legacy keys, create random temporary Supabase Auth/user-owned set fixtures through runtime credentials, obtain real Supabase auth cookies, spawn production server on port 4317 without any smoke-auth environment switch, fetch with `redirect: manual`, and always terminate the server and delete fixtures/user in nested `finally` blocks. It reuses the exact existing boundary `src/proxy.ts` → `src/lib/supabase/middlewareClient.ts` → `src/lib/supabase/auth-guard.ts`; those three files require no modification.

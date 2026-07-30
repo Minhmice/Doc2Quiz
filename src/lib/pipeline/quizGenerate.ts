@@ -116,7 +116,7 @@ function isAtLeastPipelineStage(
   return stageIndex >= minimumIndex;
 }
 
-function truncateCanonicalMarkdown(canonicalMarkdown: string): {
+export function truncateCanonicalMarkdown(canonicalMarkdown: string): {
   markdown: string;
   warnings: string[];
 } {
@@ -141,7 +141,7 @@ function quizAiRequestSignal(startedAt: number): AbortSignal | null {
   );
 }
 
-async function callQuizGenerator(params: {
+export async function callQuizGenerator(params: {
   studySetId: string;
   title: string;
   language: string;
@@ -574,7 +574,7 @@ function enrichQuestion(params: {
   };
 }
 
-function buildQuestionCandidates(params: {
+export function buildQuestionCandidates(params: {
   facts: AtomicFact[];
   extractedQuestions: unknown[];
   resolvedSourceQuestions?: ResolvedSourceQuestion[];
@@ -803,7 +803,7 @@ function buildQuestionCandidates(params: {
   return result;
 }
 
-function resolveGenerationMode(
+export function resolveGenerationMode(
   modes: Set<"source" | "source_ai" | "ai" | "deterministic">,
 ): QuizGenerateSuccess["generationMode"] {
   if (modes.size > 1) return "hybrid";
@@ -844,7 +844,7 @@ async function replaceQuizWithRetry(
   return -1;
 }
 
-function validateAtomicFactArtifact(params: {
+export function validateAtomicFactArtifact(params: {
   rawFacts: unknown;
   canonicalMarkdown: string;
   sections: Array<{ section_key: string; body_markdown: string }>;

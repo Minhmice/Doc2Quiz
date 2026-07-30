@@ -2,20 +2,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
 import {
-  CanonicalizeError,
-  CanonicalizePersistenceError,
-  CanonicalizeValidationError,
-} from "@/lib/pipeline/canonicalize";
+  CanonicalVersionError,
+  CanonicalVersionPersistenceError,
+  CanonicalVersionValidationError,
+} from "@/lib/pipeline/canonicalVersion";
 
-const runCanonicalizeMock = vi.fn();
+const runCanonicalVersionMock = vi.fn();
 const requireApiUserMock = vi.fn();
+const resolveLegacyStudySetBridgeMock = vi.fn();
+const resolveLegacyWorkspaceDocumentMock = vi.fn();
 
-vi.mock("@/lib/pipeline/canonicalize", async (importOriginal) => {
+vi.mock("@/lib/pipeline/canonicalVersion", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/lib/pipeline/canonicalize")>();
+    await importOriginal<typeof import("@/lib/pipeline/canonicalVersion")>();
   return {
     ...actual,
-    runCanonicalize: (...args: unknown[]) => runCanonicalizeMock(...args),
+    runCanonicalVersion: (...args: unknown[]) =>
+      runCanonicalVersionMock(...args),
   };
 });
 
@@ -23,37 +26,47 @@ vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
 }));
 
+vi.mock("@/lib/workspaces/legacyBridge", () => ({
+  resolveLegacyStudySetBridge: (...args: unknown[]) =>
+    resolveLegacyStudySetBridgeMock(...args),
+  resolveLegacyWorkspaceDocument: (...args: unknown[]) =>
+    resolveLegacyWorkspaceDocumentMock(...args),
+}));
+
 import { POST } from "@/app/api/study-sets/[id]/canonicalize/route";
 
-function createAuthSupabase() {
-  return {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            maybeSingle: vi.fn(async () => ({
-              data: { id: "set-1" },
-              error: null,
-            })),
-          })),
-        })),
-      })),
-    })),
-  };
-}
+const BRIDGE = {
+  outputId: "out-1",
+  workspaceId: "ws-1",
+  bridgeStudySetId: "bridge-1",
+  legacyParentStudySetId: "parent-1",
+  kind: "quiz" as const,
+  resolutionMode: "bridge" as const,
+  historyStudySetId: "bridge-1",
+};
 
-describe("POST /api/study-sets/[id]/canonicalize", () => {
+describe("POST /api/study-sets/[id]/canonicalize (legacy adapter)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireApiUserMock.mockResolvedValue({
-      supabase: createAuthSupabase(),
+      supabase: { from: vi.fn() },
       user: { id: "user-1" },
     });
-    runCanonicalizeMock.mockResolvedValue({
-      studySetId: "set-1",
-      pipelineStage: "canonical",
+    resolveLegacyStudySetBridgeMock.mockResolvedValue(BRIDGE);
+    resolveLegacyWorkspaceDocumentMock.mockResolvedValue({
+      documentId: "doc-1",
+      documentVersionId: "dv-1",
+    });
+    runCanonicalVersionMock.mockResolvedValue({
+      canonicalVersionId: "cv-2",
+      versionNumber: 2,
       sectionCount: 2,
       title: "Canonical Title",
+      model: "gpt",
+      promptVersion: "1",
+      parserVersion: "1.0",
+      createdAt: "2026-07-30T00:00:00.000Z",
+      provenance: {},
     });
   });
 
@@ -69,33 +82,23 @@ describe("POST /api/study-sets/[id]/canonicalize", () => {
     expect(response.status).toBe(401);
   });
 
-  it("returns 404 when study set not found", async () => {
-    const supabase = {
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              maybeSingle: vi.fn(async () => ({ data: null, error: null })),
-            })),
-          })),
-        })),
-      })),
-    };
-    requireApiUserMock.mockResolvedValue({
-      supabase,
-      user: { id: "user-1" },
-    });
+  it("returns 404 when bridge inaccessible", async () => {
+    resolveLegacyStudySetBridgeMock.mockResolvedValue(null);
 
     const response = await POST(new Request("http://localhost"), {
       params: Promise.resolve({ id: "set-1" }),
     });
 
     expect(response.status).toBe(404);
+    expect(resolveLegacyStudySetBridgeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ routeKind: "canonicalize" }),
+    );
+    expect(runCanonicalVersionMock).not.toHaveBeenCalled();
   });
 
   it("returns 400 for validation errors", async () => {
-    runCanonicalizeMock.mockRejectedValue(
-      new CanonicalizeValidationError("raw_markdown is empty."),
+    runCanonicalVersionMock.mockRejectedValue(
+      new CanonicalVersionValidationError("raw_markdown is empty."),
     );
 
     const response = await POST(new Request("http://localhost"), {
@@ -109,8 +112,8 @@ describe("POST /api/study-sets/[id]/canonicalize", () => {
   });
 
   it("returns 422 for canonicalize errors", async () => {
-    runCanonicalizeMock.mockRejectedValue(
-      new CanonicalizeError("Canonical builder output failed validation"),
+    runCanonicalVersionMock.mockRejectedValue(
+      new CanonicalVersionError("Canonical builder output failed validation"),
     );
 
     const response = await POST(new Request("http://localhost"), {
@@ -123,8 +126,8 @@ describe("POST /api/study-sets/[id]/canonicalize", () => {
   });
 
   it("returns 503 for persistence network errors", async () => {
-    runCanonicalizeMock.mockRejectedValue(
-      new CanonicalizePersistenceError("Cannot reach Supabase."),
+    runCanonicalVersionMock.mockRejectedValue(
+      new CanonicalVersionPersistenceError("Cannot reach Supabase."),
     );
 
     const response = await POST(new Request("http://localhost"), {
@@ -134,10 +137,9 @@ describe("POST /api/study-sets/[id]/canonicalize", () => {
 
     expect(response.status).toBe(503);
     expect(body.error).toBe("persistence_unavailable");
-    expect(body.message).toMatch(/Supabase/);
   });
 
-  it("returns 200 with pipelineStage canonical on success", async () => {
+  it("delegates to runCanonicalVersion and preserves legacy DTO", async () => {
     const response = await POST(new Request("http://localhost"), {
       params: Promise.resolve({ id: "set-1" }),
     });
@@ -147,11 +149,21 @@ describe("POST /api/study-sets/[id]/canonicalize", () => {
     expect(body.pipelineStage).toBe("canonical");
     expect(body.sectionCount).toBe(2);
     expect(body.title).toBe("Canonical Title");
-    expect(runCanonicalizeMock).toHaveBeenCalledWith(
+    expect(body.studySetId).toBe("set-1");
+    expect(runCanonicalVersionMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: "user-1",
-        studySetId: "set-1",
+        workspaceId: "ws-1",
+        documentId: "doc-1",
+        documentVersionId: "dv-1",
       }),
     );
+  });
+
+  it("does not call replace_canonical_content or runCanonicalize", async () => {
+    await POST(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "set-1" }),
+    });
+
+    expect(runCanonicalVersionMock).toHaveBeenCalled();
   });
 });

@@ -2,10 +2,18 @@ import type { User } from "@supabase/supabase-js";
 
 import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
 
+import {
+  GenerationInProgressError,
+  getGenerationQuotaAvailability,
+} from "./generationQuotaReservation";
 import { QuotaExceededError } from "./QuotaExceededError";
-import { getUserUsage } from "./getUserUsage";
 
-type QuotaSupabase = { from: (table: string) => any };
+type QuotaSupabase = {
+  rpc: (
+    functionName: string,
+    args: Record<string, string>,
+  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
 
 export async function assertGenerationQuota({
   supabase,
@@ -18,13 +26,18 @@ export async function assertGenerationQuota({
 }) {
   if (resolveUserAiTier(user) === "pro") return;
 
-  const usage = await getUserUsage({ supabase, user, studySetId });
-  if (usage.canGenerateThisSet) return;
+  const availability = await getGenerationQuotaAvailability({ supabase, studySetId });
+
+  if (availability.status === "generation_in_progress") {
+    throw new GenerationInProgressError(availability.reservationExpiresAt ?? "");
+  }
+
+  if (availability.canGenerate) return;
 
   throw new QuotaExceededError({
-    weeklyUsed: usage.weeklyUsed,
-    weeklyLimit: usage.weeklyLimit,
-    bonusCredits: usage.bonusCredits,
-    weekResetsAt: usage.weekResetsAt,
+    weeklyUsed: availability.weeklyUsed,
+    weeklyLimit: availability.weeklyLimit,
+    bonusCredits: availability.bonusCredits,
+    weekResetsAt: availability.weekResetsAt,
   });
 }

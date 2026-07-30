@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
-status: executing
-last_updated: "2026-07-26T07:44:32.764Z"
-last_activity: 2026-07-26
+status: complete
+last_updated: "2026-07-30T09:45:00.000Z"
+last_activity: 2026-07-30 — completed 10-10 social safety settings UI
 progress:
-  total_phases: 7
-  completed_phases: 5
-  total_plans: 26
-  completed_plans: 25
-  percent: 71
+  total_phases: 10
+  completed_phases: 10
+  total_plans: 61
+  completed_plans: 61
+  percent: 100
 ---
 
 # Doc2Quiz — State
@@ -23,12 +23,12 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 06 (bilingual-en-vi-language-selector-and-reusable-contextual-sl) — EXECUTING
-Plan: 7 of 7
-Status: Ready to execute
-Last activity: 2026-07-26
+Phase: 10
+Plan: 10 completed
+Status: Complete
+Last activity: 2026-07-30 — completed 10-10 social safety settings UI
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Decisions
 
@@ -55,6 +55,26 @@ Progress: [██████████] 96%
 - [Phase 06]: Slang history stays session-only and is isolated by locale plus context.
 - [Phase 06]: Plan 06-06 used user-authorized no-commit safety mode to preserve overlapping dirty dashboard work.
 - [Phase 06]: Deleted dashboard stats components remain deleted; localization follows the live dashboard structure.
+- [Phase 08]: Generation quota reservations serialize per user in Postgres; active reservations expire after seven minutes and refund bonus credits exactly once.
+- [Phase 08]: Server quota modules call typed reservation RPC adapters; direct quota-table mutation is retired pending route lifecycle wiring in Plan 08-06.
+- [Phase 09]: Workspace migration timestamps 150000/150100 (140000 collided with quota reservations).
+- [Phase 09]: Versioned sections live in `canonical_version_sections`; legacy `canonical_sections` untouched.
+- [Phase 09]: Output bridge uses new study_sets row per learning_output; historic parent history stays parent-keyed.
+- [Phase 09]: Native outputs use null `legacy_parent_study_set_id`; backfill always sets immutable parent.
+- [Phase 09]: First ingest validates before `create_workspace_document_version`; originals land at `{workspaceId}/{documentId}/{versionId}/...`.
+- [Phase 09]: Import client uses `/api/workspaces/ingest`; legacy `ingestStudySet` retained for adapters.
+- [Phase 09]: Workspace canonicalize appends via `persist_canonical_version` only; never `replace_canonical_content`.
+- [Phase 09]: Canonical reader returns metadata + paginated section bodies (limit 1–50); progressive UI uses IntersectionObserver.
+- [Phase 09]: Multi-source quiz posts canonicalVersionIds only; `create_learning_output` freezes snapshots and returns bridgeStudySetId.
+- [Phase 09]: Workspace quiz route is authoritative; study-set quiz generate is a non-destructive bridge adapter.
+- [Phase 09]: Legacy adapters resolve via `legacyBridge.resolveLegacyStudySetBridge` with explicit routeKind; bridge history never falls back to parent.
+- [Phase 10]: Social tables are RPC-only; friend sends use generic `request_unavailable` except explicit `rate_limited` with retry detail.
+- [Phase 10]: Workspace content mutation routes use route-level `requireWorkspacePermission(edit)` before lib/pipeline side effects.
+- [Phase 10]: Public share resolver is service-role RPC only; digest lookup returns locked study DTO with identical not_found failures.
+- [Phase 10]: Public share page/API consume allowlisted DTO only with identical unavailable UI and generic not_found API responses.
+- [Phase 10]: Anonymous quiz outbox imports via `import_anonymous_quiz_attempts` with stable clientAttemptId dedupe and ack-only local deletion.
+
+- [Phase 10]: SocialSafetySettings in Settings uses generic social errors, confirmation dialogs, and acknowledgement-only report copy.
 
 ## Quick Tasks Completed
 
@@ -64,7 +84,7 @@ Progress: [██████████] 96%
 
 ## Next step
 
-Execute Phase 6 Plan 06-07 coverage audit and manual verification gate.
+Phase 10 complete. Run phase verification / milestone close as needed.
 
 ## Accumulated Context
 

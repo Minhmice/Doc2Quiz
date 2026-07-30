@@ -2,20 +2,66 @@ import type { User } from "@supabase/supabase-js";
 
 import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
 
+import { getGenerationQuotaAvailability, type GenerationQuotaAvailability } from "./generationQuotaReservation";
 import { WEEKLY_LIMIT } from "./quotaConstants";
-import { getQuotaWeekResetsAtIct, getQuotaWeekStartIct } from "./quotaWeek";
+import { type QuotaClient } from "./quotaClient";
+import { getQuotaWeekResetsAtIct } from "./quotaWeek";
 
-type QuotaSupabase = {
-  from: (table: string) => any;
+export type GetUserUsageSupabase = QuotaClient;
+export type UserUsage = {
+  plan: "free" | "pro";
+  weeklyUsed: number;
+  weeklyLimit: number;
+  weeklyRemaining: number;
+  bonusCredits: number;
+  weekResetsAt: string;
+  canGenerateThisSet?: boolean;
 };
 
 type UsageArgs = {
-  supabase: QuotaSupabase;
+  supabase: QuotaClient;
   user: User;
   studySetId?: string;
 };
 
-export async function getUserUsage({ supabase, user, studySetId }: UsageArgs) {
+async function findAvailabilityProbeStudySetId(
+  supabase: QuotaClient,
+  userId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("study_sets")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return data?.[0]?.id ?? null;
+}
+
+function mapAvailabilityToUsage(
+  plan: "free",
+  availability: GenerationQuotaAvailability,
+  studySetId?: string,
+): UserUsage {
+  const weeklyUsed = availability.weeklyUsed;
+  const bonusCredits = availability.bonusCredits;
+  const usage: UserUsage = {
+    plan,
+    weeklyUsed,
+    weeklyLimit: availability.weeklyLimit,
+    weeklyRemaining: Math.max(0, availability.weeklyLimit - weeklyUsed),
+    bonusCredits,
+    weekResetsAt: availability.weekResetsAt,
+  };
+
+  if (!studySetId) return usage;
+
+  return {
+    ...usage,
+    canGenerateThisSet: availability.canGenerate,
+  };
+}
+
+export async function getUserUsage({ supabase, user, studySetId }: UsageArgs): Promise<UserUsage> {
   const plan = resolveUserAiTier(user);
   const weekResetsAt = getQuotaWeekResetsAtIct().toISOString();
 
@@ -31,44 +77,23 @@ export async function getUserUsage({ supabase, user, studySetId }: UsageArgs) {
     };
   }
 
-  const weekStart = getQuotaWeekStartIct().toISOString();
-  const { count, error: countError } = await supabase
-    .from("quota_consumptions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("consumed_at", weekStart);
-  if (countError) throw new Error(countError.message);
+  const availabilityStudySetId = studySetId ?? (await findAvailabilityProbeStudySetId(supabase, user.id));
+  if (!availabilityStudySetId) {
+    return {
+      plan,
+      weeklyUsed: 0,
+      weeklyLimit: WEEKLY_LIMIT,
+      weeklyRemaining: WEEKLY_LIMIT,
+      bonusCredits: 0,
+      weekResetsAt,
+      ...(studySetId ? { canGenerateThisSet: true } : {}),
+    };
+  }
 
-  const { data: wallet, error: walletError } = await supabase
-    .from("user_quota_wallet")
-    .select("bonus_credits")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (walletError) throw new Error(walletError.message);
+  const availability = await getGenerationQuotaAvailability({
+    supabase,
+    studySetId: availabilityStudySetId,
+  });
 
-  const weeklyUsed = count ?? 0;
-  const bonusCredits = wallet?.bonus_credits ?? 0;
-  const usage = {
-    plan,
-    weeklyUsed,
-    weeklyLimit: WEEKLY_LIMIT,
-    weeklyRemaining: Math.max(0, WEEKLY_LIMIT - weeklyUsed),
-    bonusCredits,
-    weekResetsAt,
-  };
-
-  if (!studySetId) return usage;
-
-  const { data: existing, error: existingError } = await supabase
-    .from("quota_consumptions")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("study_set_id", studySetId)
-    .maybeSingle();
-  if (existingError) throw new Error(existingError.message);
-
-  return {
-    ...usage,
-    canGenerateThisSet: Boolean(existing) || weeklyUsed < WEEKLY_LIMIT || bonusCredits > 0,
-  };
+  return mapAvailabilityToUsage(plan, availability, studySetId);
 }
