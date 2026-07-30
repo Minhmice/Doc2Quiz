@@ -75,7 +75,7 @@ completed: 2026-07-30
 
 1. **Task 1: Implement bounded idempotent anonymous attempt import** - `c1198f2` (test), `440ce8d` (feat)
 
-**Plan metadata:** pending (docs)
+**Plan metadata:** `74004e1` (docs)
 
 ## Files Created/Modified
 
