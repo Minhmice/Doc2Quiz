@@ -2,31 +2,13 @@ import type { User } from "@supabase/supabase-js";
 
 import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
 
-import { getGenerationQuotaAvailability } from "./generationQuotaReservation";
+import { getGenerationQuotaAvailability, type GenerationQuotaAvailability } from "./generationQuotaReservation";
 import { WEEKLY_LIMIT } from "./quotaConstants";
+import { type QuotaClient } from "./quotaClient";
 import { getQuotaWeekResetsAtIct } from "./quotaWeek";
 
-type QuotaSupabase = {
-  rpc: (
-    functionName: string,
-    args: Record<string, string>,
-  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        limit: (count: number) => PromiseLike<{ data: Array<{ id: string }> | null; error: { message: string } | null }>;
-      };
-    };
-  };
-};
-
-type UsageArgs = {
-  supabase: QuotaSupabase;
-  user: User;
-  studySetId?: string;
-};
-
-type UserUsage = {
+export type GetUserUsageSupabase = QuotaClient;
+export type UserUsage = {
   plan: "free" | "pro";
   weeklyUsed: number;
   weeklyLimit: number;
@@ -36,8 +18,14 @@ type UserUsage = {
   canGenerateThisSet?: boolean;
 };
 
+type UsageArgs = {
+  supabase: QuotaClient;
+  user: User;
+  studySetId?: string;
+};
+
 async function findAvailabilityProbeStudySetId(
-  supabase: QuotaSupabase,
+  supabase: QuotaClient,
   userId: string,
 ): Promise<string | null> {
   const { data, error } = await supabase
@@ -51,7 +39,7 @@ async function findAvailabilityProbeStudySetId(
 
 function mapAvailabilityToUsage(
   plan: "free",
-  availability: Awaited<ReturnType<typeof getGenerationQuotaAvailability>>,
+  availability: GenerationQuotaAvailability,
   studySetId?: string,
 ): UserUsage {
   const weeklyUsed = availability.weeklyUsed;

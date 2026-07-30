@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import { getUserUsage } from "@/lib/server/quota/getUserUsage";
+import { toQuotaClient } from "@/lib/server/quota/quotaClient";
 
 export async function GET(request: Request): Promise<Response> {
   const auth = await requireApiUser();
@@ -12,7 +13,7 @@ export async function GET(request: Request): Promise<Response> {
   try {
     return NextResponse.json(
       await getUserUsage({
-        supabase: auth.supabase as never,
+        supabase: toQuotaClient(auth.supabase),
         user: auth.user,
         studySetId,
       }),
