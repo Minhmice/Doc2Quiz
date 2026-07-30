@@ -238,6 +238,40 @@ select pg_temp.assert_true(
   'each output has frozen snapshot with canonical locator'
 );
 
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.workspaces w
+    join workspace_test_ids t on w.id = t.workspace_id),
+  'backfill creates exactly one workspace per legacy parent'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.workspace_members wm
+    join workspace_test_ids t on wm.workspace_id = t.workspace_id and wm.role = 'owner'),
+  'backfill creates exactly one owner membership'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.documents d
+    join workspace_test_ids t on d.workspace_id = t.workspace_id and d.deleted_at is null),
+  'backfill creates exactly one active document'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.document_versions dv
+    join public.documents d on d.id = dv.document_id
+    join workspace_test_ids t on d.workspace_id = t.workspace_id
+   where dv.deleted_at is null),
+  'backfill creates exactly one active document version'
+);
+
+select pg_temp.assert_true(
+  (select count(distinct lo.legacy_parent_study_set_id) = 1
+      and min(lo.legacy_parent_study_set_id) = (select parent_study_set_id from workspace_test_ids)
+   from public.learning_outputs lo
+   join workspace_test_ids t on lo.legacy_parent_study_set_id = t.parent_study_set_id),
+  'both derived outputs share immutable legacy_parent_study_set_id'
+);
+
 -- -------------------------------------------------------------------------
 -- History unchanged on parent (no duplication / rekey)
 -- -------------------------------------------------------------------------
@@ -493,6 +527,61 @@ select pg_temp.assert_true(
     limit 1
   ),
   'bridge resolve uses bridge history with no parent fallback'
+);
+
+select pg_temp.assert_true(
+  (
+    select count(*) = 0
+    from public.resolve_learning_output_bridge(
+      (select parent_study_set_id from workspace_test_ids),
+      'flashcards'
+    ) r
+    cross join workspace_test_ids t
+    where r.kind = 'quiz'
+  ),
+  'parent+flashcards does not resolve quiz child'
+);
+
+select pg_temp.assert_true(
+  (
+    select count(*) = 0
+    from public.resolve_learning_output_bridge(
+      (select parent_study_set_id from workspace_test_ids),
+      'quiz'
+    ) r
+    cross join workspace_test_ids t
+    where r.kind = 'flashcards'
+  ),
+  'parent+quiz does not resolve flashcards child'
+);
+
+-- -------------------------------------------------------------------------
+-- Soft-delete: source hidden, frozen snapshots remain readable
+-- -------------------------------------------------------------------------
+
+update public.documents
+set deleted_at = now()
+where workspace_id = (select workspace_id from workspace_test_ids);
+
+select pg_temp.as_user(owner_id) from workspace_test_ids;
+
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.documents d
+    join workspace_test_ids t on d.workspace_id = t.workspace_id
+   where d.deleted_at is null),
+  'soft-deleted source invisible in active document list'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 2 from public.output_source_snapshots oss
+    join workspace_test_ids t on oss.output_id in (t.quiz_output_id, t.flashcards_output_id)),
+  'authorized member can read frozen output snapshots after soft delete'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.learning_outputs lo
+    join workspace_test_ids t on lo.id = t.quiz_output_id),
+  'soft-deleted source does not remove learning_outputs for authorized member'
 );
 
 select pg_temp.as_user(nonmember_id) from workspace_test_ids;

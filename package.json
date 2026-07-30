@@ -17,7 +17,8 @@
     "setup:python": "node scripts/setup-python.mjs",
     "verify:phase7-callers": "node scripts/audit-phase7-route-callers.mjs",
     "verify:phase7-references": "node scripts/audit-phase7-route-references.mjs",
-    "verify:phase7-routes": "npm run build && node scripts/verify-phase7-route-smoke.mjs"
+    "verify:phase7-routes": "npm run build && node scripts/verify-phase7-route-smoke.mjs",
+    "verify:phase9-workspace": "node scripts/verify-phase9-workspace-bridge.mjs && vitest run src/lib/workspaces/legacyBridge.test.ts src/app/api/study-sets/[id]/route.test.ts src/app/api/study-sets/[id]/canonical/route.test.ts src/app/api/study-sets/[id]/ingest/route.test.ts src/app/api/study-sets/[id]/canonicalize/route.test.ts src/app/api/study-sets/[id]/quiz/generate/route.test.ts src/app/api/study-sets/[id]/flashcards/generate/route.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
