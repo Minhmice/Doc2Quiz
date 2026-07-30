@@ -234,8 +234,9 @@ select pg_temp.assert_true(
 select pg_temp.assert_true(
   (select count(*) = 2 from public.output_source_snapshots oss
     join workspace_test_ids t on oss.output_id in (t.quiz_output_id, t.flashcards_output_id)
-    where oss.canonical_version_id is not null),
-  'each output has frozen snapshot with canonical locator'
+    where oss.canonical_version_id is not null
+       or coalesce(oss.source_provenance ->> 'migration_exception', '') = 'true'),
+  'each migrated output has frozen snapshot or explicit provenance exception'
 );
 
 select pg_temp.assert_true(
@@ -278,32 +279,40 @@ select pg_temp.assert_true(
 
 select pg_temp.assert_true(
   (select count(*) = 1 and min(study_set_id) = (select parent_study_set_id from workspace_test_ids)
+      and min(total_questions) = 1 and min(correct_count) = 1
    from public.quiz_sessions where id = (select quiz_session_id from workspace_test_ids)),
-  'quiz_sessions remain parent-keyed'
+  'quiz_sessions remain parent-keyed with unchanged payload'
 );
 
 select pg_temp.assert_true(
-  (select count(*) = 1 from public.study_wrong_history
+  (select count(*) = 1
+      and min(question_ids) = array['d0000000-0000-0000-0000-000000000001']::uuid[]
+   from public.study_wrong_history
     where study_set_id = (select parent_study_set_id from workspace_test_ids)),
-  'study_wrong_history remain parent-keyed'
+  'study_wrong_history remain parent-keyed with unchanged payload'
 );
 
 select pg_temp.assert_true(
   (select count(*) = 1 and min(study_set_id) = (select parent_study_set_id from workspace_test_ids)
+      and min(content_kind) = 'quiz' and min(state) = 'committed'
    from public.quota_consumptions where id = (select quota_id from workspace_test_ids)),
-  'quota_consumptions remain parent-keyed'
+  'quota_consumptions remain parent-keyed with unchanged payload'
 );
 
 select pg_temp.assert_true(
-  (select count(*) = 1 from public.study_sessions
+  (select count(*) = 1 and min(mode) = 'quiz'
+      and min(item_ids) = array['d0000000-0000-0000-0000-000000000001']::uuid[]
+   from public.study_sessions
     where study_set_id = (select parent_study_set_id from workspace_test_ids)),
-  'study_sessions remain parent-keyed'
+  'study_sessions remain parent-keyed with unchanged payload'
 );
 
 select pg_temp.assert_true(
-  (select count(*) = 1 from public.study_mistakes
+  (select count(*) = 1 and min(mode) = 'quiz'
+      and min(item_id) = 'd0000000-0000-0000-0000-000000000001'::uuid
+   from public.study_mistakes
     where study_set_id = (select parent_study_set_id from workspace_test_ids)),
-  'study_mistakes remain parent-keyed'
+  'study_mistakes remain parent-keyed with unchanged payload'
 );
 
 select pg_temp.assert_true(
@@ -555,33 +564,47 @@ select pg_temp.assert_true(
   'parent+quiz does not resolve flashcards child'
 );
 
--- -------------------------------------------------------------------------
--- Soft-delete: source hidden, frozen snapshots remain readable
--- -------------------------------------------------------------------------
-
-update public.documents
-set deleted_at = now()
-where workspace_id = (select workspace_id from workspace_test_ids);
-
-select pg_temp.as_user(owner_id) from workspace_test_ids;
-
 select pg_temp.assert_true(
-  (select count(*) = 0 from public.documents d
-    join workspace_test_ids t on d.workspace_id = t.workspace_id
-   where d.deleted_at is null),
-  'soft-deleted source invisible in active document list'
+  (
+    select r.history_study_set_id = t.parent_study_set_id
+       and (
+         select count(*) from public.quiz_sessions qs
+         where qs.study_set_id = r.history_study_set_id
+       ) = 1
+       and (
+         select count(*) from public.quiz_sessions qs
+         where qs.study_set_id = r.bridge_study_set_id
+       ) = 0
+    from public.resolve_learning_output_bridge(
+      (select parent_study_set_id from workspace_test_ids),
+      'quiz'
+    ) r
+    cross join workspace_test_ids t
+    limit 1
+  ),
+  'parent-resolution exposes parent-keyed historic records only'
 );
 
 select pg_temp.assert_true(
-  (select count(*) = 2 from public.output_source_snapshots oss
-    join workspace_test_ids t on oss.output_id in (t.quiz_output_id, t.flashcards_output_id)),
-  'authorized member can read frozen output snapshots after soft delete'
-);
-
-select pg_temp.assert_true(
-  (select count(*) = 1 from public.learning_outputs lo
-    join workspace_test_ids t on lo.id = t.quiz_output_id),
-  'soft-deleted source does not remove learning_outputs for authorized member'
+  (
+    select r.history_study_set_id = t.quiz_bridge_id
+       and r.history_study_set_id is distinct from t.parent_study_set_id
+       and (
+         select count(*) from public.quiz_sessions qs
+         where qs.study_set_id = r.history_study_set_id
+       ) = 0
+       and (
+         select count(*) from public.quiz_sessions qs
+         where qs.study_set_id = t.parent_study_set_id
+       ) = 1
+    from public.resolve_learning_output_bridge(
+      (select quiz_bridge_id from workspace_test_ids),
+      'quiz'
+    ) r
+    cross join workspace_test_ids t
+    limit 1
+  ),
+  'bridge resolutions return no parent historic records'
 );
 
 select pg_temp.as_user(nonmember_id) from workspace_test_ids;
@@ -730,6 +753,41 @@ begin
       where id = (created->>'outputId')::uuid),
     'native output has null legacy_parent_study_set_id'
   );
+
+  -- Bridge-keyed new history must never fall back to parent.
+  insert into public.quiz_sessions (
+    id, user_id, study_set_id, total_questions, correct_count
+  )
+  values (
+    'f0000000-0000-0000-0000-000000000099',
+    (select owner_id from workspace_test_ids),
+    (created->>'bridgeStudySetId')::uuid,
+    2,
+    1
+  );
+
+  perform pg_temp.assert_true(
+    (
+      select r.resolution_mode = 'bridge'
+         and r.history_study_set_id = (created->>'bridgeStudySetId')::uuid
+         and r.history_study_set_id is distinct from t.parent_study_set_id
+         and (
+           select count(*) from public.quiz_sessions qs
+           where qs.study_set_id = r.history_study_set_id
+         ) = 1
+         and (
+           select count(*) from public.quiz_sessions qs
+           where qs.study_set_id = t.parent_study_set_id
+         ) = 1
+      from public.resolve_learning_output_bridge(
+        (created->>'bridgeStudySetId')::uuid,
+        'quiz'
+      ) r
+      cross join workspace_test_ids t
+      limit 1
+    ),
+    'bridge-keyed new history never falls back to parent'
+  );
 end;
 $$;
 
@@ -784,5 +842,65 @@ begin
   );
 end;
 $$;
+
+-- -------------------------------------------------------------------------
+-- Soft-delete: source hidden, frozen snapshots remain readable
+-- (After RPC tests so append/create still have an active document version.)
+-- -------------------------------------------------------------------------
+
+select pg_temp.as_user(owner_id) from workspace_test_ids;
+
+update public.documents
+set deleted_at = now()
+where workspace_id = (select workspace_id from workspace_test_ids)
+  and deleted_at is null;
+
+update public.document_versions dv
+set deleted_at = now()
+from public.documents d
+where d.id = dv.document_id
+  and d.workspace_id = (select workspace_id from workspace_test_ids)
+  and dv.deleted_at is null;
+
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.documents d
+    join workspace_test_ids t on d.workspace_id = t.workspace_id
+   where d.deleted_at is null),
+  'soft-deleted source invisible in active document list'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.document_versions dv
+    join public.documents d on d.id = dv.document_id
+    join workspace_test_ids t on d.workspace_id = t.workspace_id
+   where dv.deleted_at is null),
+  'soft-deleted document versions invisible in active version list'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 2 from public.output_source_snapshots oss
+    join workspace_test_ids t on oss.output_id in (t.quiz_output_id, t.flashcards_output_id)),
+  'authorized owner can read frozen output snapshots after soft delete'
+);
+
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.learning_outputs lo
+    join workspace_test_ids t on lo.id = t.quiz_output_id),
+  'soft-deleted source does not remove learning_outputs for authorized member'
+);
+
+select pg_temp.as_user(viewer_id) from workspace_test_ids;
+select pg_temp.assert_true(
+  (select count(*) = 2 from public.output_source_snapshots oss
+    join workspace_test_ids t on oss.output_id in (t.quiz_output_id, t.flashcards_output_id)),
+  'authorized viewer can read frozen output snapshots after soft delete'
+);
+
+select pg_temp.as_user(nonmember_id) from workspace_test_ids;
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.output_source_snapshots oss
+    join workspace_test_ids t on oss.output_id in (t.quiz_output_id, t.flashcards_output_id)),
+  'nonmember cannot read output snapshots after soft delete'
+);
 
 rollback;

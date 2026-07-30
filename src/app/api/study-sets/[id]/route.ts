@@ -42,7 +42,7 @@ export async function GET(
 ) {
   const auth = await requireApiUser();
   if ("error" in auth) {
-    return auth.error;
+    return auth.error as NextResponse;
   }
 
   const { id } = await ctx.params;
@@ -86,7 +86,7 @@ export async function PATCH(
 ) {
   const auth = await requireApiUser();
   if ("error" in auth) {
-    return auth.error;
+    return auth.error as NextResponse;
   }
 
   const { id } = await ctx.params;
@@ -202,7 +202,7 @@ export async function DELETE(
 ) {
   const auth = await requireApiUser();
   if ("error" in auth) {
-    return auth.error;
+    return auth.error as NextResponse;
   }
 
   const { id } = await ctx.params;

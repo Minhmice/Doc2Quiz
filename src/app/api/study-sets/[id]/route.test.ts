@@ -146,6 +146,10 @@ describe("GET/PATCH/DELETE /api/study-sets/[id] (legacy metadata adapter)", () =
       }),
       { params: Promise.resolve({ id: "bridge-1" }) },
     );
+    expect(response).toBeDefined();
+    if (!response) {
+      throw new Error("expected PATCH response");
+    }
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -168,6 +172,10 @@ describe("GET/PATCH/DELETE /api/study-sets/[id] (legacy metadata adapter)", () =
     const response = await DELETE(new Request("http://localhost"), {
       params: Promise.resolve({ id: "bridge-1" }),
     });
+    expect(response).toBeDefined();
+    if (!response) {
+      throw new Error("expected DELETE response");
+    }
 
     expect(response.status).toBe(204);
     expect(softDeleteDocumentMock).toHaveBeenCalledWith(

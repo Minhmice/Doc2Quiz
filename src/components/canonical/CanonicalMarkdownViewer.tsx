@@ -6,7 +6,6 @@ import remarkGfm from "remark-gfm";
 import {
   useCallback,
   useEffect,
-  useEffectEvent,
   useRef,
   useState,
 } from "react";
@@ -212,6 +211,8 @@ function ProgressiveCanonicalMarkdownViewer({
 
   const inFlightRef = useRef<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const progressiveRef = useRef(progressive);
+  progressiveRef.current = progressive;
 
   const mergePage = useCallback((page: CanonicalSectionPage) => {
     setBodies((prev) => {
@@ -233,8 +234,9 @@ function ProgressiveCanonicalMarkdownViewer({
     setHasInitialized(true);
   }, []);
 
-  const loadPage = useEffectEvent(async (afterOrdinal: number) => {
-    const cursorKey = `${progressive.versionId}:${afterOrdinal}`;
+  const loadPage = useCallback(async (afterOrdinal: number) => {
+    const source = progressiveRef.current;
+    const cursorKey = `${source.versionId}:${afterOrdinal}`;
     if (inFlightRef.current.has(cursorKey)) {
       return;
     }
@@ -243,10 +245,10 @@ function ProgressiveCanonicalMarkdownViewer({
     setError(null);
     try {
       const page = await fetchCanonicalSectionPage({
-        workspaceId: progressive.workspaceId,
-        versionId: progressive.versionId,
+        workspaceId: source.workspaceId,
+        versionId: source.versionId,
         afterOrdinal,
-        limit: progressive.pageLimit ?? 20,
+        limit: source.pageLimit ?? 20,
       });
       mergePage(page);
     } catch (err) {
@@ -257,13 +259,13 @@ function ProgressiveCanonicalMarkdownViewer({
       inFlightRef.current.delete(cursorKey);
       setLoading(false);
     }
-  });
+  }, [mergePage]);
 
   useEffect(() => {
     if (!hasInitialized) {
       void loadPage(0);
     }
-  }, [hasInitialized]);
+  }, [hasInitialized, loadPage]);
 
   const canLoadMore = nextAfterOrdinal != null;
 
@@ -283,7 +285,7 @@ function ProgressiveCanonicalMarkdownViewer({
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [nextAfterOrdinal]);
+  }, [nextAfterOrdinal, loadPage]);
 
   useEffect(() => {
     if (progressive.sectionIndex.length === 0) {

@@ -198,7 +198,7 @@ export async function listWorkspaceSummaries(params: {
     documentToWorkspace.set(doc.id as string, doc.workspace_id as string);
   }
 
-  let activeVersionIds: string[] = [];
+  const activeVersionIds: string[] = [];
   if (documentIds.length > 0) {
     const { data: versions, error: versionsError } = await supabase
       .from("document_versions")
