@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-29T23:49:17.958Z"
-last_activity: 2026-07-29 -- Phase 07 execution started
+last_updated: "2026-07-30T07:01:00.000Z"
+last_activity: 2026-07-30 -- Phase 09 plan 09-07 complete
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 61
-  completed_plans: 45
-  percent: 60
+  completed_plans: 48
+  percent: 79
 ---
 
 # Doc2Quiz — State
@@ -23,12 +23,12 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 07 (normalize-app-information-architecture-around-setid-based-qu) — EXECUTING
-Plan: 1 of 9
-Status: Executing Phase 07
-Last activity: 2026-07-29 -- Phase 07 execution started
+Phase: 09 (workspace-centered-learning-canonical-provenance) — EXECUTING
+Plan: 09-07 complete; next 09-08 (7 of 9)
+Status: Ready to execute 09-08
+Last activity: 2026-07-30 -- Phase 09 plan 09-07 complete
 
-Progress: [███████░░░] 72%
+Progress: [████████░░] 79%
 
 ## Decisions
 
@@ -67,6 +67,7 @@ Progress: [███████░░░] 72%
 - [Phase 09]: Canonical reader returns metadata + paginated section bodies (limit 1–50); progressive UI uses IntersectionObserver.
 - [Phase 09]: Multi-source quiz posts canonicalVersionIds only; `create_learning_output` freezes snapshots and returns bridgeStudySetId.
 - [Phase 09]: Workspace quiz route is authoritative; study-set quiz generate is a non-destructive bridge adapter.
+- [Phase 09]: Legacy adapters resolve via `legacyBridge.resolveLegacyStudySetBridge` with explicit routeKind; bridge history never falls back to parent.
 
 ## Quick Tasks Completed
 
@@ -76,7 +77,7 @@ Progress: [███████░░░] 72%
 
 ## Next step
 
-Execute Phase 9 Plan 09-05 — multi-source flashcard parity with frozen snapshots and flashcard bridge.
+Execute Phase 9 Plan 09-08 — legacy flashcard adapter on shared `resolveLegacyStudySetBridge`.
 
 ## Accumulated Context
 
