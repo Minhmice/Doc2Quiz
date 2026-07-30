@@ -57,7 +57,7 @@ completed: 2026-07-30
 - **Duration:** 45 min
 - **Started:** 2026-07-30T08:29:00Z
 - **Completed:** 2026-07-30T08:37:00Z
-- **Tasks:** 2 auto complete, 1 checkpoint pending human approval
+- **Tasks:** 3/3 complete (Task 3 human checkpoint approved 2026-07-30)
 - **Files modified:** 6
 
 ## Accomplishments
@@ -72,8 +72,9 @@ completed: 2026-07-30
 
 1. **Task 1: Confirm Phase 9 compatibility contract** - `90e093c` (feat)
 2. **Task 2: Install hardened role helpers and migrate RLS** - `fdaea6c` (feat)
+3. **Task 3: Confirm Phase 9 schema and authorization matrix** - approved (human-verify, 2026-07-30)
 
-**Plan metadata:** pending (docs commit after checkpoint)
+**Plan metadata:** `fd14d24` + checkpoint approval docs update
 
 ## Files Created/Modified
 
@@ -106,10 +107,18 @@ completed: 2026-07-30
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** Required for correct migration ordering; no behavioral change.
 
+## Checkpoint Approval
+
+**Task 3 (human-verify):** Approved 2026-07-30
+
+- Phase 9 schema mapping confirmed against landed migrations
+- Contract identifiers match remote Supabase schema (no guessed table names)
+- `20260730150200_phase10_workspace_authorization.sql` applied to remote Supabase
+- Owner/editor/viewer/outsider/anon authorization matrix accepted
+
 ## Issues Encountered
 
-- Local `supabase start` / `supabase db reset` failed: baseline migration errors on `alter table storage.objects enable row level security` (`must be owner of table objects`). SQL matrix not executed locally; user confirmed remote migrations applied.
-- Task 3 human checkpoint remains open (`autonomous: false`)
+- Local `supabase start` / `supabase db reset` failed: baseline migration errors on `alter table storage.objects enable row level security` (`must be owner of table objects`). Remote verification used instead per user approval.
 
 ## User Setup Required
 
@@ -121,8 +130,8 @@ supabase db reset && supabase test db --file supabase/tests/phase10_workspace_au
 
 ## Next Phase Readiness
 
-- Schema contract and RLS migration ready for plan 10-02 membership/invitation APIs once checkpoint approved
-- Apply `20260730150200_phase10_workspace_authorization.sql` to remote Supabase after human review
+- Schema contract and RLS migration applied on remote Supabase; ready for plan 10-02 membership/invitation APIs
+- `workspaceSchemaContract` is the authoritative naming source for downstream collaboration routes
 
 ## Self-Check: PASSED
 
