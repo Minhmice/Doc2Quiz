@@ -148,3 +148,120 @@ export async function unblockUser(supabase: FriendsRpcSupabase, userId: string) 
 
   return { ok: true as const };
 }
+
+export type FriendRequestSummary = {
+  id: string;
+  direction: "incoming" | "outgoing";
+  otherUserId: string;
+  otherUsername: string | null;
+  status: string;
+  createdAt: string;
+};
+
+export type BlockedUserSummary = {
+  userId: string;
+  username: string | null;
+  blockedAt: string;
+};
+
+export async function listFriendRequests(supabase: FriendsRpcSupabase) {
+  const { data, error } = await supabase.rpc("list_friend_requests", {});
+
+  if (error) {
+    mapSocialRpcError(error);
+    throw new FriendRequestUnavailableError();
+  }
+
+  const requests = Array.isArray(data?.requests) ? data.requests : [];
+  return {
+    requests: requests.map((entry) => {
+      const row = entry as Record<string, unknown>;
+      return {
+        id: String(row.id ?? ""),
+        direction: row.direction === "outgoing" ? "outgoing" : "incoming",
+        otherUserId: String(row.otherUserId ?? ""),
+        otherUsername: typeof row.otherUsername === "string" ? row.otherUsername : null,
+        status: String(row.status ?? ""),
+        createdAt: String(row.createdAt ?? ""),
+      } satisfies FriendRequestSummary;
+    }),
+  };
+}
+
+export async function respondFriendRequest(
+  supabase: FriendsRpcSupabase,
+  requestId: string,
+  action: "accept" | "decline",
+) {
+  const { data, error } = await supabase.rpc("respond_friend_request", {
+    p_request_id: requestId,
+    p_action: action,
+  });
+
+  if (error) {
+    mapSocialRpcError(error);
+    throw new FriendRequestUnavailableError();
+  }
+  if (!data?.ok) {
+    throw new FriendRequestUnavailableError();
+  }
+
+  return { ok: true as const };
+}
+
+export async function cancelFriendRequest(supabase: FriendsRpcSupabase, requestId: string) {
+  const { data, error } = await supabase.rpc("cancel_friend_request", {
+    p_request_id: requestId,
+  });
+
+  if (error) {
+    mapSocialRpcError(error);
+    throw new FriendRequestUnavailableError();
+  }
+  if (!data?.ok) {
+    throw new FriendRequestUnavailableError();
+  }
+
+  return { ok: true as const };
+}
+
+export async function listBlockedUsers(supabase: FriendsRpcSupabase) {
+  const { data, error } = await supabase.rpc("list_blocked_users", {});
+
+  if (error) {
+    mapSocialRpcError(error);
+    throw new FriendRequestUnavailableError();
+  }
+
+  const blocks = Array.isArray(data?.blocks) ? data.blocks : [];
+  return {
+    blocks: blocks.map((entry) => {
+      const row = entry as Record<string, unknown>;
+      return {
+        userId: String(row.userId ?? ""),
+        username: typeof row.username === "string" ? row.username : null,
+        blockedAt: String(row.blockedAt ?? ""),
+      } satisfies BlockedUserSummary;
+    }),
+  };
+}
+
+export function mapSocialRouteError(error: unknown): { status: number; body: { error: string }; retryAfterSeconds?: number } | null {
+  if (error instanceof FriendRateLimitedError) {
+    return {
+      status: 429,
+      body: { error: "rate_limited" },
+      retryAfterSeconds: error.retryAfterSeconds,
+    };
+  }
+  if (error instanceof FriendRequestUnavailableError) {
+    return { status: 404, body: { error: "request_unavailable" } };
+  }
+  if (error instanceof UsernameTakenError) {
+    return { status: 409, body: { error: "username_taken" } };
+  }
+  if (error instanceof UsernameInvalidError) {
+    return { status: 400, body: { error: "username_invalid" } };
+  }
+  return null;
+}
