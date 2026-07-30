@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
-status: planning
-last_updated: "2026-07-30T08:48:05.221Z"
+status: executing
+last_updated: "2026-07-30T09:10:00.000Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 61
-  completed_plans: 53
-  percent: 87
+  completed_plans: 55
+  percent: 90
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 10
-Plan: Not started
-Status: Ready to plan
+Plan: 05 completed
+Status: Executing
 Last activity: 2026-07-30
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 90%
 
 ## Decisions
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 87%
 - [Phase 09]: Multi-source quiz posts canonicalVersionIds only; `create_learning_output` freezes snapshots and returns bridgeStudySetId.
 - [Phase 09]: Workspace quiz route is authoritative; study-set quiz generate is a non-destructive bridge adapter.
 - [Phase 09]: Legacy adapters resolve via `legacyBridge.resolveLegacyStudySetBridge` with explicit routeKind; bridge history never falls back to parent.
+- [Phase 10]: Social tables are RPC-only; friend sends use generic `request_unavailable` except explicit `rate_limited` with retry detail.
 
 ## Quick Tasks Completed
 
@@ -77,7 +78,7 @@ Progress: [█████████░] 87%
 
 ## Next step
 
-Discuss and execute Phase 10 — safe collaboration, sharing, and friends (`COLLAB-01` through `COLLAB-07`).
+Execute Phase 10 plan 10-06 or continue remaining collaboration plans (`10-07` social APIs, `10-10` settings UI).
 
 ## Accumulated Context
 
