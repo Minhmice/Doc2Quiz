@@ -78,7 +78,7 @@ completed: 2026-07-30
 1. **Task 1: Build typed social safety client** - `ff08964` (test), `4a13d45` (feat)
 2. **Task 2: Build accessible social settings section** - `4bc5ec1` (test), `81bd944` (feat)
 
-**Plan metadata:** pending (docs: complete plan)
+**Plan metadata:** `d3292db` (docs: complete plan)
 
 ## Files Created/Modified
 
@@ -134,7 +134,7 @@ Phase 10 plan 10 complete. Phase 10 human gates documented; ready for phase veri
 - FOUND: src/lib/client/friends.test.ts
 - FOUND: src/components/settings/SocialSafetySettings.tsx
 - FOUND: src/components/settings/SocialSafetySettings.test.tsx
-- FOUND: ff08964, 4a13d45, 4bc5ec1, 81bd944
+- FOUND: ff08964, 4a13d45, 4bc5ec1, 81bd944, d3292db
 
 ---
 *Phase: 10-safe-collaboration-sharing-friends*
