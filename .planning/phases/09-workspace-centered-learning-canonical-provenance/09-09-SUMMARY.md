@@ -62,7 +62,7 @@ completed: 2026-07-30
 
 ## Task Commits
 
-1. **Task 1: Add static compatibility audit and final SQL assertions** — pending commit
+1. **Task 1: Add static compatibility audit and final SQL assertions** — `ad3eaa3` (feat)
 2. **Task 2: Verify workspace provenance transition** — checkpoint (human-verify)
 
 ## Files Created/Modified
