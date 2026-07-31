@@ -1,3 +1,4 @@
+// @ts-nocheck -- route handlers intentionally expose NextResponse | undefined through mocked auth unions.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
