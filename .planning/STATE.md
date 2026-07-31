@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-31T11:45:12.648Z"
+last_updated: "2026-07-31T11:55:42.356Z"
 last_activity: 2026-07-31
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 54
-  completed_plans: 65
+  completed_plans: 66
   percent: 82
 ---
 
@@ -79,6 +79,8 @@ Progress: [██████████] 100%
 - [Phase 12]: SQL proof opens only an explicitly approved local or disposable test target.
 - [Phase 12]: Request and count topics bind to auth.uid(); message topics bind to accepted conversation participants. — Private predictable topics require recipient or participant authority.
 - [Phase 12]: Realtime payloads only invalidate; every displayed social count comes from authenticated HTTP authority. — Prevents stale or forged event payloads from becoming UI truth.
+- [Phase 12]: Realtime chat events only invalidate; authenticated cursor history remains display authority.
+- [Phase 12]: Mobile message actions use full-screen routes; desktop actions retain floating dialogs.
 
 ## Quick Tasks Completed
 
@@ -93,7 +95,7 @@ Progress: [██████████] 100%
 
 ## Next step
 
-Execute Phase 12 Plan 02.
+Execute remaining Phase 12 Plans 06 and 08; Plan 09 complete.
 
 ## Accumulated Context
 
