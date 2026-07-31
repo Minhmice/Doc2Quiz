@@ -248,6 +248,13 @@ export type MessageCatalog = {
       shareTarget: (kind: string) => string;
     };
   };
+  studyTogether: {
+    title: string; description: string; chooseQuiz: string; mode: string; scoreMode: string; practiceMode: string;
+    deadline: string; noDeadline: string; oneDay: string; threeDays: string; sevenDays: string; optionalMessage: string;
+    send: string; sent: string; start: string; continue: string; accept: string; decline: string; markAllRead: string;
+    loading: string; retry: string; unavailable: string; saving: string; complete: string; results: string; waitingForResults: string;
+    questionProgress: (current: number, total: number) => string; keyboardInstructions: string; notificationsLabel: string;
+  };
   socialSafety: {
     heading: string;
     description: string;

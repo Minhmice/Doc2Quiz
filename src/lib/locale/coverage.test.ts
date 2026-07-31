@@ -56,6 +56,7 @@ describe("phase-wide locale coverage", () => {
       "src/components/dashboard/DashboardHomeClient.tsx": [/useLocale/, /messages\.dashboard/, /WorkspaceCard/],
       "src/components/workspaces/WorkspaceCollaborationPanel.tsx": [/useLocale/, /messages\.collaboration\.panel/, /canManageWorkspaceCollaboration/],
       "src/components/settings/SocialSafetySettings.tsx": [/useLocale/, /messages\.socialSafety/, /fetchProfileUsername/],
+      "src/components/friends/StudyChallengePractice.tsx": [/useLocale/, /messages\.studyTogether/, /completeStudyChallengeAttempt/],
     };
     for (const [file, patterns] of Object.entries(markers)) {
       const contents = source(file);
