@@ -1,0 +1,11 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireApiUser } from "@/lib/api/requireApiUser";
+import { completeStudyAttempt,getStudyAttemptPractice,mapStudyTogetherRouteError,saveStudyAttemptProgress } from "@/lib/server/friends/studyTogether";
+const answers=z.array(z.number().int().min(0).max(3).nullable()).max(500);const id=z.string().uuid();
+const unavailable=(e:unknown)=>{const m=mapStudyTogetherRouteError(e);return NextResponse.json(m?.body??{error:"social_unavailable"},{status:m?.status??500});};
+async function base(request:Request,ctx:{params:Promise<{sessionId:string}>}){const auth=await requireApiUser();if("error" in auth)return {response:auth.error};const {sessionId}=await ctx.params;const attemptId=new URL(request.url).searchParams.get("attemptId");if(!id.safeParse(sessionId).success||!id.safeParse(attemptId).success)return {response:NextResponse.json({error:"invalid"},{status:400})};return {auth,attemptId:attemptId!};}
+export async function GET(r:Request,c:{params:Promise<{sessionId:string}>}){const b=await base(r,c);if("response" in b)return b.response;try{return NextResponse.json({data:await getStudyAttemptPractice(b.auth.supabase,b.attemptId)});}catch(e){return unavailable(e);}}
+export async function PATCH(r:Request,c:{params:Promise<{sessionId:string}>}){const b=await base(r,c);if("response" in b)return b.response;let body;try{body=z.object({selectedIndices:answers,currentQuestionIndex:z.number().int().min(0).max(499)}).parse(await r.json());}catch{return NextResponse.json({error:"invalid"},{status:400});}try{return NextResponse.json({data:await saveStudyAttemptProgress(b.auth.supabase,b.attemptId,body.selectedIndices,body.currentQuestionIndex)});}catch(e){return unavailable(e);}}
+export async function POST(r:Request,c:{params:Promise<{sessionId:string}>}){const b=await base(r,c);if("response" in b)return b.response;let body;try{body=z.object({selectedIndices:answers,durationSeconds:z.number().int().min(0).max(86400)}).strip().parse(await r.json());}catch{return NextResponse.json({error:"invalid"},{status:400});}try{return NextResponse.json({data:await completeStudyAttempt(b.auth.supabase,b.attemptId,body.selectedIndices,body.durationSeconds)});}catch(e){return unavailable(e);}}
+export const runtime="nodejs";

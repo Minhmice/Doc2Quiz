@@ -112,5 +112,15 @@ export async function createStudyChallenge(supabase: StudyRpcSupabase, input: { 
 }
 export async function startStudyChallengeAttempt(supabase: StudyRpcSupabase, sessionId: string) { return decodeAttempt(await call(supabase, "start_study_challenge_attempt", { p_session_id: sessionId })); }
 export async function acceptStudyChallenge(supabase: StudyRpcSupabase, sessionId: string) { return decodeAttempt(await call(supabase, "accept_study_challenge", { p_session_id: sessionId })); }
+export async function listStudyChallenges(supabase: StudyRpcSupabase, limit: number, before: string | null) { return call(supabase, "list_study_challenges", { p_limit: limit, p_before: before }); }
+export async function getStudyChallenge(supabase: StudyRpcSupabase, sessionId: string) { return call(supabase, "get_study_challenge", { p_session_id: sessionId }); }
+export async function declineStudyChallenge(supabase: StudyRpcSupabase, sessionId: string) { return call(supabase, "decline_study_challenge", { p_session_id: sessionId }); }
+export async function getStudyAttemptPractice(supabase: StudyRpcSupabase, attemptId: string) { return decodePractice(await call(supabase, "get_study_attempt_practice", { p_attempt_id: attemptId })); }
+export async function saveStudyAttemptProgress(supabase: StudyRpcSupabase, attemptId: string, selectedIndices: (number | null)[], currentQuestionIndex: number) { return call(supabase, "save_study_attempt_progress", { p_attempt_id: attemptId, p_selected_indices: selectedIndices, p_current_question_index: currentQuestionIndex }); }
 export async function completeStudyAttempt(supabase: StudyRpcSupabase, attemptId: string, selectedIndices: (number | null)[], durationSeconds: number) { return decodeResult(await call(supabase, "complete_study_attempt", { p_attempt_id: attemptId, p_selected_indices: selectedIndices, p_duration_seconds: durationSeconds })); }
+export async function listNotifications(supabase: StudyRpcSupabase, limit: number, before: string | null) { return call(supabase, "list_social_notifications", { p_limit: limit, p_before: before }); }
+export async function markNotificationRead(supabase: StudyRpcSupabase, notificationId: string) { return call(supabase, "mark_social_notification_read", { p_notification_id: notificationId }); }
+export async function markAllNotificationsRead(supabase: StudyRpcSupabase) { return call(supabase, "mark_all_social_notifications_read", {}); }
+export async function archiveChallengeNotification(supabase: StudyRpcSupabase, sessionId: string) { return call(supabase, "archive_study_challenge_notification", { p_session_id: sessionId }); }
+export async function getUnreadNotificationCount(supabase: StudyRpcSupabase) { const row = await call(supabase, "get_social_notification_unread_count", {}); return number(row.count); }
 export function mapStudyTogetherRouteError(error: unknown) { return error instanceof SocialUnavailableError ? { status: 404, body: { error: "social_unavailable" } } : null; }
