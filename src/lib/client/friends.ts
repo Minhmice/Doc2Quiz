@@ -58,6 +58,7 @@ export function friendRequestUnavailableMessage(copy?: { requestUnavailable: str
   return copy?.requestUnavailable ?? FRIEND_REQUEST_UNAVAILABLE;
 }
 
+export type Page<T> = Readonly<{ items: readonly T[]; nextCursor: string | null; hasMore: boolean; totalCount?: number }>;
 type ApiEnvelope<T> = { data: T };
 
 export function mapSocialHttpError(
@@ -147,9 +148,13 @@ async function fetchFriendsOverview(): Promise<FriendsOverview> {
   return socialRequest<FriendsOverview>("/api/friends");
 }
 
+export async function listAcceptedFriendPage(cursor?: string): Promise<Page<AcceptedFriendSummary>> {
+  const params = new URLSearchParams({ limit: "20", ...(cursor ? { cursor } : {}) });
+  return socialRequest<Page<AcceptedFriendSummary>>(`/api/friends?${params}`);
+}
+
 export async function listAcceptedFriends(): Promise<AcceptedFriendSummary[]> {
-  const data = await fetchFriendsOverview();
-  return Array.isArray(data.friends) ? data.friends : [];
+  return [...(await listAcceptedFriendPage()).items];
 }
 
 export async function fetchIncomingFriendRequests(): Promise<{
@@ -163,11 +168,14 @@ export async function fetchIncomingFriendRequests(): Promise<{
   };
 }
 
+export function listFriendRequestPage(direction: "incoming" | "outgoing", cursor?: string) {
+  const params = new URLSearchParams({ direction, limit: "20", ...(cursor ? { cursor } : {}) });
+  return socialRequest<Page<FriendRequestSummary>>(`/api/friends/requests?${params}`);
+}
+
 export async function listFriendRequests(): Promise<FriendRequestSummary[]> {
-  const data = await socialRequest<{ requests?: FriendRequestSummary[] }>(
-    "/api/friends/requests",
-  );
-  return Array.isArray(data.requests) ? data.requests : [];
+  const [incoming, outgoing] = await Promise.all([listFriendRequestPage("incoming"), listFriendRequestPage("outgoing")]);
+  return [...incoming.items, ...outgoing.items];
 }
 
 export async function sendFriendRequest(
@@ -214,11 +222,13 @@ export async function cancelFriendRequest(requestId: string): Promise<{ ok: true
   return { ok: true };
 }
 
+export function listBlockedUserPage(cursor?: string) {
+  const params = new URLSearchParams({ limit: "20", ...(cursor ? { cursor } : {}) });
+  return socialRequest<Page<BlockedUserSummary>>(`/api/friends/blocks?${params}`);
+}
+
 export async function listBlockedUsers(): Promise<BlockedUserSummary[]> {
-  const data = await socialRequest<{ blocks?: BlockedUserSummary[] }>(
-    "/api/friends/blocks",
-  );
-  return Array.isArray(data.blocks) ? data.blocks : [];
+  return [...(await listBlockedUserPage()).items];
 }
 
 export async function removeFriend(userId: string): Promise<{ ok: true }> {

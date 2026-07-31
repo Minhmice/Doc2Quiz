@@ -28,7 +28,9 @@ const json = (body: unknown): RequestInit => ({ method: "POST", headers: { "Cont
 export function createStudyChallenge(input: Readonly<{ recipientId: string; outputId: string; mode: StudyMode; deadlineAt: string | null; message: string | null; revealPolicy: RevealPolicy }>) {
   return request<ChallengeSummary>("/api/friends/study-challenges", json(input));
 }
-export function listStudyChallenges() { return request<{ sessions: ChallengeSummary[] }>("/api/friends/study-challenges?limit=20"); }
+export type InviteSummary = Readonly<{ sessionId: string; creatorId: string; username: string | null; title: string; createdAt: string }>;
+export type InvitePage = Readonly<{ items: readonly InviteSummary[]; nextCursor: string | null; hasMore: boolean; totalCount?: number }>;
+export function listStudyChallenges(cursor?: string) { const params=new URLSearchParams({role:"recipient",status:"pending",limit:"20",...(cursor?{cursor}:{})}); return request<InvitePage>(`/api/friends/study-challenges?${params}`); }
 export function getStudyChallenge(sessionId: string) { return request<Record<string, unknown>>(`/api/friends/study-challenges/${sessionId}`); }
 export function acceptStudyChallenge(sessionId: string) { return request<ChallengeAttemptLink>(`/api/friends/study-challenges/${sessionId}/accept`, { method: "POST" }); }
 export function declineStudyChallenge(sessionId: string) { return request<{ ok: true }>(`/api/friends/study-challenges/${sessionId}`, { method: "DELETE" }); }

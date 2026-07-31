@@ -68,11 +68,13 @@ export function FriendsMenu() {
         {aggregateCount ? <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-destructive px-1 text-[10px] font-bold leading-4 text-destructive-foreground">{aggregateCount}</span> : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
-        <div className="grid grid-cols-3 gap-1 px-2 py-2 text-center text-[11px] text-muted-foreground">
-          <span>Yêu cầu <strong className="block text-sm text-foreground">{counts.incomingRequestCount}</strong></span>
-          <span>Lời mời học <strong className="block text-sm text-foreground">{counts.notificationUnreadCount}</strong></span>
-          <span>Tin nhắn <strong className="block text-sm text-foreground">{counts.unreadMessageCount}</strong></span>
+        <div className="grid grid-cols-2 gap-1 px-2 py-2 text-center text-[11px] text-muted-foreground">
+          <button onClick={() => router.push("/friends?destination=requests")}>Yêu cầu <strong className="block text-sm text-foreground">{counts.incomingRequestCount}</strong></button>
+          <button onClick={() => router.push("/friends?destination=invites")}>Lời mời học <strong className="block text-sm text-foreground">{counts.notificationUnreadCount}</strong></button>
+          <button onClick={() => router.push("/friends?destination=friends")}>Bạn đang hoạt động <strong className="block text-sm text-foreground">{friends.filter(friend=>friend.isOnline).length}</strong></button>
+          <button onClick={() => router.push("/friends?destination=messages")}>Tin nhắn <strong className="block text-sm text-foreground">{counts.unreadMessageCount}</strong></button>
         </div>
+        <DropdownMenuItem onClick={() => router.push("/friends?destination=friends")}>Xem tất cả bạn bè</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer" onClick={() => setAddOpen(true)}><UserPlus />Thêm bạn</DropdownMenuItem>
         {incoming.length > 0 && <>

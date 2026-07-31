@@ -260,7 +260,7 @@ describe("social API routes", () => {
         ],
       });
 
-      const response = (await getFriendRequests()) as Response;
+      const response = (await getFriendRequests(new Request("http://localhost/api/friends/requests?direction=incoming"))) as Response;
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
@@ -346,7 +346,7 @@ describe("social API routes", () => {
         blocks: [{ userId: otherUserId, username: "bob", blockedAt: "2026-07-30T00:00:00.000Z" }],
       });
 
-      const response = (await getBlocks()) as Response;
+      const response = (await getBlocks(new Request("http://localhost/api/friends/blocks"))) as Response;
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
@@ -379,7 +379,7 @@ describe("social API routes", () => {
       requireApiUserMock.mockResolvedValue({ supabase: { rpc }, user: { id: "user-1" } });
       const { GET } = await import("@/app/api/friends/route");
 
-      const response = (await GET()) as Response;
+      const response = (await GET(new Request("http://localhost/api/friends"))) as Response;
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ data: { friends: [{ userId: otherUserId, username: "bob", avatarUrl: null, isOnline: true, presence: "online", lastActiveAt: null, unreadCount: 2 }], incoming: { count: 1, requests: [{ id: requestId, userId: otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }] }, incomingRequestCount: 1, unreadMessageCount: 2 } });
@@ -398,7 +398,7 @@ describe("social API routes", () => {
       requireApiUserMock.mockResolvedValue({ supabase: { rpc, storage: { from: vi.fn().mockReturnValue({ createSignedUrl }) } }, user: { id: "user-1" } });
       const { GET } = await import("@/app/api/friends/route");
 
-      const response = (await GET()) as Response;
+      const response = (await GET(new Request("http://localhost/api/friends"))) as Response;
       const body = await response.json();
 
       expect(body.data.friends).toEqual([
