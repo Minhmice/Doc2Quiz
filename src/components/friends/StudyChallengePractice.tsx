@@ -31,7 +31,10 @@ export function StudyChallengePractice({ sessionId, attemptId }: { sessionId: st
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key >= "1" && event.key <= "4") choose(Number(event.key) - 1);
-      if (event.key === "Enter" && answers[index] !== null) index === (practice?.questions.length ?? 0) - 1 ? finish() : setIndex((value) => value + 1);
+      if (event.key === "Enter" && answers[index] !== null) {
+        if (index === (practice?.questions.length ?? 0) - 1) finish();
+        else setIndex((value) => value + 1);
+      }
     };
     window.addEventListener("keydown", onKey); return () => { window.removeEventListener("keydown", onKey); };
   }, [answers, choose, finish, index, practice]);
