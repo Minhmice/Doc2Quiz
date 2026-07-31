@@ -19,10 +19,18 @@ export async function GET() {
   const incomingData = incoming.data as { count?: unknown; requests?: unknown } | null;
   const friendRows = Array.isArray(friendData?.friends) ? friendData.friends as Record<string, unknown>[] : [];
   const friendsWithAvatars: Record<string, unknown>[] = await Promise.all(friendRows.map(async (friend) => {
-    const avatarPath = typeof friend.avatarPath === "string" ? friend.avatarPath : null;
-    if (!avatarPath) return { ...friend, avatarUrl: null };
+    const { avatarPath: rawAvatarPath, ...safeFriend } = friend;
+    const avatarPath = typeof rawAvatarPath === "string" && rawAvatarPath.startsWith(`${friend.userId}/profile/`)
+      ? rawAvatarPath
+      : null;
+    const presence = friend.isOnline === true
+      ? "online"
+      : typeof friend.lastActiveAt === "string"
+        ? "recently active"
+        : "offline";
+    if (!avatarPath) return { ...safeFriend, avatarUrl: null, presence };
     const { data } = await auth.supabase.storage.from("doc2quiz").createSignedUrl(avatarPath, 60 * 60);
-    return { ...friend, avatarUrl: data?.signedUrl ?? null };
+    return { ...safeFriend, avatarUrl: data?.signedUrl ?? null, presence };
   }));
   const incomingRequestCount = typeof incomingData?.count === "number" ? incomingData.count : 0;
   const unreadMessageCount = friendsWithAvatars.reduce(

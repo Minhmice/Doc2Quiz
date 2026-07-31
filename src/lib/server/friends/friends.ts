@@ -86,7 +86,7 @@ export async function sendFriendRequest(supabase: FriendsRpcSupabase, username: 
 
   if (error) {
     mapSocialRpcError(error);
-    throw new FriendRequestUnavailableError();
+    throw error;
   }
   if (!data?.ok) {
     throw new FriendRequestUnavailableError();
@@ -123,6 +123,20 @@ export async function reportUser(
 
 export async function blockUser(supabase: FriendsRpcSupabase, userId: string) {
   const { data, error } = await supabase.rpc("block_user", { p_user_id: userId });
+
+  if (error) {
+    mapSocialRpcError(error);
+    throw new FriendRequestUnavailableError();
+  }
+  if (!data?.ok) {
+    throw new FriendRequestUnavailableError();
+  }
+
+  return { ok: true as const };
+}
+
+export async function removeFriend(supabase: FriendsRpcSupabase, userId: string) {
+  const { data, error } = await supabase.rpc("remove_friend", { p_other_user_id: userId });
 
   if (error) {
     mapSocialRpcError(error);

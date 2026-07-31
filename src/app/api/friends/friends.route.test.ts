@@ -382,7 +382,7 @@ describe("social API routes", () => {
       const response = (await GET()) as Response;
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ data: { friends: [{ userId: otherUserId, username: "bob", avatarUrl: null, isOnline: true, lastActiveAt: null, unreadCount: 2 }], incoming: { count: 1, requests: [{ id: requestId, userId: otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }] }, incomingRequestCount: 1, unreadMessageCount: 2 } });
+      expect(await response.json()).toEqual({ data: { friends: [{ userId: otherUserId, username: "bob", avatarUrl: null, isOnline: true, presence: "online", lastActiveAt: null, unreadCount: 2 }], incoming: { count: 1, requests: [{ id: requestId, userId: otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }] }, incomingRequestCount: 1, unreadMessageCount: 2 } });
       expect(rpc).toHaveBeenCalledTimes(2);
       expect(rpc).not.toHaveBeenCalledWith("mark_direct_conversation_read", expect.anything());
     });

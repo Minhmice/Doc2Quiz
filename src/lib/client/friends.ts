@@ -17,6 +17,23 @@ export type BlockedUserSummary = {
 
 export type ReportAcknowledgement = { ok: true };
 
+export type AcceptedFriendSummary = {
+  userId: string;
+  username: string | null;
+  avatarUrl: string | null;
+  isOnline: boolean;
+  presence: "online" | "recently active" | "offline";
+  lastActiveAt: string | null;
+  unreadCount: number;
+};
+
+export type IncomingFriendRequestSummary = {
+  id: string;
+  userId: string;
+  username: string | null;
+  createdAt: string;
+};
+
 export class SocialRateLimitedError extends Error {
   readonly retryAfterSeconds: number;
 
@@ -35,6 +52,11 @@ export class UsernameTakenClientError extends Error {
 }
 
 const GENERIC_UNAVAILABLE = "Social settings are unavailable.";
+const FRIEND_REQUEST_UNAVAILABLE = "Friend request could not be sent. Check the username and try again.";
+
+export function friendRequestUnavailableMessage(copy?: { requestUnavailable: string }): string {
+  return copy?.requestUnavailable ?? FRIEND_REQUEST_UNAVAILABLE;
+}
 
 type ApiEnvelope<T> = { data: T };
 
@@ -116,6 +138,31 @@ export async function updateProfileUsername(username: string): Promise<{ usernam
   });
 }
 
+type FriendsOverview = {
+  friends?: AcceptedFriendSummary[];
+  incoming?: { count?: number; requests?: IncomingFriendRequestSummary[] };
+};
+
+async function fetchFriendsOverview(): Promise<FriendsOverview> {
+  return socialRequest<FriendsOverview>("/api/friends");
+}
+
+export async function listAcceptedFriends(): Promise<AcceptedFriendSummary[]> {
+  const data = await fetchFriendsOverview();
+  return Array.isArray(data.friends) ? data.friends : [];
+}
+
+export async function fetchIncomingFriendRequests(): Promise<{
+  count: number;
+  requests: IncomingFriendRequestSummary[];
+}> {
+  const data = await fetchFriendsOverview();
+  return {
+    count: typeof data.incoming?.count === "number" ? data.incoming.count : 0,
+    requests: Array.isArray(data.incoming?.requests) ? data.incoming.requests : [],
+  };
+}
+
 export async function listFriendRequests(): Promise<FriendRequestSummary[]> {
   const data = await socialRequest<{ requests?: FriendRequestSummary[] }>(
     "/api/friends/requests",
@@ -123,12 +170,19 @@ export async function listFriendRequests(): Promise<FriendRequestSummary[]> {
   return Array.isArray(data.requests) ? data.requests : [];
 }
 
-export async function sendFriendRequest(username: string): Promise<{ ok: true }> {
-  const data = await socialRequest<{ ok?: boolean }>("/api/friends/requests", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username }),
-  });
+export async function sendFriendRequest(
+  username: string,
+  fallback = FRIEND_REQUEST_UNAVAILABLE,
+): Promise<{ ok: true }> {
+  const data = await socialRequest<{ ok?: boolean }>(
+    "/api/friends/requests",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username }),
+    },
+    fallback,
+  );
   if (!data?.ok) {
     throw new Error(GENERIC_UNAVAILABLE);
   }
@@ -165,6 +219,16 @@ export async function listBlockedUsers(): Promise<BlockedUserSummary[]> {
     "/api/friends/blocks",
   );
   return Array.isArray(data.blocks) ? data.blocks : [];
+}
+
+export async function removeFriend(userId: string): Promise<{ ok: true }> {
+  const data = await socialRequest<{ ok?: boolean }>(`/api/friends/${userId}`, {
+    method: "DELETE",
+  });
+  if (!data?.ok) {
+    throw new Error(GENERIC_UNAVAILABLE);
+  }
+  return { ok: true };
 }
 
 export async function blockUser(userId: string): Promise<{ ok: true }> {
