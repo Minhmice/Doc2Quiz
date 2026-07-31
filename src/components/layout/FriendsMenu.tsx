@@ -10,6 +10,7 @@ import { DirectMessageDialog } from "@/components/friends/DirectMessageDialog";
 import { FriendActionMenu } from "@/components/friends/FriendActionMenu";
 import { fetchIncomingFriendRequests, listAcceptedFriends, respondFriendRequest, type AcceptedFriendSummary, type IncomingFriendRequestSummary } from "@/lib/client/friends";
 import { createSocialCountsController, type SocialCountsSnapshot } from "@/lib/client/socialCounts";
+import { openDirectConversation } from "@/lib/client/messages";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,14 @@ export function FriendsMenu() {
   const online = friends.filter((friend) => friend.isOnline);
   const offline = friends.filter((friend) => !friend.isOnline);
   const aggregateCount = counts.notificationUnreadCount + counts.incomingRequestCount + counts.unreadMessageCount;
-  const openChat = (friend: AcceptedFriendSummary) => { setMessageFriend(friend); setChatOpen(true); };
+  const openChat = (friend: AcceptedFriendSummary) => {
+    setOpen(false);
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      void openDirectConversation(friend.userId).then(({ conversationId }) => router.push(`/friends/messages/${conversationId}`)).catch(() => setStatus("Không thể mở cuộc trò chuyện."));
+      return;
+    }
+    setMessageFriend(friend); setChatOpen(true);
+  };
   const refreshFriends = useCallback(() => { void refresh(); }, [refresh]);
   const studyTogether = (friend: AcceptedFriendSummary) => {
     setOpen(false);

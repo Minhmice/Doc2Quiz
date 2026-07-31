@@ -6,6 +6,7 @@ import {
   type ConversationTransport,
 } from "./ConversationView";
 import type { DirectMessage } from "@/lib/client/messages";
+import { conversationPageClassName } from "@/app/(app)/friends/messages/[conversationId]/ConversationPageClient";
 
 const CONVERSATION_ID = "00000000-0000-4000-8000-000000000012";
 const message = (id: string, createdAt: string, senderId = "friend"): DirectMessage => ({ id, body: id, senderId, createdAt });
@@ -69,5 +70,12 @@ describe("shared conversation controller", () => {
 
   it("provides stable merge order and duplicate suppression", () => {
     expect(mergeDirectMessages([message("b", "2026-07-31T10:02:00Z")], [message("a", "2026-07-31T10:01:00Z"), message("b", "2026-07-31T10:02:00Z")]).map(({ id }) => id)).toEqual(["a", "b"]);
+  });
+
+  it("keeps mobile route full-screen without hiding desktop deep links", () => {
+    expect(conversationPageClassName).toContain("h-[100dvh]");
+    expect(conversationPageClassName).toContain("safe-area-inset-top");
+    expect(conversationPageClassName).not.toContain("hidden md:flex");
+    expect(conversationPageClassName).toContain("md:static");
   });
 });
