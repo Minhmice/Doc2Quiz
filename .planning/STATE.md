@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
-status: complete
-last_updated: "2026-07-30T09:45:00.000Z"
-last_activity: 2026-07-30 — completed 10-10 social safety settings UI
+status: in_progress
+last_updated: "2026-07-31T11:03:00.000Z"
+last_activity: 2026-07-31 — completed 12-01 study together foundation
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 10
-  total_plans: 61
-  completed_plans: 61
-  percent: 100
+  total_plans: 70
+  completed_plans: 62
+  percent: 89
 ---
 
 # Doc2Quiz — State
@@ -23,12 +23,12 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 10
-Plan: 10 completed
-Status: Complete
-Last activity: 2026-07-30 — completed 10-10 social safety settings UI
+Phase: 12 of 12 (Study Together)
+Plan: 1 of 9 completed
+Status: In Progress
+Last activity: 2026-07-31 — completed 12-01 study together foundation
 
-Progress: [██████████] 100%
+Progress: [█████████░] 89%
 
 ## Decisions
 
@@ -75,16 +75,23 @@ Progress: [██████████] 100%
 - [Phase 10]: Anonymous quiz outbox imports via `import_anonymous_quiz_attempts` with stable clientAttemptId dedupe and ack-only local deletion.
 
 - [Phase 10]: SocialSafetySettings in Settings uses generic social errors, confirmation dialogs, and acknowledgement-only report copy.
+- [Phase 12]: Study challenge tables remain RPC-only; practice DTOs strip answer keys before reveal.
+- [Phase 12]: SQL proof opens only an explicitly approved local or disposable test target.
 
 ## Quick Tasks Completed
 
 | Date | Task | Summary | Commits |
 | --- | --- | --- | --- |
 | 2026-07-30 | Remove duplicate topbar profile link and account trigger | `.planning/quick/260730-43p-remove-duplicate-topbar-profile-link-and/SUMMARY.md` | `acc8303`, `928773e` |
+| 2026-07-31 | Rebuild dashboard as workspace-only dashboard | `.planning/quick/260731-0t1-rebuild-dashboard-as-workspace-only-dash/SUMMARY.md` | `d8c76b0`, `1a2d54f`, `f817082` |
+
+## Blockers
+
+- Phase 12 runtime SQL/RLS proof blocked until `PHASE12_TEST_DATABASE_URL` names an approved local or disposable test database.
 
 ## Next step
 
-Phase 10 complete. Run phase verification / milestone close as needed.
+Execute Phase 12 Plan 02 and Plan 07.
 
 ## Accumulated Context
 

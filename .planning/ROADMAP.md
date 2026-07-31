@@ -25,6 +25,47 @@ Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder s
 - [x] **Phase 3: Canonical Knowledge** — Builder service, sections/metadata, Supabase persistence (completed 2026-07-25)
 - [x] **Phase 4: Quiz Pipeline** — Concept detection, MCQ generation, save, review, practice wire-up (completed 2026-07-25)
 - [x] **Phase 5: Flashcards & E2E** — Flashcard wizard, generation, learning, dashboard integration (completed 2026-07-25)
+- [ ] **Phase 12: Study Together** — Durable friend lifecycle, asynchronous quiz challenges, immutable quiz snapshots, in-app notifications, scalable friends hub, and responsive messaging. Depends on existing quiz practice and Phase 11 social primitives. Requirements: SOCIAL-01–10. Success: a user can challenge an accepted friend with an owned quiz; recipient accepts and starts a snapshot-based attempt; both see result comparison under configured reveal policy; missed realtime events reconcile from durable notifications.
+
+### Phase 12: Study Together
+
+**Goal:** Turn friendship into a durable study loop: users challenge accepted friends with creator-owned quizzes, both practice an immutable session snapshot, and durable notifications return them when action or results are ready.
+**Depends on:** Phase 10, Phase 11, existing quiz practice engine
+**Requirements:** SOCIAL-01–10
+**Success Criteria:**
+
+1. User can remove a friend separately from blocking, then send an accepted friend an asynchronous score or practice challenge sourced only from their own ready, non-deleted, non-empty quiz.
+2. Challenge creation authorizes source access server-side and stores an immutable snapshot; recipient accepts and starts exactly one resumable attempt without source answer access.
+3. Durable session, participant, attempt, result, and notification records survive missed broadcasts, source edits/deletion, refreshes, reconnects, and navigation failure; realtime only accelerates delivery.
+4. Recipient and challenger view results only under configured reveal policy, defaulting to after both finish; no answer leakage occurs before permitted reveal.
+5. Responsive `/friends` hub provides scalable Friends, Requests, Invites, Messages, and Blocked areas while topbar menu stays a compact launcher with server-derived unread badge.
+
+**Plans:** 1/9 plans executed
+
+Plans:
+**Wave 1**
+- [x] 12-01-PLAN.md — Secure immutable challenge, notification, reaction, and remove-friend authority
+
+**Wave 2** *(blocked on Wave 1; plans run in parallel)*
+- [ ] 12-02-PLAN.md — Validated challenge and durable notification API contracts
+- [ ] 12-07-PLAN.md — Additive private realtime topic RLS and isolation proof
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 12-03-PLAN.md — Durable notification, request, and message count reconciliation
+
+**Wave 4** *(blocked on Waves 2–3)*
+- [ ] 12-04-PLAN.md — Ready-owned challenge play, notifications UI, and locale
+
+**Wave 5** *(blocked on Waves 2–4)*
+- [ ] 12-05-PLAN.md — Separate remove-friend, avatar, and action-menu repair
+
+**Wave 6** *(blocked on prerequisite social contracts; plans run in parallel)*
+- [ ] 12-08-PLAN.md — Authenticated bounded social-list RPCs/routes/tests, responsive `/friends` hub, and compact launcher links
+- [ ] 12-09-PLAN.md — Shared responsive chat, mobile full-screen route, and history/reconnect proof
+
+**Wave 7** *(blocked on all implementation plans)*
+- [ ] 12-06-PLAN.md — Validation-contract proof and two-account responsive verification
+
 
 ---
 
