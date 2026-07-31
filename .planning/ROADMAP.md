@@ -40,7 +40,7 @@ Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder s
 4. Recipient and challenger view results only under configured reveal policy, defaulting to after both finish; no answer leakage occurs before permitted reveal.
 5. Responsive `/friends` hub provides scalable Friends, Requests, Invites, Messages, and Blocked areas while topbar menu stays a compact launcher with server-derived unread badge.
 
-**Plans:** 3/9 plans executed
+**Plans:** 4/9 plans executed
 
 Plans:
 **Wave 1**
@@ -51,7 +51,7 @@ Plans:
 - [x] 12-07-PLAN.md — Additive private realtime topic RLS and isolation proof
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 12-03-PLAN.md — Durable notification, request, and message count reconciliation
+- [x] 12-03-PLAN.md — Durable notification, request, and message count reconciliation
 
 **Wave 4** *(blocked on Waves 2–3)*
 - [ ] 12-04-PLAN.md — Ready-owned challenge play, notifications UI, and locale

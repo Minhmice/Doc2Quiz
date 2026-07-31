@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-31T11:11:47.110Z"
+last_updated: "2026-07-31T11:22:55.406Z"
 last_activity: 2026-07-31
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 54
-  completed_plans: 62
+  completed_plans: 63
   percent: 82
 ---
 
@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 12 of 12 (Study Together)
-Plan: 3 of 9 completed
+Plan: 4 of 9 completed
 Status: Ready to execute
 Last activity: 2026-07-31
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 - [Phase 12]: Study challenge tables remain RPC-only; practice DTOs strip answer keys before reveal.
 - [Phase 12]: SQL proof opens only an explicitly approved local or disposable test target.
 - [Phase 12]: Request and count topics bind to auth.uid(); message topics bind to accepted conversation participants. — Private predictable topics require recipient or participant authority.
+- [Phase 12]: Realtime payloads only invalidate; every displayed social count comes from authenticated HTTP authority. — Prevents stale or forged event payloads from becoming UI truth.
 
 ## Quick Tasks Completed
 
