@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: in_progress
-last_updated: "2026-07-31T11:03:00.000Z"
-last_activity: 2026-07-31 — completed 12-01 study together foundation
+last_updated: "2026-07-31T11:10:00.000Z"
+last_activity: 2026-07-31 — completed 12-07 private social realtime topics
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 70
-  completed_plans: 62
-  percent: 89
+  completed_plans: 63
+  percent: 90
 ---
 
 # Doc2Quiz — State
@@ -24,11 +24,11 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 ## Current Position
 
 Phase: 12 of 12 (Study Together)
-Plan: 1 of 9 completed
+Plan: 2 of 9 completed
 Status: In Progress
-Last activity: 2026-07-31 — completed 12-01 study together foundation
+Last activity: 2026-07-31 — completed 12-07 private social realtime topics
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 90%
 
 ## Decisions
 
@@ -77,6 +77,7 @@ Progress: [█████████░] 89%
 - [Phase 10]: SocialSafetySettings in Settings uses generic social errors, confirmation dialogs, and acknowledgement-only report copy.
 - [Phase 12]: Study challenge tables remain RPC-only; practice DTOs strip answer keys before reveal.
 - [Phase 12]: SQL proof opens only an explicitly approved local or disposable test target.
+- [Phase 12]: Request and count topics bind to auth.uid(); message topics bind to accepted conversation participants. — Private predictable topics require recipient or participant authority.
 
 ## Quick Tasks Completed
 
@@ -91,7 +92,7 @@ Progress: [█████████░] 89%
 
 ## Next step
 
-Execute Phase 12 Plan 02 and Plan 07.
+Execute Phase 12 Plan 02.
 
 ## Accumulated Context
 
