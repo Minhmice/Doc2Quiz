@@ -14,6 +14,7 @@ const listFriendRequestsMock = vi.fn();
 const respondFriendRequestMock = vi.fn();
 const cancelFriendRequestMock = vi.fn();
 const blockUserMock = vi.fn();
+const removeFriendMock = vi.fn();
 const unblockUserMock = vi.fn();
 const listBlockedUsersMock = vi.fn();
 const reportUserMock = vi.fn();
@@ -42,6 +43,7 @@ vi.mock("@/lib/server/friends/friends", async (importOriginal) => {
     respondFriendRequest: (...args: unknown[]) => respondFriendRequestMock(...args),
     cancelFriendRequest: (...args: unknown[]) => cancelFriendRequestMock(...args),
     blockUser: (...args: unknown[]) => blockUserMock(...args),
+    removeFriend: (...args: unknown[]) => removeFriendMock(...args),
     unblockUser: (...args: unknown[]) => unblockUserMock(...args),
     listBlockedUsers: (...args: unknown[]) => listBlockedUsersMock(...args),
     reportUser: (...args: unknown[]) => reportUserMock(...args),
@@ -63,6 +65,7 @@ import {
   POST as postBlock,
 } from "@/app/api/friends/blocks/route";
 import { POST as postReport } from "@/app/api/friends/reports/route";
+import { DELETE as deleteFriend } from "@/app/api/friends/[userId]/route";
 
 const supabase = { tag: "client" };
 const requestId = "00000000-0000-4000-8000-000000000010";
@@ -89,6 +92,7 @@ describe("social API routes", () => {
     respondFriendRequestMock.mockResolvedValue({ ok: true });
     cancelFriendRequestMock.mockResolvedValue({ ok: true });
     blockUserMock.mockResolvedValue({ ok: true });
+    removeFriendMock.mockResolvedValue({ ok: true });
     unblockUserMock.mockResolvedValue({ ok: true });
     listBlockedUsersMock.mockResolvedValue({ blocks: [] });
     reportUserMock.mockResolvedValue({ ok: true });
@@ -298,6 +302,44 @@ describe("social API routes", () => {
     });
   });
 
+  describe("DELETE /api/friends/[userId]", () => {
+    it("removes an accepted friend without invoking block", async () => {
+      const response = (await deleteFriend(
+        new Request(`http://localhost/api/friends/${otherUserId}`, { method: "DELETE" }),
+        { params: Promise.resolve({ userId: otherUserId }) },
+      )) as Response;
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ data: { ok: true } });
+      expect(removeFriendMock).toHaveBeenCalledWith(supabase, otherUserId);
+      expect(blockUserMock).not.toHaveBeenCalled();
+    });
+
+    it("returns deterministic unavailable state for missing relationships", async () => {
+      removeFriendMock.mockRejectedValue(new FriendRequestUnavailableError());
+
+      const response = (await deleteFriend(
+        new Request(`http://localhost/api/friends/${otherUserId}`, { method: "DELETE" }),
+        { params: Promise.resolve({ userId: otherUserId }) },
+      )) as Response;
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({ error: "request_unavailable" });
+    });
+
+    it("rejects unauthenticated, invalid, and self-target requests before mutation", async () => {
+      requireApiUserMock.mockResolvedValueOnce({ error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) });
+      expect(((await deleteFriend(new Request(`http://localhost/api/friends/${otherUserId}`, { method: "DELETE" }), { params: Promise.resolve({ userId: otherUserId }) })) as Response).status).toBe(401);
+
+      requireApiUserMock.mockResolvedValueOnce({ supabase, user: { id: "00000000-0000-4000-8000-000000000099" } });
+      expect(((await deleteFriend(new Request("http://localhost/api/friends/not-a-uuid", { method: "DELETE" }), { params: Promise.resolve({ userId: "not-a-uuid" }) })) as Response).status).toBe(400);
+
+      requireApiUserMock.mockResolvedValueOnce({ supabase, user: { id: otherUserId } });
+      expect(((await deleteFriend(new Request(`http://localhost/api/friends/${otherUserId}`, { method: "DELETE" }), { params: Promise.resolve({ userId: otherUserId }) })) as Response).status).toBe(400);
+      expect(removeFriendMock).not.toHaveBeenCalled();
+    });
+  });
+
   describe("blocks", () => {
     it("lists blocked users for the caller", async () => {
       listBlockedUsersMock.mockResolvedValue({
@@ -343,6 +385,28 @@ describe("social API routes", () => {
       expect(await response.json()).toEqual({ data: { friends: [{ userId: otherUserId, username: "bob", avatarUrl: null, isOnline: true, lastActiveAt: null, unreadCount: 2 }], incoming: { count: 1, requests: [{ id: requestId, userId: otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }] }, incomingRequestCount: 1, unreadMessageCount: 2 } });
       expect(rpc).toHaveBeenCalledTimes(2);
       expect(rpc).not.toHaveBeenCalledWith("mark_direct_conversation_read", expect.anything());
+    });
+
+    it("returns safe avatar URLs and bounded presence vocabulary without raw paths", async () => {
+      const rpc = vi.fn()
+        .mockResolvedValueOnce({ data: { friends: [
+          { userId: otherUserId, username: "bob", avatarPath: `${otherUserId}/profile/avatar.gif`, isOnline: true, lastActiveAt: null, unreadCount: 0 },
+          { userId: requestId, username: "ann", avatarPath: "wrong/path.gif", isOnline: false, lastActiveAt: "2026-07-30T00:00:00.000Z", unreadCount: 0 },
+        ] }, error: null })
+        .mockResolvedValueOnce({ data: { count: 0, requests: [] }, error: null });
+      const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: "https://signed.example/avatar.gif" }, error: null });
+      requireApiUserMock.mockResolvedValue({ supabase: { rpc, storage: { from: vi.fn().mockReturnValue({ createSignedUrl }) } }, user: { id: "user-1" } });
+      const { GET } = await import("@/app/api/friends/route");
+
+      const response = (await GET()) as Response;
+      const body = await response.json();
+
+      expect(body.data.friends).toEqual([
+        expect.objectContaining({ avatarUrl: "https://signed.example/avatar.gif", presence: "online" }),
+        expect.objectContaining({ avatarUrl: null, presence: "recently active" }),
+      ]);
+      expect(JSON.stringify(body)).not.toContain("avatarPath");
+      expect(createSignedUrl).toHaveBeenCalledTimes(1);
     });
 
     it("keeps message success when invalidation delivery fails", async () => {
