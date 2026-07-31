@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
+import { normalizeUsername } from "@/lib/profile/usernameValidation";
+import { broadcastSocialEvent } from "@/lib/server/friends/realtimeBroadcast";
 import {
   mapSocialRouteError,
   sendFriendRequest,
@@ -49,11 +51,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const data = await sendFriendRequest(auth.supabase, body.username);
+    const data = await sendFriendRequest(auth.supabase, normalizeUsername(body.username));
+    const requests = await listFriendRequests(auth.supabase);
+    const created = requests.requests.find((item) => item.id === data.requestId && item.direction === "outgoing");
+    if (created) {
+      await broadcastSocialEvent(`social-requests:${created.otherUserId}`, "invalidate", { source: "friend-request" });
+    }
     return NextResponse.json({ data });
   } catch (error) {
-    const mapped = mapSocialError(error);
-    if (mapped) return mapped;
+    const socialError = mapSocialRouteError(error);
+    if (socialError) {
+      if (process.env.NODE_ENV === "development" && socialError.body.error === "request_unavailable") {
+        console.info("[friends] request_unavailable", { username: normalizeUsername(body.username) });
+      }
+      const headers =
+        socialError.retryAfterSeconds !== undefined
+          ? { "Retry-After": String(socialError.retryAfterSeconds) }
+          : undefined;
+      return NextResponse.json(socialError.body, { status: socialError.status, headers });
+    }
     console.error("friend request send route error");
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
