@@ -255,6 +255,12 @@ export type MessageCatalog = {
     loading: string; retry: string; unavailable: string; saving: string; complete: string; results: string; waitingForResults: string;
     questionProgress: (current: number, total: number) => string; keyboardInstructions: string; notificationsLabel: string;
   };
+  friendActions: {
+    studyTogether: string; viewProfile: string; message: string; removeFriend: string; block: string; report: string;
+    reactions: string; removeTitle: string; removeDescription: string; blockTitle: string; blockDescription: string;
+    cancel: string; confirmRemove: string; confirmBlock: string; removed: string; blocked: string; reported: string; failed: string;
+    online: string; recentlyActive: string; offline: string;
+  };
   socialSafety: {
     heading: string;
     description: string;

@@ -213,6 +213,12 @@ const en = {
   studyTogether: {
     title: "Study together", description: "Send a snapshot challenge from one ready quiz.", chooseQuiz: "Choose a quiz", mode: "Mode", scoreMode: "Score challenge", practiceMode: "Practice", deadline: "Deadline", noDeadline: "No deadline", oneDay: "24 hours", threeDays: "3 days", sevenDays: "7 days", optionalMessage: "Message (optional)", send: "Send challenge", sent: "Challenge sent", start: "Start challenge", continue: "Continue challenge", accept: "Accept & start", decline: "Decline", markAllRead: "Mark all as read", loading: "Loading challenge…", retry: "Try again", unavailable: "This challenge is unavailable.", saving: "Saving progress…", complete: "See results", results: "Challenge results", waitingForResults: "Results will appear when the reveal policy allows.", questionProgress: (current, total) => `Question ${current} of ${total}`, keyboardInstructions: "Press 1–4 to choose. Press Enter for the next question.", notificationsLabel: "Study notifications",
   },
+  friendActions: {
+    studyTogether: "Study together", viewProfile: "View profile", message: "Message", removeFriend: "Remove friend", block: "Block", report: "Report", reactions: "Send reaction",
+    removeTitle: "Remove this friend?", removeDescription: "Pending study invites will be cancelled. Active and completed sessions remain available.", blockTitle: "Block this account?", blockDescription: "Pending and active study sessions will be cancelled and future contact will stop.",
+    cancel: "Cancel", confirmRemove: "Remove friend", confirmBlock: "Block", removed: "Friend removed.", blocked: "Account blocked.", reported: "Report received.", failed: "Social action failed.",
+    online: "online", recentlyActive: "recently active", offline: "offline",
+  },
   socialSafety: {
     heading: "Social safety",
     description: "Manage your username, friend requests, blocks, and reports. We never reveal whether another account exists or what happens after a report.",
@@ -466,6 +472,12 @@ const vi = {
   },
   studyTogether: {
     title: "Học cùng nhau", description: "Gửi thử thách bản chụp từ một quiz đã sẵn sàng.", chooseQuiz: "Chọn quiz", mode: "Chế độ", scoreMode: "Thử thách tính điểm", practiceMode: "Luyện tập", deadline: "Hạn chót", noDeadline: "Không có hạn", oneDay: "24 giờ", threeDays: "3 ngày", sevenDays: "7 ngày", optionalMessage: "Lời nhắn (không bắt buộc)", send: "Gửi thử thách", sent: "Đã gửi thử thách", start: "Bắt đầu thử thách", continue: "Tiếp tục thử thách", accept: "Chấp nhận và bắt đầu", decline: "Từ chối", markAllRead: "Đánh dấu tất cả đã đọc", loading: "Đang tải thử thách…", retry: "Thử lại", unavailable: "Thử thách này không khả dụng.", saving: "Đang lưu tiến độ…", complete: "Xem kết quả", results: "Kết quả thử thách", waitingForResults: "Kết quả sẽ hiện khi chính sách cho phép.", questionProgress: (current, total) => `Câu ${current}/${total}`, keyboardInstructions: "Nhấn 1–4 để chọn. Nhấn Enter để sang câu tiếp theo.", notificationsLabel: "Thông báo học tập",
+  },
+  friendActions: {
+    studyTogether: "Học cùng nhau", viewProfile: "Xem hồ sơ", message: "Nhắn tin", removeFriend: "Xóa bạn", block: "Chặn", report: "Báo cáo", reactions: "Gửi phản ứng",
+    removeTitle: "Xóa người bạn này?", removeDescription: "Lời mời học đang chờ sẽ bị hủy. Phiên đang diễn ra và đã hoàn thành vẫn khả dụng.", blockTitle: "Chặn tài khoản này?", blockDescription: "Phiên học đang chờ và đang diễn ra sẽ bị hủy; mọi liên hệ sau này sẽ dừng.",
+    cancel: "Hủy", confirmRemove: "Xóa bạn", confirmBlock: "Chặn", removed: "Đã xóa bạn.", blocked: "Đã chặn tài khoản.", reported: "Đã nhận báo cáo.", failed: "Không thể hoàn tất thao tác xã hội.",
+    online: "online", recentlyActive: "hoạt động gần đây", offline: "ngoại tuyến",
   },
   socialSafety: {
     heading: "An toàn xã hội",

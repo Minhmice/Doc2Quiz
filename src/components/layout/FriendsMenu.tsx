@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { UserPlus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -12,11 +13,8 @@ import { createSocialCountsController, type SocialCountsSnapshot } from "@/lib/c
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-function lastActive(value: string | null) {
-  return value ? `Hoạt động ${new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value))}` : "Chưa hoạt động gần đây";
-}
-
 export function FriendsMenu() {
+  const router = useRouter();
   const [friends, setFriends] = useState<AcceptedFriendSummary[]>([]);
   const [incoming, setIncoming] = useState<IncomingFriendRequestSummary[]>([]);
   const [open, setOpen] = useState(false);
@@ -49,6 +47,10 @@ export function FriendsMenu() {
   const aggregateCount = counts.notificationUnreadCount + counts.incomingRequestCount + counts.unreadMessageCount;
   const openChat = (friend: AcceptedFriendSummary) => { setMessageFriend(friend); setChatOpen(true); };
   const refreshFriends = useCallback(() => { void refresh(); }, [refresh]);
+  const studyTogether = (friend: AcceptedFriendSummary) => {
+    setOpen(false);
+    router.push(`/friends?studyWith=${friend.userId}`);
+  };
 
   return <>
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -75,12 +77,12 @@ export function FriendsMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Đang online</DropdownMenuLabel>
-          {online.length ? online.map((friend) => <FriendActionMenu key={friend.userId} userId={friend.userId} username={friend.username} avatarUrl={friend.avatarUrl} onMessage={() => openChat(friend)} onStatus={setStatus} />) : <p className="px-1.5 py-2 text-sm text-muted-foreground">Chưa có bạn nào online.</p>}
+          {online.length ? online.map((friend) => <FriendActionMenu key={friend.userId} userId={friend.userId} username={friend.username} avatarUrl={friend.avatarUrl} presence={friend.presence} onStudyTogether={() => studyTogether(friend)} onMessage={() => openChat(friend)} onRefresh={refreshFriends} onStatus={setStatus} />) : <p className="px-1.5 py-2 text-sm text-muted-foreground">Chưa có bạn nào online.</p>}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Ngoại tuyến</DropdownMenuLabel>
-          {offline.length ? offline.map((friend) => <FriendActionMenu key={friend.userId} userId={friend.userId} username={friend.username} avatarUrl={friend.avatarUrl} detail={lastActive(friend.lastActiveAt)} onMessage={() => openChat(friend)} onStatus={setStatus} />) : <p className="px-1.5 py-2 text-sm text-muted-foreground">Chưa có bạn nào ngoại tuyến.</p>}
+          {offline.length ? offline.map((friend) => <FriendActionMenu key={friend.userId} userId={friend.userId} username={friend.username} avatarUrl={friend.avatarUrl} presence={friend.presence} onStudyTogether={() => studyTogether(friend)} onMessage={() => openChat(friend)} onRefresh={refreshFriends} onStatus={setStatus} />) : <p className="px-1.5 py-2 text-sm text-muted-foreground">Chưa có bạn nào ngoại tuyến.</p>}
         </DropdownMenuGroup>
         <p className="sr-only" aria-live="polite">{status}</p>
       </DropdownMenuContent>
