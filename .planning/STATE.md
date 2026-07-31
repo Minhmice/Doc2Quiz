@@ -88,6 +88,7 @@ Progress: [██████████] 100%
 | --- | --- | --- | --- |
 | 2026-07-30 | Remove duplicate topbar profile link and account trigger | `.planning/quick/260730-43p-remove-duplicate-topbar-profile-link-and/SUMMARY.md` | `acc8303`, `928773e` |
 | 2026-07-31 | Rebuild dashboard as workspace-only dashboard | `.planning/quick/260731-0t1-rebuild-dashboard-as-workspace-only-dash/SUMMARY.md` | `d8c76b0`, `1a2d54f`, `f817082` |
+| 2026-07-31 | Create clean maintainable Supabase schema mirror | `.planning/quick/260731-tui-create-clean-maintainable-supabase-schem/260731-tui-SUMMARY.md` | `b0be5bd` |
 
 ## Blockers
 
