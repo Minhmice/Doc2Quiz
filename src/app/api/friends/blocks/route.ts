@@ -8,6 +8,8 @@ import {
   mapSocialRouteError,
   unblockUser,
 } from "@/lib/server/friends/friends";
+import { parseSocialListQuery } from "@/lib/server/friends/socialListQuery";
+import { listSocialBlocks } from "@/lib/server/friends/socialLists";
 
 const blockUserSchema = z.object({
   userId: z.string().uuid(),
@@ -23,18 +25,15 @@ function mapSocialError(error: unknown) {
   return NextResponse.json(mapped.body, { status: mapped.status, headers });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireApiUser();
   if ("error" in auth) return auth.error;
-
   try {
-    const data = await listBlockedUsers(auth.supabase);
-    return NextResponse.json({ data });
+    const { limit, cursor } = parseSocialListQuery(new URL(request.url).searchParams);
+    return NextResponse.json({ data: await listSocialBlocks(auth.supabase, limit, cursor) });
   } catch (error) {
-    const mapped = mapSocialError(error);
-    if (mapped) return mapped;
-    console.error("blocked users list route error");
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    const invalid = error instanceof Error && (error.name === "ZodError" || error.message === "social_unavailable");
+    return NextResponse.json({ error: invalid ? "invalid" : "social_unavailable" }, { status: invalid ? 400 : 404 });
   }
 }
 

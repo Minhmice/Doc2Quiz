@@ -9,6 +9,8 @@ import {
   sendFriendRequest,
   listFriendRequests,
 } from "@/lib/server/friends/friends";
+import { parseSocialListQuery } from "@/lib/server/friends/socialListQuery";
+import { listSocialRequests } from "@/lib/server/friends/socialLists";
 
 const sendFriendRequestSchema = z.object({
   username: z.string().trim().min(1).max(30),
@@ -24,18 +26,18 @@ function mapSocialError(error: unknown) {
   return NextResponse.json(mapped.body, { status: mapped.status, headers });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireApiUser();
   if ("error" in auth) return auth.error;
-
   try {
-    const data = await listFriendRequests(auth.supabase);
-    return NextResponse.json({ data });
+    const params = new URL(request.url).searchParams;
+    const direction = z.enum(["incoming", "outgoing"]).parse(params.get("direction"));
+    const { limit, cursor } = parseSocialListQuery(params);
+    return NextResponse.json({ data: await listSocialRequests(auth.supabase, limit, cursor, direction) });
   } catch (error) {
+    if (error instanceof z.ZodError || (error instanceof Error && error.message === "social_unavailable")) return NextResponse.json({ error: "invalid" }, { status: 400 });
     const mapped = mapSocialError(error);
-    if (mapped) return mapped;
-    console.error("friend requests list route error");
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return mapped ?? NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
 
