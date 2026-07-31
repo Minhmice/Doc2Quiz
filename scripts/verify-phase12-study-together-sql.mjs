@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { isIP } from "node:net";
+import { basename, dirname, join } from "node:path";
 import process from "node:process";
 
 const migrationFlag = process.argv.indexOf("--migration");
@@ -9,22 +10,47 @@ if (migrationFlag < 0 || !process.argv[migrationFlag + 1]) {
 }
 
 const migrationPath = process.argv[migrationFlag + 1];
+const migrationName = basename(migrationPath);
 const sql = await readFile(migrationPath, "utf8");
-const required = [
-  "create_study_challenge", "start_study_challenge_attempt", "accept_study_challenge",
-  "complete_study_attempt", "study_together_sessions", "study_together_attempts",
-  "social_notifications", "social_reactions", "realtime.send", "social-notifications:",
-  "sweep_study_challenge_reminders", "learning_outputs", "approved_questions",
-  "correct_index", "security definer", "for update", "grant execute",
-];
-const missing = required.filter((token) => !sql.toLowerCase().includes(token.toLowerCase()));
-const forbidden = ["cron.schedule", "source_type = 'friend_shared_quiz'"];
-const presentForbidden = forbidden.filter((token) => sql.toLowerCase().includes(token.toLowerCase()));
-if (missing.length || presentForbidden.length) {
-  console.error(`STATIC_SQL_PROOF_FAILED: missing=[${missing.join(", ")}] forbidden=[${presentForbidden.join(", ")}]`);
-  process.exit(1);
+const normalized = sql.toLowerCase();
+const isRealtimeMigration = migrationName === "20260731101000_phase12_social_realtime_topics.sql";
+
+if (isRealtimeMigration) {
+  const foundationPath = join(dirname(migrationPath), "20260731100000_phase12_study_together_foundation.sql");
+  const foundation = await readFile(foundationPath, "utf8");
+  const required = [
+    "realtime.messages", "social-requests:", "social-counts:", "social-messages:",
+    "for select to authenticated", "for insert to authenticated", "with check",
+    "auth.uid()::text", "direct_conversations", "user_low_id", "user_high_id",
+    "private.social_are_accepted_friends", "extension = 'broadcast'", "realtime.topic()",
+  ];
+  const missing = required.filter((token) => !normalized.includes(token));
+  const forbidden = ["using (true)", "with check (true)", "social-notifications:"];
+  const presentForbidden = forbidden.filter((token) => normalized.includes(token));
+  const ordered = migrationName > basename(foundationPath);
+  const foundationOwnsNotificationPolicy = foundation.toLowerCase().includes("social-notifications:");
+  if (missing.length || presentForbidden.length || !ordered || !foundationOwnsNotificationPolicy) {
+    console.error(`STATIC_SQL_PROOF_FAILED: missing=[${missing.join(", ")}] forbidden=[${presentForbidden.join(", ")}] ordered=${ordered} foundationNotification=${foundationOwnsNotificationPolicy}`);
+    process.exit(1);
+  }
+  console.log(`STATIC_SQL_PROOF_OK: additive topic isolation and ordering verified for ${migrationPath}`);
+} else {
+  const required = [
+    "create_study_challenge", "start_study_challenge_attempt", "accept_study_challenge",
+    "complete_study_attempt", "study_together_sessions", "study_together_attempts",
+    "social_notifications", "social_reactions", "realtime.send", "social-notifications:",
+    "sweep_study_challenge_reminders", "learning_outputs", "approved_questions",
+    "correct_index", "security definer", "for update", "grant execute",
+  ];
+  const missing = required.filter((token) => !normalized.includes(token));
+  const forbidden = ["cron.schedule", "source_type = 'friend_shared_quiz'"];
+  const presentForbidden = forbidden.filter((token) => normalized.includes(token));
+  if (missing.length || presentForbidden.length) {
+    console.error(`STATIC_SQL_PROOF_FAILED: missing=[${missing.join(", ")}] forbidden=[${presentForbidden.join(", ")}]`);
+    process.exit(1);
+  }
+  console.log(`STATIC_SQL_PROOF_OK: ${migrationPath}`);
 }
-console.log(`STATIC_SQL_PROOF_OK: ${migrationPath}`);
 
 const rawUrl = process.env.PHASE12_TEST_DATABASE_URL;
 if (!rawUrl) {
