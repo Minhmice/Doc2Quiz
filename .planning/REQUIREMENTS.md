@@ -8,6 +8,22 @@
 
 Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Quiz or Flashcards generation → immediate save → practice. No draft/publish/sharing/quality-validation stage.
 
+## Study Together (SOCIAL)
+
+| ID | Requirement |
+|----|-------------|
+| SOCIAL-01 | An accepted friend can receive an asynchronous study challenge created from a creator-owned ready, non-deleted quiz with at least one question. |
+| SOCIAL-02 | Challenge creation authorizes source access server-side and stores an immutable quiz snapshot; source edits, deletion, and ownership changes cannot alter active sessions. |
+| SOCIAL-03 | A challenge stores session and participant lifecycle state, one-attempt policy, optional deadline, attempts, completion metrics, and configured result reveal policy. |
+| SOCIAL-04 | Recipient can accept and immediately start through an idempotent action that creates or reopens exactly one attempt. |
+| SOCIAL-05 | Recipient can decline; either participant can resume eligible in-progress work; expired/cancelled work gives an actionable unavailable state. |
+| SOCIAL-06 | Recipients view score comparison only when configured reveal policy permits it; default is after both participants complete. |
+| SOCIAL-07 | Study challenge and result notifications persist before realtime broadcast; unread badge is server-derived and reconcileable after reconnect. |
+| SOCIAL-08 | Friends UI provides clear separate actions to remove friend, block, report, message, view profile, and study together. |
+| SOCIAL-09 | `/friends` provides scalable Friends, Requests, Invites, Messages, and Blocked users destinations; topbar menu remains a compact launcher. |
+| SOCIAL-10 | Chat works on mobile and desktop, can resume durable conversation history, and safely receives realtime updates. |
+
+
 **v1.0 archive:** [`.planning/milestones/v1.0-REQUIREMENTS.md`](./milestones/v1.0-REQUIREMENTS.md)  
 **v2.0 archive:** Frontend shell strip + phase 1 purge (`.planning/milestones/v2.0-phases/`)
 
@@ -195,6 +211,20 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 
 ---
 
+## Learning Streak (STREAK)
+
+| ID | Requirement |
+|----|-------------|
+| STREAK-01 | Completing at least one quiz maintains or starts a user's daily learning streak, using the client's local calendar date. |
+| STREAK-02 | If the user does not complete a quiz by the end of their local day, the active streak resets to 0 and its prior length is retained as recoverable history. |
+| STREAK-03 | The top navigation shows a streak icon and current streak count, positioned left of the friend icon. |
+| STREAK-04 | Streak UI tiers scale in prominence: under 30 days uses a compact orange flame; 30–89 uses gold; 90–179 uses larger amber; 180–364 uses larger red-orange; 365+ uses largest purple-pink treatment. |
+| STREAK-05 | During the 48 hours after a streak is lost, user can open the streak control and start recovery by completing two quizzes. |
+| STREAK-06 | Completing the two recovery quizzes within the recovery window restores the exact streak length before loss. |
+| STREAK-07 | A user may complete at most two streak recoveries per calendar month, measured in their client timezone. |
+
+---
+
 ## Out of Scope (v2.1)
 
 | ID | Excluded |
@@ -222,7 +252,8 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 | PLAN-01–10 | 8 |
 | WORK-01–09 | 9 |
 | COLLAB-01–07 | 10 |
+| STREAK-01–07 | Unscheduled |
 
 ---
 
-*Last updated: 2026-07-30 — added PLAN-01–10 (freemium + coupons)*
+*Last updated: 2026-07-30 — added STREAK-01–07 (daily quiz streak and recovery)*
