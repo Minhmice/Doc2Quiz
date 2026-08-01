@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-07-31T12:00:12.150Z"
-last_activity: 2026-07-31
+last_updated: "2026-08-01T18:15:00.000Z"
+last_activity: 2026-08-02 -- Completed quick task 260802-0nr: study challenge handoff and social count consolidation
 progress:
-  total_phases: 11
+  total_phases: 13
   completed_phases: 9
-  total_plans: 54
+  total_plans: 58
   completed_plans: 67
-  percent: 82
+  percent: 69
 ---
 
 # Doc2Quiz — State
@@ -23,10 +23,10 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 12 of 12 (Study Together)
-Plan: 7 of 9 completed
-Status: Ready to execute
-Last activity: 2026-07-31
+Phase: 14 (friend-presence-and-chat-layout-repair) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 14
+Last activity: 2026-08-02 -- Completed quick task 260802-0nr: study challenge handoff and social count consolidation
 
 Progress: [██████████] 100%
 
@@ -89,6 +89,7 @@ Progress: [██████████] 100%
 | 2026-07-30 | Remove duplicate topbar profile link and account trigger | `.planning/quick/260730-43p-remove-duplicate-topbar-profile-link-and/SUMMARY.md` | `acc8303`, `928773e` |
 | 2026-07-31 | Rebuild dashboard as workspace-only dashboard | `.planning/quick/260731-0t1-rebuild-dashboard-as-workspace-only-dash/SUMMARY.md` | `d8c76b0`, `1a2d54f`, `f817082` |
 | 2026-07-31 | Create clean maintainable Supabase schema mirror | `.planning/quick/260731-tui-create-clean-maintainable-supabase-schem/260731-tui-SUMMARY.md` | `b0be5bd` |
+| 2026-08-02 | Study challenge handoff and social count consolidation | `.planning/quick/260802-0nr-fix-friendshubclient-studywith-modal-lau/SUMMARY.md` | `1e83c23`, `50d1708`, `02d1b8b` |
 
 ## Blockers
 
