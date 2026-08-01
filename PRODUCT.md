@@ -48,6 +48,13 @@ Emotional goal: calm focus during study sessions. The interface earns trust thro
 4. **Keyboard-first flow.** Answer selection, navigation, and common actions must work without reaching for the mouse during practice.
 5. **Habit through repetition.** Wrong-answer loops, session history, and fast re-entry are first-class — one-time uploads are not enough.
 
+## Layout quality contract
+
+- Authenticated app pages use full-width work surfaces by default. Page-level centered max-width wrappers require a reading-focused reason.
+- Desktop layouts must use available horizontal space for primary task content; do not leave large unused side margins.
+- Use consistent page padding and compact section rhythm before increasing card count or decorative treatment.
+- Test every app route at wide desktop, tablet, and mobile widths. Fix structural whitespace before styling details.
+
 ## Accessibility & Inclusion
 
 Full inclusive design from day one:

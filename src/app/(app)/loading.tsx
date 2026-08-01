@@ -1,7 +1,5 @@
-"use client";
+import { SimpleLoadingScreen } from "@/components/layout/SimpleLoadingScreen";
 
-import { Doc2QuizTransitionOverlay } from "@/components/layout/Doc2QuizTransitionOverlay";
-
-export default function AppGroupLoadingFallback() {
-  return <Doc2QuizTransitionOverlay />;
+export default function AppLoadingFallback() {
+  return <SimpleLoadingScreen />;
 }

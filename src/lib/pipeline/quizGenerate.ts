@@ -18,9 +18,7 @@ import {
   type QuizModelOutput,
   type QuizModelQuestion,
 } from "@/lib/pipeline/quizSchemas";
-import { stripJsonFence } from "@/lib/pipeline/canonicalize";
 import { GENERATOR_LLM_CANONICAL_MARKDOWN_MAX_CHARS } from "@/lib/pipeline/rawMarkdownLimit";
-import { summarizeZodError } from "@/lib/pipeline/zodErrorSummary";
 import {
   resolveSourceQuestions,
   type ResolvedSourceQuestion,
@@ -31,10 +29,7 @@ import {
   getAiProcessingConfig,
   isAiProcessingConfigured,
 } from "@/lib/server/ai-processing-config";
-import {
-  formatUpstreamAiError,
-} from "@/lib/server/formatUpstreamAiError";
-import { postChatCompletionAssistantText } from "@/lib/server/openAiChatCompletion";
+import { generateValidatedJson } from "@/lib/server/aiGeneration";
 import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
 import {
   formatSupabaseNetworkError,
@@ -183,75 +178,15 @@ export async function callQuizGenerator(params: {
     throw new QuizGenerateError("Quiz AI time budget exhausted.", 503);
   }
 
-  const first = await postChatCompletionAssistantText({
+  return generateValidatedJson({
     configUrl: aiConfig.url,
     apiKey: aiConfig.key,
     model: aiConfig.model,
     messages: baseMessages,
-    responseFormatJsonObject: true,
-    temperature: 0,
+    schema: quizModelOutputSchema,
+    createError: (message) => new QuizGenerateError(message),
     signal: requestSignal,
   });
-
-  if (!first.ok) {
-    throw new QuizGenerateError(
-      formatUpstreamAiError(first.status, first.body),
-    );
-  }
-
-  let parsed;
-  try {
-    parsed = quizModelOutputSchema.safeParse(
-      JSON.parse(stripJsonFence(first.text)),
-    );
-  } catch {
-    parsed = quizModelOutputSchema.safeParse(null);
-  }
-
-  if (!parsed.success) {
-    const repairSignal = quizAiRequestSignal(params.startedAt);
-    if (!repairSignal) {
-      throw new QuizGenerateError("Quiz AI time budget exhausted.", 503);
-    }
-    const repair = await postChatCompletionAssistantText({
-      configUrl: aiConfig.url,
-      apiKey: aiConfig.key,
-      model: aiConfig.model,
-      messages: [
-        ...baseMessages,
-        { role: "assistant" as const, content: first.text },
-        {
-          role: "user" as const,
-          content: `Invalid schema: ${summarizeZodError(parsed.error)}. Return ONLY valid JSON matching the schema.`,
-        },
-      ],
-      responseFormatJsonObject: true,
-      temperature: 0,
-      signal: repairSignal,
-    });
-
-    if (!repair.ok) {
-      throw new QuizGenerateError(
-        formatUpstreamAiError(repair.status, repair.body),
-      );
-    }
-
-    try {
-      parsed = quizModelOutputSchema.safeParse(
-        JSON.parse(stripJsonFence(repair.text)),
-      );
-    } catch {
-      parsed = quizModelOutputSchema.safeParse(null);
-    }
-  }
-
-  if (!parsed.success) {
-    throw new QuizGenerateError(
-      `Quiz generator output failed validation: ${summarizeZodError(parsed.error)}`,
-    );
-  }
-
-  return parsed.data;
 }
 
 function normalizeAnswer(value: string): string {

@@ -12,8 +12,8 @@ export function ProfileSettings() {
   return (
     <section id="profile" aria-labelledby="profile-heading">
       <div>
-        <h2 id="profile-heading" className="font-heading text-xl font-bold tracking-tight text-foreground">Profile</h2>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">Name shown across your personal study workspace. Username and social safety live below.</p>
+        <h2 id="profile-heading" className="font-heading text-2xl font-extrabold leading-tight tracking-[-0.02em] text-foreground">Profile</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground text-pretty">Name shown across your personal study workspace. Username and social safety live below.</p>
       </div>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <Input

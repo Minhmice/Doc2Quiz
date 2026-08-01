@@ -57,7 +57,6 @@ Clean product layer underneath a sparse annotation layer. Think desk lamp at 2 A
 | **DB** | Supabase Postgres + IndexedDB cache for hybrid offline |
 | **AI** | OpenAI-compatible /chat/completions -- concept extraction + MCQ gen |
 | **PDF conv** | Microsoft MarkItDown (Python subprocess) |
-| **Obs** | Sentry (optional) -- error capture, not telemetry spam |
 | **Forms** | react-hook-form + zod |
 | **Icons** | lucide-react -- no icon soup |
 
@@ -142,8 +141,6 @@ Copy `.env.example` to `.env.local` and fill these:
 
 Optional but based:
 - `BLOB_READ_WRITE_TOKEN` -- Vercel Blob for vision staging in prod
-- `SENTRY_DSN` -- Error tracking if you're into that
-- `ENABLE_DEV_ENGINE_PANEL=true` -- Debug panel for AI pipeline
 
 ### 5. Apply Supabase schema
 
@@ -212,7 +209,6 @@ This project runs on a specific taste contract defined in `TASTE.md`, `PRODUCT.m
 - **Vercel** is the target. Build with `npm run build` (webpack).
 - **Python/MarkItDown** doesn't run on pure serverless Node. You need Docker, a VM, or a conversion sidecar for ingest to work in prod. Don't say we didn't warn you.
 - **Blob storage** -- If using vision features, set `BLOB_READ_WRITE_TOKEN` and attach a Vercel Blob store. In-memory fallback expires after about 10 min. That's cap for production.
-- **Sentry** -- `next.config.ts` is **not** wrapped with `withSentryConfig` by default. Add if you want source-mapped stacks.
 - **Rate limiting** -- `POST /api/ai/vision-staging` is unauthenticated. Only protection is a ~12 MB payload cap. Don't deploy this wide open without adding auth/rate limits unless you wanna get absolutely cooked.
 
 ---

@@ -81,7 +81,7 @@ export function SignupClient() {
                 return;
               }
 
-              router.replace("/dashboard");
+              router.replace("/onboarding");
               router.refresh();
             } catch (err) {
               if (!alive) return;

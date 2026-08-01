@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { RoutePrefetch } from "@/components/layout/RoutePrefetch";
 import { LocaleProvider } from "@/components/locale/LocaleProvider";
 import { DisplayNameProvider } from "@/components/profile/DisplayNameProvider";
+import { PlayfulReactionOverlay } from "@/components/friends/PlayfulReactionOverlay";
 
 const CommandPalette = dynamic(
   () =>
@@ -54,8 +55,9 @@ export function AppProviders({
         <RoutePrefetch />
         <AnonymousQuizAttemptImporter />
         {/* CommandPalette must mount after AppShell so ssr:false does not shift useId for Base UI in the shell. */}
-        <AppShell initialUsage={initialUsage}>{children}</AppShell>
+        <AppShell>{children}</AppShell>
         <DeferredCommandPalette />
+        <PlayfulReactionOverlay />
       </DisplayNameProvider>
     </LocaleProvider>
   );

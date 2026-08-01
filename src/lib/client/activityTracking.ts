@@ -123,6 +123,9 @@ export async function recordQuizCompletion(input: {
       .eq("study_set_id", input.studySetId);
   }
 
+  await supabase.rpc("record_learning_streak", {
+    p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
   dispatchStatsChanged();
 }
 

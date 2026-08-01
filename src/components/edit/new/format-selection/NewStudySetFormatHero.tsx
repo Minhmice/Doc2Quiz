@@ -12,11 +12,11 @@ export function NewStudySetFormatHero({
   description = DEFAULT_DESCRIPTION,
 }: NewStudySetFormatHeroProps) {
   return (
-    <section className="mb-8 max-w-3xl">
-      <h1 className="mb-3 font-heading text-4xl leading-tight font-extrabold tracking-tight text-accent-foreground md:text-5xl">
+    <section className="mb-5 max-w-5xl border-b border-border pb-5">
+      <h1 className="mb-2 font-heading text-5xl leading-[1.02] font-extrabold tracking-[-0.03em] text-accent-foreground md:text-6xl">
         {title}
       </h1>
-      <p className="max-w-xl text-base text-muted-foreground">{description}</p>
+      <p className="max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
     </section>
   );
 }

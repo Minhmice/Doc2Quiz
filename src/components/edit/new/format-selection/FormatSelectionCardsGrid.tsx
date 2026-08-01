@@ -44,7 +44,7 @@ export function FormatSelectionCardsGrid({
 
   return (
     <motion.div
-      className="relative z-10 grid grid-cols-1 gap-8 md:grid-cols-2"
+      className="relative z-10 grid grid-cols-1 gap-4 lg:grid-cols-2"
       variants={container}
       initial="hidden"
       animate="show"

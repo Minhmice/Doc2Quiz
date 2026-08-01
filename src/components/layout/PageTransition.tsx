@@ -1,61 +1,8 @@
-"use client";
-
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
-
 type PageTransitionProps = {
   children: React.ReactNode;
 };
 
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  return reduced;
-}
-
-/**
- * Route segment fade-in on pathname change. Plain `div` + CSS opacity only (no
- * Framer `transform`) so `position: sticky` inside pages still respects `main`.
- * Do not use `flex-1` here: as `main`'s flex child it would fill the viewport
- * and prevent `main` from gaining scrollable overflow when page content is tall.
- * Used from `app/(app)/template.tsx` so the shell (top bar) stays stable.
- */
+/** Route segment wrapper — no enter animation; keeps sticky layout behavior. */
 export function PageTransition({ children }: PageTransitionProps) {
-  const pathname = usePathname();
-  const reduceMotion = usePrefersReducedMotion();
-  const surfaceRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (reduceMotion) {
-      return;
-    }
-    const el = surfaceRef.current;
-    if (!el) {
-      return;
-    }
-    el.classList.remove("d2q-route-transition");
-    void el.offsetWidth;
-    el.classList.add("d2q-route-transition");
-  }, [pathname, reduceMotion]);
-
-  return (
-    <div
-      ref={surfaceRef}
-      className={cn(
-        "flex w-full min-w-0 flex-col",
-        !reduceMotion && "d2q-route-transition",
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div className="flex w-full min-w-0 flex-col">{children}</div>;
 }

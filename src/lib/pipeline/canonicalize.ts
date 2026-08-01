@@ -2,7 +2,6 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 import {
   buildCanonicalMessages,
-  CANONICAL_PROMPT_VERSION,
   loadCanonicalPrompt,
 } from "@/lib/pipeline/canonicalPrompt";
 import {
@@ -31,6 +30,10 @@ import {
   formatSupabaseNetworkError,
   isSupabaseNetworkError,
 } from "@/lib/supabase/networkErrors";
+import {
+  mapCanonicalOutputToMetadata,
+  mapCanonicalOutputToSections,
+} from "@/lib/pipeline/mapCanonicalOutput";
 
 const CANONICAL_AI_TOTAL_BUDGET_MS = 180_000;
 const CANONICAL_AI_REQUEST_TIMEOUT_MS = 90_000;
@@ -104,56 +107,6 @@ export function stripJsonFence(text: string): string {
     return fence[1].trim();
   }
   return trimmed;
-}
-
-function mapCanonicalOutputToMetadata(
-  output: CanonicalBuilderOutput,
-  existing: CanonicalMetadata,
-  extraWarnings: string[],
-  canonicalization: {
-    mode: "ai" | "heuristic";
-    upstreamError: string | null;
-  },
-): CanonicalMetadata {
-  return {
-    ...existing,
-    title: output.title,
-    clean_filename: output.filename,
-    language: output.language,
-    content_type: output.document_type,
-    topics: output.topics,
-    extracted_questions: output.extracted_questions,
-    atomic_facts: output.atomic_facts,
-    source_readiness: output.source_readiness,
-    max_supported_count: output.max_supported_count,
-    warnings: [
-      ...new Set([
-        ...(existing.warnings ?? []),
-        ...output.warnings,
-        ...extraWarnings,
-      ]),
-    ],
-    prompt_version: CANONICAL_PROMPT_VERSION,
-    canonicalization_status: "ok",
-    canonicalization_error: null,
-    canonicalization_mode: canonicalization.mode,
-    canonicalization_upstream_error: canonicalization.upstreamError,
-  };
-}
-
-function mapCanonicalOutputToSections(
-  output: CanonicalBuilderOutput,
-  params: { userId: string; documentId: string },
-) {
-  return output.sections.map((section, index) => ({
-    user_id: params.userId,
-    canonical_document_id: params.documentId,
-    ordinal: index + 1,
-    heading: section.title,
-    body_markdown: section.content,
-    section_type: section.content_type,
-    section_key: section.id,
-  }));
 }
 
 async function persistCanonicalizationFailure(
@@ -423,6 +376,7 @@ async function replaceCanonicalContentWithRetry(
   );
 }
 
+/** @deprecated Use `runCanonicalVersion`; retained for legacy pipeline tests only. */
 export async function runCanonicalize(params: {
   supabase: SupabaseClient;
   userId: string;

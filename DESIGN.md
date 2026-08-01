@@ -232,6 +232,14 @@ Instrument-like, compact, and state-explicit. Built on shadcn `base-nova` + Base
 - **Mobile:** Bottom nav (`DashboardMobileBottomNav`) for library; study routes drop chrome density.
 - **Main canvas:** `d2q-technical-grid` on all app `main` surfaces.
 
+### Workspace layout contract
+
+- App workspaces use full available canvas width; avoid page-level `mx-auto max-w-*` wrappers that create desktop dead space.
+- Keep content density task-led: `12–24px` page padding, `16–24px` section gaps, and narrower text measures only for prose.
+- Use wider primary columns and compact supporting rails; reserve max-width for reading content, not whole app surfaces.
+- Empty states and upload surfaces should occupy useful working area, not center a small card in a large blank canvas.
+- Every new app page must be checked at wide desktop and narrow mobile before release.
+
 ### Parse Progress / Workbench (signature)
 
 - **Style:** `font-label` uppercase status, chart-2 green for phase labels, shimmer/stripe animations on progress bars (`d2q-shimmer-overlay`, `d2q-progress-stripes`)

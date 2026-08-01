@@ -1,0 +1,174 @@
+/**
+ * Archived loading animation styles (removed from globals.css).
+ * Used by components in this folder when imported for demos.
+ */
+
+@keyframes d2q-shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes d2q-progress-stripes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 1.5rem 0;
+  }
+}
+
+@keyframes d2q-dot-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.d2q-shimmer-overlay {
+  animation: d2q-shimmer-sweep 2.2s ease-in-out infinite;
+}
+
+.d2q-progress-stripes {
+  background-image: linear-gradient(
+    110deg,
+    transparent 0%,
+    color-mix(in srgb, var(--primary) 35%, transparent) 45%,
+    transparent 90%
+  );
+  background-size: 1.5rem 100%;
+  animation: d2q-progress-stripes 0.9s linear infinite;
+}
+
+.d2q-parse-dot {
+  animation: d2q-dot-bounce 1s ease-in-out infinite;
+}
+
+.d2q-parse-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.d2q-parse-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes d2q-conversion-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes d2q-step-enter {
+  from {
+    opacity: 0.65;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.d2q-conversion-bar > span:first-child {
+  animation: d2q-conversion-indeterminate 1.8s cubic-bezier(0.22, 1, 0.36, 1)
+    infinite;
+}
+
+@keyframes d2q-conversion-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(280%);
+  }
+}
+
+.d2q-conversion-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--primary-foreground) 18%, transparent) 50%,
+    transparent 100%
+  );
+  animation: d2q-conversion-slide 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.d2q-step-enter {
+  animation: d2q-step-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes d2q-dashboard-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes d2q-dashboard-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.d2q-dashboard-enter {
+  animation: d2q-dashboard-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 180ms);
+}
+
+.d2q-dashboard-card-enter {
+  animation: d2q-dashboard-card-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(360ms + var(--card-i, 0) * 90ms);
+}
+
+@keyframes d2q-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.d2q-route-transition {
+  animation: d2q-route-enter 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .d2q-conversion-bar > span:first-child,
+  .d2q-conversion-shimmer,
+  .d2q-step-enter,
+  .d2q-dashboard-enter,
+  .d2q-dashboard-card-enter,
+  .d2q-route-transition,
+  .d2q-shimmer-overlay,
+  .d2q-progress-stripes,
+  .d2q-parse-dot {
+    animation: none;
+  }
+}

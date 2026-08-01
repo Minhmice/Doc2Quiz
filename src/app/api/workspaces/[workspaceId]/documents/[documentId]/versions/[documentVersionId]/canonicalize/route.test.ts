@@ -13,6 +13,7 @@ import {
 
 const runCanonicalVersionMock = vi.fn();
 const requireApiUserMock = vi.fn();
+const requireWorkspacePermissionMock = vi.fn();
 
 vi.mock("@/lib/pipeline/canonicalVersion", async (importOriginal) => {
   const actual =
@@ -27,6 +28,16 @@ vi.mock("@/lib/pipeline/canonicalVersion", async (importOriginal) => {
 vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
 }));
+
+vi.mock("@/lib/server/workspaces/permissions", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/server/workspaces/permissions")>();
+  return {
+    ...actual,
+    requireWorkspacePermission: (...args: unknown[]) =>
+      requireWorkspacePermissionMock(...args),
+  };
+});
 
 import { POST } from "@/app/api/workspaces/[workspaceId]/documents/[documentId]/versions/[documentVersionId]/canonicalize/route";
 
@@ -43,6 +54,7 @@ describe("POST .../canonicalize", () => {
       supabase: {},
       user: { id: "user-1" },
     });
+    requireWorkspacePermissionMock.mockResolvedValue(undefined);
     runCanonicalVersionMock.mockResolvedValue({
       canonicalVersionId: "cv-1",
       versionNumber: 1,
@@ -52,6 +64,7 @@ describe("POST .../canonicalize", () => {
       promptVersion: "1.0",
       parserVersion: "1.0",
       createdAt: "2026-07-30T00:00:00Z",
+      provenance: { mode: "ai", fallback_reason: null },
     });
   });
 

@@ -10,8 +10,11 @@ describe("formatUpstreamAiError", () => {
     expect(formatUpstreamAiError(524, html).length).toBeLessThan(300);
   });
 
-  it("detects retryable upstream timeouts", () => {
-    expect(isRetryableUpstreamAiError(524, "524: A timeout occurred")).toBe(true);
+  it("retries and explains Cloudflare 520", () => {
+    expect(isRetryableUpstreamAiError(520, "origin failure")).toBe(true);
+    expect(formatUpstreamAiError(520, "origin failure")).toContain(
+      "temporarily unavailable",
+    );
     expect(isRetryableUpstreamAiError(200, "ok")).toBe(false);
   });
 });

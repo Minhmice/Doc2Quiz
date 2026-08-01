@@ -1,7 +1,5 @@
-"use client";
+import { SimpleLoadingScreen } from "@/components/layout/SimpleLoadingScreen";
 
-import { Doc2QuizTransitionOverlay } from "@/components/layout/Doc2QuizTransitionOverlay";
-
-export default function DashboardLoadingFallback() {
-  return <Doc2QuizTransitionOverlay message="LOADING YOUR STUDY DASHBOARD..." />;
+export default function DashboardLoading() {
+  return <SimpleLoadingScreen message="Loading dashboard…" />;
 }

@@ -7,6 +7,8 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AppRootProviders } from "@/components/providers/app-root-providers";
 import { chunkLoadRecoveryScript } from "@/lib/dev/chunkLoadRecoveryScript";
+import { themePreferenceOrDefault } from "@/lib/profile/themePreference";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /** Mint / blueprint typography — aligned with `example/` mocks */
 const manrope = Manrope({
@@ -32,9 +34,20 @@ export default async function RootLayout({
   children: ReactNode;
 }>) {
   const initialTheme = await getTheme();
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("theme_preference").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const initialThemePreference = themePreferenceOrDefault(profile?.theme_preference);
 
   return (
-    <html lang="en" suppressHydrationWarning className="h-dvh overflow-hidden">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-theme={initialThemePreference === "system" ? undefined : initialThemePreference}
+      className={cn("h-dvh overflow-hidden", initialThemePreference !== "system" && initialThemePreference !== "vscode-light" && "dark")}
+    >
       <body
         className={cn(
           manrope.variable,
@@ -55,7 +68,7 @@ export default async function RootLayout({
           disableTransitionOnChange
           initialTheme={initialTheme ?? undefined}
         >
-          <AppRootProviders>{children}</AppRootProviders>
+          <AppRootProviders initialThemePreference={initialThemePreference}>{children}</AppRootProviders>
         </ThemeProvider>
       </body>
     </html>

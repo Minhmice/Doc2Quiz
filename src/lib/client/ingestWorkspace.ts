@@ -150,8 +150,12 @@ async function parseIngestResponse(res: Response): Promise<WorkspaceIngestIdenti
   };
 }
 
+type WorkspaceIngestRequestBody = WorkspaceIngestJsonBody & {
+  workspaceId?: string;
+};
+
 async function postIngestJson(
-  body: WorkspaceIngestJsonBody,
+  body: WorkspaceIngestRequestBody,
 ): Promise<WorkspaceIngestIdentity> {
   const res = await fetch("/api/workspaces/ingest", {
     method: "POST",
@@ -161,9 +165,15 @@ async function postIngestJson(
   return parseIngestResponse(res);
 }
 
-async function postIngestMultipart(file: File): Promise<WorkspaceIngestIdentity> {
+async function postIngestMultipart(
+  file: File,
+  workspaceId?: string,
+): Promise<WorkspaceIngestIdentity> {
   const form = new FormData();
   form.append("file", file);
+  if (workspaceId) {
+    form.append("workspaceId", workspaceId);
+  }
   const res = await fetch("/api/workspaces/ingest", {
     method: "POST",
     body: form,
@@ -178,9 +188,10 @@ async function postIngestMultipart(file: File): Promise<WorkspaceIngestIdentity>
  */
 export async function ingestWorkspaceSource(params: {
   input: IngestSourceInput;
+  workspaceId?: string;
   onStep?: (step: IngestUiStep) => void;
 }): Promise<WorkspaceIngestIdentity> {
-  const { input, onStep } = params;
+  const { input, workspaceId, onStep } = params;
 
   onStep?.("validating");
 
@@ -212,13 +223,14 @@ export async function ingestWorkspaceSource(params: {
           mimeType,
           filename: file.name,
           sizeBytes: file.size,
+          workspaceId,
         });
         onStep?.("done");
         return result;
       }
 
       onStep?.("converting");
-      const result = await postIngestMultipart(file);
+      const result = await postIngestMultipart(file, workspaceId);
       onStep?.("done");
       return result;
     }
@@ -228,16 +240,18 @@ export async function ingestWorkspaceSource(params: {
       const result = await postIngestJson({
         kind: "paste",
         text: input.text,
+        workspaceId,
       });
       onStep?.("done");
       return result;
     }
 
     onStep?.("converting");
-    const result = await postIngestJson({
-      kind: "youtube",
-      url: input.url,
-    });
+      const result = await postIngestJson({
+        kind: "youtube",
+        url: input.url,
+        workspaceId,
+      });
     onStep?.("done");
     return result;
   } catch (error) {

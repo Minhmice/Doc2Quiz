@@ -33,8 +33,12 @@ function mapRpcError(error: { message: string }): CollaborationError {
   return new CollaborationError(code);
 }
 
-async function callRpc<T>(rpc: RpcClient["rpc"], fn: string, args: Record<string, unknown>) {
-  const { data, error } = await rpc(fn, args);
+async function callRpc<T>(
+  supabase: RpcClient,
+  fn: string,
+  args: Record<string, unknown>,
+) {
+  const { data, error } = await supabase.rpc(fn, args);
   if (error) {
     throw mapRpcError(error);
   }
@@ -76,7 +80,7 @@ export async function createWorkspaceInvitation(
   recipientUserId: string,
   role: InviteRole,
 ) {
-  return callRpc<WorkspaceInvitationDto>(supabase.rpc, "create_workspace_invitation", {
+  return callRpc<WorkspaceInvitationDto>(supabase, "create_workspace_invitation", {
     p_workspace_id: workspaceId,
     p_recipient_user_id: recipientUserId,
     p_role: role,
@@ -85,7 +89,7 @@ export async function createWorkspaceInvitation(
 
 export async function listWorkspaceInvitations(supabase: RpcClient, workspaceId: string) {
   const result = await callRpc<{ invitations: WorkspaceInvitationDto[] }>(
-    supabase.rpc,
+    supabase,
     "list_workspace_invitations",
     { p_workspace_id: workspaceId },
   );
@@ -94,7 +98,7 @@ export async function listWorkspaceInvitations(supabase: RpcClient, workspaceId:
 
 export async function revokeWorkspaceInvitation(supabase: RpcClient, invitationId: string) {
   return callRpc<{ id: string; revoked: boolean }>(
-    supabase.rpc,
+    supabase,
     "revoke_workspace_invitation",
     { p_invitation_id: invitationId },
   );
@@ -105,12 +109,12 @@ export async function acceptWorkspaceInvitation(supabase: RpcClient, invitationI
     workspaceId: string;
     role: InviteRole;
     alreadyAccepted: boolean;
-  }>(supabase.rpc, "accept_workspace_invitation", { p_invitation_id: invitationId });
+  }>(supabase, "accept_workspace_invitation", { p_invitation_id: invitationId });
 }
 
 export async function listWorkspaceMembers(supabase: RpcClient, workspaceId: string) {
   const result = await callRpc<{ members: WorkspaceMemberDto[] }>(
-    supabase.rpc,
+    supabase,
     "list_workspace_members",
     { p_workspace_id: workspaceId },
   );
@@ -124,7 +128,7 @@ export async function changeWorkspaceMemberRole(
   role: InviteRole,
 ) {
   return callRpc<{ userId: string; role: InviteRole }>(
-    supabase.rpc,
+    supabase,
     "change_workspace_member_role",
     {
       p_workspace_id: workspaceId,
@@ -140,7 +144,7 @@ export async function revokeWorkspaceMember(
   userId: string,
 ) {
   return callRpc<{ userId: string; revoked: boolean }>(
-    supabase.rpc,
+    supabase,
     "revoke_workspace_member",
     {
       p_workspace_id: workspaceId,
@@ -156,7 +160,7 @@ export async function createWorkspaceShare(
   targetId: string,
   tokenDigest: Uint8Array,
 ) {
-  return callRpc<WorkspaceShareDto>(supabase.rpc, "create_workspace_share", {
+  return callRpc<WorkspaceShareDto>(supabase, "create_workspace_share", {
     p_workspace_id: workspaceId,
     p_target_kind: targetKind,
     p_target_id: targetId,
@@ -166,7 +170,7 @@ export async function createWorkspaceShare(
 
 export async function listWorkspaceShares(supabase: RpcClient, workspaceId: string) {
   const result = await callRpc<{ shares: WorkspaceShareDto[] }>(
-    supabase.rpc,
+    supabase,
     "list_workspace_shares",
     { p_workspace_id: workspaceId },
   );
@@ -175,7 +179,7 @@ export async function listWorkspaceShares(supabase: RpcClient, workspaceId: stri
 
 export async function revokeWorkspaceShare(supabase: RpcClient, shareId: string) {
   return callRpc<{ id: string; revoked: boolean }>(
-    supabase.rpc,
+    supabase,
     "revoke_workspace_share",
     { p_share_id: shareId },
   );

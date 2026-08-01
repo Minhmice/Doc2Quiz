@@ -19,5 +19,13 @@ export async function requireUser() {
     redirect(`/login${next}`);
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  const h = await headers();
+  if (!profile?.onboarding_completed_at && h.get("x-next-pathname") !== "/onboarding") redirect("/onboarding");
+
   return user;
 }

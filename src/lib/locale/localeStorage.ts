@@ -2,6 +2,7 @@ import { DEFAULT_LOCALE } from "./messages";
 import type { Locale } from "./types";
 
 export const LOCALE_STORAGE_KEY = "doc2quiz.locale";
+export const LOCALE_COOKIE_KEY = "doc2quiz.locale";
 
 export function isLocale(value: unknown): value is Locale {
   return value === "en" || value === "vi";

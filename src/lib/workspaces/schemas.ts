@@ -12,16 +12,20 @@ const mimeEnum = z.enum(
 );
 
 /** JSON body for POST /api/workspaces/ingest and document version replacement. */
+const workspaceIngestWorkspaceSchema = z.object({
+  workspaceId: z.string().uuid().optional(),
+});
+
 export const workspaceIngestJsonBodySchema = z.discriminatedUnion("kind", [
-  z.object({
+  workspaceIngestWorkspaceSchema.extend({
     kind: z.literal("paste"),
     text: z.string().min(1),
   }),
-  z.object({
+  workspaceIngestWorkspaceSchema.extend({
     kind: z.literal("youtube"),
     url: z.string().url(),
   }),
-  z.object({
+  workspaceIngestWorkspaceSchema.extend({
     kind: z.literal("file_ref"),
     storagePath: z.string().min(1),
     mimeType: mimeEnum,

@@ -37,11 +37,13 @@ function createQueryChain(result: MockResult) {
 
 const mockFrom = vi.fn();
 const mockGetUser = vi.fn();
+const mockRpc = vi.fn();
 
 vi.mock("@/lib/client/supabase", () => ({
   createSupabaseBrowserClient: () => ({
     auth: { getUser: mockGetUser },
     from: mockFrom,
+    rpc: mockRpc,
   }),
 }));
 
@@ -52,6 +54,7 @@ vi.mock("@/lib/ids/createRandomUuid", () => ({
 describe("recordQuizCompletion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRpc.mockResolvedValue({ data: null, error: null });
     mockGetUser.mockResolvedValue({
       data: { user: { id: USER_ID } },
       error: null,
@@ -127,6 +130,7 @@ describe("recordQuizCompletion", () => {
 describe("getLatestQuizSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRpc.mockResolvedValue({ data: null, error: null });
     mockGetUser.mockResolvedValue({
       data: { user: { id: USER_ID } },
       error: null,
@@ -242,6 +246,7 @@ describe("resumable study state", () => {
 describe("mistake helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRpc.mockResolvedValue({ data: null, error: null });
     mockGetUser.mockResolvedValue({
       data: { user: { id: USER_ID } },
       error: null,

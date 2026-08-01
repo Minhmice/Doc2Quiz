@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/buttons/button";
 import { pingAiAgent, type AiAgentPingResponse } from "@/lib/ai/ping";
@@ -58,7 +57,6 @@ function srStatusLabel(status: ApiStatus): string {
 }
 
 export function ApiStatusIndicator() {
-  const pathname = usePathname();
   const [status, setStatus] = useState<ApiStatus>("idle");
   const [pillText, setPillText] = useState(PILL_DEFAULT);
   const [labelKey, setLabelKey] = useState(0);
@@ -69,16 +67,10 @@ export function ApiStatusIndicator() {
   const seqRef = useRef(0);
   const clickCountRef = useRef(0);
   const prevStatusRef = useRef<ApiStatus>("idle");
-  const silentSeqRef = useRef(0);
 
   const setPillCopy = useCallback((text: string) => {
     setPillText(text);
     setLabelKey((k) => k + 1);
-  }, []);
-
-  const applySilentResult = useCallback((result: AiAgentPingResponse) => {
-    setStatus(statusFromResult(result));
-    setApiPingCache(result);
   }, []);
 
   const applyClickResult = useCallback(
@@ -100,15 +92,6 @@ export function ApiStatusIndicator() {
     [setPillCopy],
   );
 
-  const runSilentPing = useCallback(async () => {
-    const seq = ++silentSeqRef.current;
-    const result = await pingAiAgent();
-    if (seq !== silentSeqRef.current) {
-      return;
-    }
-    applySilentResult(result);
-  }, [applySilentResult]);
-
   const runClickCheck = useCallback(
     async (clickLevel: number) => {
       const seq = ++seqRef.current;
@@ -126,13 +109,6 @@ export function ApiStatusIndicator() {
     },
     [applyClickResult, setPillCopy],
   );
-
-  useEffect(() => {
-    if (pathname !== "/dashboard") {
-      return;
-    }
-    void runSilentPing();
-  }, [pathname, runSilentPing]);
 
   useEffect(() => {
     if (prevStatusRef.current === status || status === "checking") {
@@ -188,7 +164,7 @@ export function ApiStatusIndicator() {
           aria-hidden
         >
           {isChecking ? (
-            <Loader2 className="absolute size-3 animate-spin text-chart-2 motion-reduce:animate-none" />
+            <Loader2 className="absolute size-3 text-chart-2" aria-hidden />
           ) : null}
           <span
             className={cn(

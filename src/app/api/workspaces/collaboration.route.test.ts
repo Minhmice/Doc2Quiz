@@ -66,17 +66,17 @@ import {
   DELETE as deleteInvitation,
   GET as getInvitations,
   POST as postInvitation,
-} from "@/app/api/workspaces/[id]/invitations/route";
+} from "@/app/api/workspaces/[workspaceId]/invitations/route";
 import {
   DELETE as deleteMember,
   GET as getMembers,
   PATCH as patchMember,
-} from "@/app/api/workspaces/[id]/members/route";
+} from "@/app/api/workspaces/[workspaceId]/members/route";
 import {
   DELETE as deleteShare,
   GET as getShares,
   POST as postShare,
-} from "@/app/api/workspaces/[id]/shares/route";
+} from "@/app/api/workspaces/[workspaceId]/shares/route";
 
 const workspaceId = "00000000-0000-4000-8000-000000000001";
 const recipientId = "00000000-0000-4000-8000-000000000002";
@@ -142,7 +142,7 @@ describe("collaboration API routes", () => {
         recipientUserId: recipientId,
         role: "editor",
       }),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
 
     expect(response.status).toBe(401);
@@ -155,7 +155,7 @@ describe("collaboration API routes", () => {
         recipientUserId: "not-a-uuid",
         role: "owner",
       }),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
 
     expect(response.status).toBe(400);
@@ -168,7 +168,7 @@ describe("collaboration API routes", () => {
         recipientUserId: recipientId,
         role: "editor",
       }),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(createResponse.status).toBe(200);
     expect(createWorkspaceInvitationMock).toHaveBeenCalledWith(
@@ -182,7 +182,7 @@ describe("collaboration API routes", () => {
       jsonRequest("http://localhost/api/workspaces/ws/invitations", "DELETE", {
         invitationId,
       }),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(revokeResponse.status).toBe(200);
     expect(revokeWorkspaceInvitationMock).toHaveBeenCalledWith(
@@ -198,7 +198,7 @@ describe("collaboration API routes", () => {
 
     const membersResponse = (await getMembers(
       new Request("http://localhost/api/workspaces/ws/members"),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(membersResponse.status).toBe(403);
     expect(await membersResponse.json()).toEqual({ error: "forbidden" });
@@ -246,7 +246,7 @@ describe("collaboration API routes", () => {
         userId: recipientId,
         role: "viewer",
       }),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(patchResponse.status).toBe(200);
 
@@ -255,7 +255,7 @@ describe("collaboration API routes", () => {
         targetKind: "quiz",
         targetId: outputId,
       }),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(shareResponse.status).toBe(200);
     const shareBody = await shareResponse.json();
@@ -265,7 +265,7 @@ describe("collaboration API routes", () => {
 
     const listSharesResponse = (await getShares(
       new Request("http://localhost/api/workspaces/ws/shares"),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(listSharesResponse.status).toBe(200);
 
@@ -273,7 +273,7 @@ describe("collaboration API routes", () => {
       jsonRequest("http://localhost/api/workspaces/ws/shares", "DELETE", {
         shareId,
       }),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(revokeShareResponse.status).toBe(200);
   });
@@ -285,7 +285,7 @@ describe("collaboration API routes", () => {
 
     const response = (await getInvitations(
       new Request("http://localhost/api/workspaces/ws/invitations"),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(response.status).toBe(404);
   });
@@ -293,7 +293,7 @@ describe("collaboration API routes", () => {
   it("returns 400 for malformed member revoke body", async () => {
     const response = (await deleteMember(
       jsonRequest("http://localhost/api/workspaces/ws/members", "DELETE", {}),
-      { params: Promise.resolve({ id: workspaceId }) },
+      { params: Promise.resolve({ workspaceId }) },
     )) as Response;
     expect(response.status).toBe(400);
   });

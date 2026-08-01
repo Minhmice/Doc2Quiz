@@ -1,7 +1,5 @@
-"use client";
-
-import { GlobalNavigationLoadingScreen } from "@/components/layout/GlobalNavigationLoadingScreen";
+import { SimpleLoadingScreen } from "@/components/layout/SimpleLoadingScreen";
 
 export default function SettingsLoading() {
-  return <GlobalNavigationLoadingScreen />;
+  return <SimpleLoadingScreen message="Loading settings…" />;
 }

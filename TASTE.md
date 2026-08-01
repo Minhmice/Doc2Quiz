@@ -106,6 +106,13 @@ Clean Manrope text carries task comprehension. Expressive type carries emotional
 
 ## Layout
 
+- App pages should fill available canvas width. Do not center a narrow content island inside desktop workspace unless content is intentionally reading-focused.
+- Workspace detail, dashboard, create, and import surfaces use compact `12–24px` page padding and `16–24px` section rhythm.
+- Let primary content expand; constrain prose blocks, not whole application surfaces.
+- Empty states should teach and invite the next action while using useful working area.
+
+### Existing layout contract
+
 - Keep 4px spacing grid for workflow structure.
 - Forms, navigation, quiz answers, and primary action rows align cleanly.
 - Annotation layers may break alignment without changing content geometry.

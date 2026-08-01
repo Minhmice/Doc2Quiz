@@ -8,7 +8,7 @@ import { createFlashcard, createQuiz } from "@/lib/routes/studySetPaths";
 
 export default function CreatePage() {
   return (
-    <main className="mx-auto w-full max-w-[1440px] px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+    <main className="w-full px-4 pb-10 pt-4 sm:px-6 lg:px-8">
       <Link href="/dashboard" className="font-label text-sm text-chart-2">Back to Library</Link>
       <NewStudySetFormatHero />
       <HowItWorksStrip />

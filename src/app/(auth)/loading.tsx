@@ -1,7 +1,5 @@
-"use client";
-
-import { GlobalNavigationLoadingScreen } from "@/components/layout/GlobalNavigationLoadingScreen";
+import { SimpleLoadingScreen } from "@/components/layout/SimpleLoadingScreen";
 
 export default function AuthLoading() {
-  return <GlobalNavigationLoadingScreen />;
+  return <SimpleLoadingScreen />;
 }

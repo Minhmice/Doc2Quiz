@@ -1,9 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Check,
+  Copy,
+  Link2,
+  Shield,
+  UserPlus,
+  Users,
+  Share2,
+  X,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +57,7 @@ import {
 export type WorkspaceCollaborationPanelProps = Readonly<{
   workspaceId: string;
   membershipRole: WorkspaceMembershipRole;
+  presentation?: "panel" | "dialog";
 }>;
 
 type RevokeTarget =
@@ -79,6 +93,7 @@ function invitationStatusLabel(
 export function WorkspaceCollaborationPanel({
   workspaceId,
   membershipRole,
+  presentation = "panel",
 }: WorkspaceCollaborationPanelProps) {
   const { messages } = useLocale();
   const panel = messages.collaboration.panel;
@@ -95,6 +110,8 @@ export function WorkspaceCollaborationPanel({
   const [panelError, setPanelError] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
 
+  const [activeTab, setActiveTab] = useState<"members" | "invitations" | "shares">("members");
+
   const [inviteOpen, setInviteOpen] = useState(false);
   const [recipientUserId, setRecipientUserId] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceMemberRole>("editor");
@@ -106,6 +123,7 @@ export function WorkspaceCollaborationPanel({
 
   const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
   const [shareActionPending, setShareActionPending] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const refreshOwnerData = useCallback(async () => {
     setPanelError(null);
@@ -153,6 +171,7 @@ export function WorkspaceCollaborationPanel({
       });
       setLiveStatus(invitationLabels.sent);
       handleInviteOpenChange(false);
+      setRecipientUserId("");
       await refreshOwnerData();
     } catch (error) {
       setInviteError(
@@ -206,12 +225,20 @@ export function WorkspaceCollaborationPanel({
     setShareActionPending(true);
     setPanelError(null);
     setPendingShareUrl(null);
+    setCopiedLink(false);
     try {
       const created = await createWorkspaceShare(workspaceId, {
         targetKind: "workspace",
         targetId: workspaceId,
       });
       setPendingShareUrl(created.shareUrl);
+      try {
+        await copyShareLinkToClipboard(created.shareUrl);
+        setCopiedLink(true);
+        setLiveStatus(panel.shareLinkCopied);
+      } catch {
+        // Fallback to manual button copy
+      }
       await refreshOwnerData();
     } catch (error) {
       setPanelError(
@@ -226,8 +253,9 @@ export function WorkspaceCollaborationPanel({
     if (!pendingShareUrl) return;
     try {
       await copyShareLinkToClipboard(pendingShareUrl);
+      setCopiedLink(true);
       setLiveStatus(panel.shareLinkCopied);
-      setPendingShareUrl(null);
+      setTimeout(() => setCopiedLink(false), 2500);
     } catch (error) {
       setPanelError(
         error instanceof Error ? error.message : panel.genericError,
@@ -257,216 +285,359 @@ export function WorkspaceCollaborationPanel({
 
   return (
     <section
-      className="space-y-4"
+      className={presentation === "dialog" ? "space-y-5" : "space-y-4 rounded-xl border border-border/60 bg-card p-5 shadow-2xs"}
       aria-labelledby="workspace-collaboration-heading"
       data-workspace-id={workspaceId}
       data-membership-role={membershipRole}
     >
-      <div>
-        <h2
-          id="workspace-collaboration-heading"
-          className="font-heading text-xl font-bold"
-        >
-          {panel.heading}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {isOwner ? panel.ownerDescription : panel.readOnlyNotice}
-        </p>
+      {/* Card Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-label text-[11px] font-bold text-primary tracking-widest flex items-center gap-1.5">
+            <Shield className="size-3.5" />
+            Access & Sharing
+          </p>
+          <h2
+            id="workspace-collaboration-heading"
+            className="font-heading text-lg font-bold text-foreground"
+          >
+            {panel.heading}
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            {isOwner ? panel.ownerDescription : panel.readOnlyNotice}
+          </p>
+        </div>
       </div>
 
+      {/* Status Live Notification */}
       <div
-        className="text-sm text-muted-foreground"
+        className="text-xs text-muted-foreground font-medium"
         role="status"
         aria-live="polite"
       >
-        {liveStatus}
+        {liveStatus ? (
+          <span className="inline-flex items-center gap-1.5 text-chart-2 font-semibold bg-chart-2/10 px-2.5 py-1 rounded-md">
+            <Check className="size-3.5" />
+            {liveStatus}
+          </span>
+        ) : null}
       </div>
 
       {!isOwner ? null : (
         <>
           {loading ? (
-            <p className="text-sm text-muted-foreground" role="status">
+            <p className="text-xs text-muted-foreground animate-pulse" role="status">
               {panel.loading}
             </p>
           ) : null}
 
           {panelError ? (
-            <p className="text-sm text-destructive" role="alert">
+            <p className="text-xs font-semibold text-destructive bg-destructive/10 p-2.5 rounded-lg border border-destructive/20" role="alert">
               {panelError}
             </p>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              ref={inviteTriggerRef}
-              type="button"
-              onClick={() => setInviteOpen(true)}
-            >
-              {panel.inviteButton}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={shareActionPending}
-              onClick={() => void handleCreateWorkspaceShare()}
-            >
-              {panel.createWorkspaceShare}
-            </Button>
-            {pendingShareUrl ? (
+          {/* Quick Invite & Share Action Bar */}
+          <div className="space-y-3 rounded-lg border border-border/50 bg-background/60 p-3">
+            <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+              <UserPlus className="size-3.5 text-primary" />
+              Quick Member Invite
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                placeholder="User ID or email address..."
+                value={recipientUserId}
+                onChange={(e) => setRecipientUserId(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && recipientUserId.trim()) {
+                    void submitInvite();
+                  }
+                }}
+                className="h-8 text-xs bg-background shrink"
+              />
+              <select
+                className="h-8 rounded-lg border border-input bg-background px-2 text-xs font-medium shrink-0"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value as WorkspaceMemberRole)}
+              >
+                <option value="editor">{roleLabels.editor}</option>
+                <option value="viewer">{roleLabels.viewer}</option>
+              </select>
+              <Button
+                ref={inviteTriggerRef}
+                type="button"
+                size="sm"
+                className="h-8 text-xs font-medium gap-1 shrink-0 shadow-2xs"
+                disabled={inviteSubmitting || recipientUserId.trim().length === 0}
+                onClick={() => void submitInvite()}
+              >
+                <UserPlus className="size-3.5" />
+                {panel.inviteButton}
+              </Button>
+            </div>
+
+            {inviteError ? (
+              <p className="text-[11px] font-medium text-destructive">{inviteError}</p>
+            ) : null}
+
+            {/* Quick Share Link Trigger */}
+            <div className="pt-2 border-t border-border/40 flex flex-col gap-2">
               <Button
                 type="button"
-                variant="secondary"
-                onClick={() => void handleCopyShareLink()}
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-medium gap-1.5 w-full"
+                disabled={shareActionPending}
+                onClick={() => void handleCreateWorkspaceShare()}
               >
-                {panel.copyShareLink}
+                <Link2 className="size-3.5 text-primary" />
+                {panel.createWorkspaceShare}
               </Button>
-            ) : null}
+
+              {/* Created Share Link Banner */}
+              {pendingShareUrl ? (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 flex items-center justify-between gap-2 transition-all">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-primary flex items-center gap-1">
+                      <Sparkles className="size-3" />
+                      Share Link Ready
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate max-w-45">
+                      {pendingShareUrl}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={copiedLink ? "default" : "secondary"}
+                    size="sm"
+                    className="h-7 text-xs font-medium gap-1 shrink-0"
+                    onClick={() => void handleCopyShareLink()}
+                  >
+                    {copiedLink ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    {copiedLink ? "Copied!" : panel.copyShareLink}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">{panel.membersHeading}</h3>
-              {members.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{panel.emptyMembers}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {members.map((member) => (
-                    <li
-                      key={member.userId}
-                      className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {panel.memberUserId(member.userId)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {roleLabels[member.role as WorkspaceMemberRole] ??
-                            roleLabels.owner}
-                        </p>
-                      </div>
-                      {member.role === "owner" ? null : (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <label className="text-xs text-muted-foreground">
-                            {panel.changeRole}
-                            <select
-                              className="ml-2 rounded-md border border-input px-2 py-1 text-sm"
-                              value={member.role}
-                              onChange={(event) =>
-                                void handleMemberRoleChange(
-                                  member.userId,
-                                  event.target.value as WorkspaceMemberRole,
-                                )
-                              }
+          {/* Segmented View Tabs */}
+          <div className="space-y-3 pt-1">
+            <div className="flex rounded-lg bg-muted/60 p-1 gap-1 border border-border/50 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setActiveTab("members")}
+                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-xs ${
+                  activeTab === "members"
+                    ? "bg-card text-foreground font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Users className="size-3.5" />
+                <span>{panel.membersHeading}</span>
+                <Badge variant={activeTab === "members" ? "default" : "secondary"} className="px-1.5 py-0 h-4 text-[10px] min-w-4 justify-center">
+                  {members.length}
+                </Badge>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("invitations")}
+                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-xs ${
+                  activeTab === "invitations"
+                    ? "bg-card text-foreground font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <UserPlus className="size-3.5" />
+                <span>Invites</span>
+                <Badge variant={activeTab === "invitations" ? "default" : "secondary"} className="px-1.5 py-0 h-4 text-[10px] min-w-4 justify-center">
+                  {invitations.length}
+                </Badge>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("shares")}
+                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-xs ${
+                  activeTab === "shares"
+                    ? "bg-card text-foreground font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Share2 className="size-3.5" />
+                <span>Shares</span>
+                <Badge variant={activeTab === "shares" ? "default" : "secondary"} className="px-1.5 py-0 h-4 text-[10px] min-w-4 justify-center">
+                  {shares.length}
+                </Badge>
+              </button>
+            </div>
+
+            {/* Tab 1: Members */}
+            {activeTab === "members" ? (
+              <div className="space-y-2">
+                <h3 className="sr-only">{panel.membersHeading}</h3>
+                {members.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">{panel.emptyMembers}</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {members.map((member) => {
+                      const isMemberOwner = member.role === "owner";
+                      return (
+                        <li
+                          key={member.userId}
+                          className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="text-xs font-semibold text-foreground wrap-anywhere">
+                              {panel.memberUserId(member.userId)}
+                            </p>
+                            <Badge
+                              variant={isMemberOwner ? "default" : member.role === "editor" ? "secondary" : "outline"}
+                              className="text-[10px] font-medium capitalize"
                             >
-                              <option value="editor">{roleLabels.editor}</option>
-                              <option value="viewer">{roleLabels.viewer}</option>
-                            </select>
-                          </label>
+                              {roleLabels[member.role as WorkspaceMemberRole] ?? roleLabels.owner}
+                            </Badge>
+                          </div>
+
+                          {!isMemberOwner ? (
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                              <label className="text-xs text-muted-foreground">
+                                {panel.changeRole}
+                                <select
+                                  className="ml-1.5 rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium"
+                                  value={member.role}
+                                  onChange={(event) =>
+                                    void handleMemberRoleChange(
+                                      member.userId,
+                                      event.target.value as WorkspaceMemberRole,
+                                    )
+                                  }
+                                >
+                                  <option value="editor">{roleLabels.editor}</option>
+                                  <option value="viewer">{roleLabels.viewer}</option>
+                                </select>
+                              </label>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() =>
+                                  setRevokeTarget({
+                                    kind: "member",
+                                    userId: member.userId,
+                                  })
+                                }
+                              >
+                                <Trash2 className="size-3 mr-1" />
+                                {panel.revokeMember}
+                              </Button>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+
+            {/* Tab 2: Invitations */}
+            {activeTab === "invitations" ? (
+              <div className="space-y-2">
+                <h3 className="sr-only">{panel.invitationsHeading}</h3>
+                {invitations.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">
+                    {panel.emptyInvitations}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {invitations.map((invitation) => (
+                      <li
+                        key={invitation.id}
+                        className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-xs font-semibold text-foreground wrap-anywhere">
+                            {panel.memberUserId(invitation.recipientUserId)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground font-medium">
+                            {roleLabels[invitation.role]} ·{" "}
+                            {invitationStatusLabel(invitation, invitationLabels)}
+                          </p>
+                        </div>
+                        {!invitation.acceptedAt && !invitation.revokedAt ? (
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
+                            className="h-7 text-xs shrink-0 self-end sm:self-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={() =>
                               setRevokeTarget({
-                                kind: "member",
-                                userId: member.userId,
+                                kind: "invitation",
+                                invitationId: invitation.id,
                               })
                             }
                           >
-                            {panel.revokeMember}
+                            <X className="size-3 mr-1" />
+                            {panel.revokeInvitation}
                           </Button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+
+            {/* Tab 3: Shares */}
+            {activeTab === "shares" ? (
+              <div className="space-y-2">
+                <h3 className="sr-only">{panel.sharesHeading}</h3>
+                {shares.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">{panel.emptyShares}</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {shares.map((share) => (
+                      <li
+                        key={share.id}
+                        className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-xs font-semibold text-foreground wrap-anywhere">
+                            {panel.shareTarget(share.targetKind)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground font-medium">
+                            {share.permission}
+                            {share.revokedAt ? ` · ${invitationLabels.revoked}` : ""}
+                          </p>
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">{panel.invitationsHeading}</h3>
-              {invitations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {panel.emptyInvitations}
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {invitations.map((invitation) => (
-                    <li
-                      key={invitation.id}
-                      className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {panel.memberUserId(invitation.recipientUserId)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {roleLabels[invitation.role]} ·{" "}
-                          {invitationStatusLabel(invitation, invitationLabels)}
-                        </p>
-                      </div>
-                      {!invitation.acceptedAt && !invitation.revokedAt ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setRevokeTarget({
-                              kind: "invitation",
-                              invitationId: invitation.id,
-                            })
-                          }
-                        >
-                          {panel.revokeInvitation}
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">{panel.sharesHeading}</h3>
-              {shares.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{panel.emptyShares}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {shares.map((share) => (
-                    <li
-                      key={share.id}
-                      className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {panel.shareTarget(share.targetKind)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {share.permission}
-                          {share.revokedAt ? ` · ${invitationLabels.revoked}` : ""}
-                        </p>
-                      </div>
-                      {!share.revokedAt ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setRevokeTarget({ kind: "share", shareId: share.id })
-                          }
-                        >
-                          {panel.revokeShare}
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                        {!share.revokedAt ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs shrink-0 self-end sm:self-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() =>
+                              setRevokeTarget({ kind: "share", shareId: share.id })
+                            }
+                          >
+                            <Trash2 className="size-3 mr-1" />
+                            {panel.revokeShare}
+                          </Button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </div>
         </>
       )}
 
+      {/* Accessible Invite Modal Dialog (Kept fully functional) */}
       <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
         <DialogContent aria-describedby="invite-dialog-description">
           <DialogHeader>
@@ -487,7 +658,7 @@ export function WorkspaceCollaborationPanel({
             <label className="block space-y-1 text-sm">
               <span>{panel.roleLabel}</span>
               <select
-                className="h-8 w-full rounded-lg border border-input px-2 text-sm"
+                className="h-8 w-full rounded-lg border border-input px-2 text-sm bg-background"
                 value={inviteRole}
                 onChange={(event) =>
                   setInviteRole(event.target.value as WorkspaceMemberRole)
@@ -526,6 +697,7 @@ export function WorkspaceCollaborationPanel({
         </DialogContent>
       </Dialog>
 
+      {/* Accessible Revoke Confirmation Alert Dialog */}
       <AlertDialog
         open={revokeTarget !== null}
         onOpenChange={(open) => {
@@ -555,3 +727,4 @@ export function WorkspaceCollaborationPanel({
     </section>
   );
 }
+

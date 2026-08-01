@@ -163,7 +163,6 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
     return (
       <div className="flex h-96 items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="font-label text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
             {copy.loadingSession}
             <LocalizedSlangLine context="loading" eventKey={`flashcards-loading:${studySetId}`} className="mt-2 text-center text-xs normal-case tracking-normal text-muted-foreground" />

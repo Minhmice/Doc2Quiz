@@ -2,8 +2,8 @@
 
 import { LanguageSelector } from "@/components/locale/LanguageSelector";
 import { useLocale } from "@/components/locale/LocaleProvider";
+import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { ApprovedBankExportButton } from "@/components/settings/ApprovedBankExportButton";
-import { DevEnginePanel } from "@/components/settings/DevEnginePanel";
 
 export default function SettingsPage() {
   const { messages } = useLocale();
@@ -20,6 +20,9 @@ export default function SettingsPage() {
         <p className="mt-1 text-sm text-[var(--d2q-muted)]">
           Document processing is configured on the server. API URLs, keys, and models are not stored in the browser.
         </p>
+      </div>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <AppearanceSettings />
       </div>
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <LanguageSelector />
@@ -40,7 +43,6 @@ export default function SettingsPage() {
           <ApprovedBankExportButton />
         </div>
       </div>
-      <DevEnginePanel />
     </div>
   );
 }

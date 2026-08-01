@@ -15,7 +15,7 @@ const steps = [
 export function HowItWorksStrip({ className }: HowItWorksStripProps) {
   return (
     <div
-      className={`mb-10 border-y border-border/20 py-4${className ? ` ${className}` : ""}`}
+      className={`mb-5 border-y border-border/20 py-3${className ? ` ${className}` : ""}`}
     >
       <p className="font-label flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.25em] text-muted-foreground md:text-xs">
         <span className="text-border">How it works:</span>

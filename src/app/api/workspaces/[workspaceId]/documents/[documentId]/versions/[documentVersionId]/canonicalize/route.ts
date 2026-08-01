@@ -65,6 +65,8 @@ export async function POST(
       promptVersion: result.promptVersion,
       parserVersion: result.parserVersion,
       createdAt: result.createdAt,
+      processingMode: result.processingMode,
+      fallbackReason: result.fallbackReason,
     });
   } catch (error) {
     if (error instanceof WorkspacePermissionError) {
@@ -101,6 +103,13 @@ export async function POST(
       );
     }
     if (error instanceof CanonicalVersionPersistenceError) {
+      console.error("workspace canonicalize persistence error", {
+        workspaceId,
+        documentId,
+        documentVersionId,
+        userId: auth.user.id,
+        message: error.message,
+      });
       return NextResponse.json(
         { error: "persistence_unavailable", message: error.message },
         { status: 503 },

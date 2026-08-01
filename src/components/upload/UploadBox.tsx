@@ -92,8 +92,8 @@ export function UploadBox({
               : { scale: 1 }
         }
         className={cn(
-          "d2q-import-upload flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/30 px-6 py-10 text-center",
-          tall && "min-h-[280px]",
+          "d2q-import-upload flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary/35 bg-accent/10 px-6 py-8 text-center transition-colors duration-200 hover:border-primary/60 hover:bg-accent/20",
+          tall && "min-h-[clamp(16rem,38vh,28rem)]",
           dragActive && "border-primary/50 bg-accent/10",
           disabled && "cursor-not-allowed opacity-50",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",

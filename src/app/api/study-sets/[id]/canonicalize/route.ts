@@ -77,6 +77,8 @@ export async function POST(
       title: result.title,
       canonicalVersionId: result.canonicalVersionId,
       versionNumber: result.versionNumber,
+      processingMode: result.processingMode,
+      fallbackReason: result.fallbackReason,
     });
   } catch (error) {
     if (error instanceof CanonicalVersionValidationError) {

@@ -21,7 +21,9 @@ const MAX_LEN = 40;
 
 type DisplayNameContextValue = {
   displayName: string;
+  avatarUrl: string | null;
   setDisplayName: (value: string) => void;
+  refreshAvatar: () => Promise<string | null>;
   dismissPrompt: () => void;
   /** True after localStorage read: no saved name and user has not skipped. */
   needsDisplayNamePrompt: boolean;
@@ -43,16 +45,32 @@ export function DisplayNameProvider({
   children: React.ReactNode;
 }) {
   const [displayName, setDisplayNameState] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [promptDismissed, setPromptDismissed] = useState(false);
 
+  const refreshAvatar = useCallback(async () => {
+    try {
+      const response = await fetch("/api/profile");
+      if (!response.ok) return null;
+      const body = (await response.json()) as { data?: { avatarUrl?: string | null; displayName?: string } };
+      const nextAvatarUrl = body.data?.avatarUrl ?? null;
+      setAvatarUrl(nextAvatarUrl);
+      if (!readDisplayName() && body.data?.displayName) setDisplayNameState(body.data.displayName);
+      return nextAvatarUrl;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
+    void refreshAvatar();
     const name = readDisplayName() ?? "";
     const dismissed = readPromptDismissed();
     setDisplayNameState(name);
     setPromptDismissed(dismissed);
     setHydrated(true);
-  }, []);
+  }, [refreshAvatar]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -86,11 +104,13 @@ export function DisplayNameProvider({
   const value = useMemo(
     () => ({
       displayName,
+      avatarUrl,
       setDisplayName,
+      refreshAvatar,
       dismissPrompt,
       needsDisplayNamePrompt,
     }),
-    [displayName, setDisplayName, dismissPrompt, needsDisplayNamePrompt],
+    [displayName, avatarUrl, setDisplayName, refreshAvatar, dismissPrompt, needsDisplayNamePrompt],
   );
 
   return (

@@ -224,6 +224,7 @@ async function persistConversionFailure(
   );
 }
 
+/** @deprecated Use `runWorkspaceIngest`; retained for legacy pipeline tests only. */
 export async function runIngest(params: {
   supabase: SupabaseClient;
   userId: string;

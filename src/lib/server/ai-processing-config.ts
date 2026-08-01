@@ -51,10 +51,6 @@ export function getAiRequestTimeoutMs(): number {
   return parsed;
 }
 
-export function isDevEnginePanelEnabled(): boolean {
-  return trimEnv("ENABLE_DEV_ENGINE_PANEL") === "true";
-}
-
 function readRawConfig(): AiProcessingConfig | null {
   const url = trimEnv("AI_PROVIDER_URL");
   const key = trimEnv("AI_PROVIDER_KEY");

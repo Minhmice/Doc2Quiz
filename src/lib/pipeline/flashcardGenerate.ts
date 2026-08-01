@@ -1,8 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
-import { stripJsonFence } from "@/lib/pipeline/canonicalize";
 import { GENERATOR_LLM_CANONICAL_MARKDOWN_MAX_CHARS } from "@/lib/pipeline/rawMarkdownLimit";
-import { summarizeZodError } from "@/lib/pipeline/zodErrorSummary";
+import { generateValidatedJson } from "@/lib/server/aiGeneration";
 import { dedupeAndCapFlashcards } from "@/lib/pipeline/dedupeAndCapFlashcards";
 import { mapFlashcardOutputToRows } from "@/lib/pipeline/mapFlashcardOutputToRows";
 import {
@@ -20,9 +19,8 @@ import {
   getAiProcessingConfig,
   isAiProcessingConfigured,
 } from "@/lib/server/ai-processing-config";
-import { postChatCompletionAssistantText } from "@/lib/server/openAiChatCompletion";
-import { formatUpstreamAiError } from "@/lib/server/formatUpstreamAiError";
 import { resolveUserAiTier } from "@/lib/server/resolveUserAiTier";
+import { replaceFlashcards } from "@/lib/server/flashcardPersistence";
 
 const CANONICAL_MARKDOWN_MAX_CHARS = GENERATOR_LLM_CANONICAL_MARKDOWN_MAX_CHARS;
 
@@ -157,60 +155,14 @@ export async function callFlashcardGenerator(params: {
     { role: "user" as const, content: messages.user },
   ];
 
-  const first = await postChatCompletionAssistantText({
+  return generateValidatedJson({
     configUrl: aiConfig.url,
     apiKey: aiConfig.key,
     model: aiConfig.model,
     messages: baseMessages,
-    responseFormatJsonObject: true,
-    temperature: 0,
+    schema: flashcardGeneratorOutputSchema,
+    createError: (message) => new FlashcardGenerateError(message),
   });
-
-  if (!first.ok) {
-    throw new FlashcardGenerateError(
-      formatUpstreamAiError(first.status, first.body),
-    );
-  }
-
-  let parsed = flashcardGeneratorOutputSchema.safeParse(
-    JSON.parse(stripJsonFence(first.text)),
-  );
-
-  if (!parsed.success) {
-    const repair = await postChatCompletionAssistantText({
-      configUrl: aiConfig.url,
-      apiKey: aiConfig.key,
-      model: aiConfig.model,
-      messages: [
-        ...baseMessages,
-        { role: "assistant" as const, content: first.text },
-        {
-          role: "user" as const,
-          content: `Invalid schema: ${summarizeZodError(parsed.error)}. Return ONLY valid JSON matching the schema.`,
-        },
-      ],
-      responseFormatJsonObject: true,
-      temperature: 0,
-    });
-
-    if (!repair.ok) {
-      throw new FlashcardGenerateError(
-        formatUpstreamAiError(repair.status, repair.body),
-      );
-    }
-
-    parsed = flashcardGeneratorOutputSchema.safeParse(
-      JSON.parse(stripJsonFence(repair.text)),
-    );
-  }
-
-  if (!parsed.success) {
-    throw new FlashcardGenerateError(
-      `Flashcard generator output failed validation: ${summarizeZodError(parsed.error)}`,
-    );
-  }
-
-  return parsed.data;
 }
 
 export async function runFlashcardGenerate(params: {
@@ -338,48 +290,7 @@ export async function runFlashcardGenerate(params: {
     learningGoal,
   });
 
-  const { error: flashcardDeleteError } = await supabase
-    .from("approved_flashcards")
-    .delete()
-    .eq("study_set_id", studySetId)
-    .eq("user_id", userId);
-
-  if (flashcardDeleteError) {
-    throw new Error(flashcardDeleteError.message);
-  }
-
-  const { error: questionDeleteError } = await supabase
-    .from("approved_questions")
-    .delete()
-    .eq("study_set_id", studySetId)
-    .eq("user_id", userId);
-
-  if (questionDeleteError) {
-    throw new Error(questionDeleteError.message);
-  }
-
-  if (rows.length > 0) {
-    const { error: insertError } = await supabase
-      .from("approved_flashcards")
-      .insert(rows);
-
-    if (insertError) {
-      throw new Error(insertError.message);
-    }
-  }
-
-  const { error: stageError } = await supabase
-    .from("study_sets")
-    .update({
-      pipeline_stage: "flashcards",
-      content_kind: "flashcards",
-    })
-    .eq("id", studySetId)
-    .eq("user_id", userId);
-
-  if (stageError) {
-    throw new Error(stageError.message);
-  }
+  await replaceFlashcards(supabase, { userId, studySetId, rows });
 
   return {
     ok: true,

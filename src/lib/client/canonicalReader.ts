@@ -32,6 +32,8 @@ export type WorkspaceCanonicalizeResult = {
   promptVersion: string;
   parserVersion: string;
   createdAt: string;
+  processingMode?: "ai" | "heuristic";
+  fallbackReason?: string | null;
 };
 
 export async function postWorkspaceCanonicalize(params: {

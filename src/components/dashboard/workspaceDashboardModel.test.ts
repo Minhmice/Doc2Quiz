@@ -34,25 +34,29 @@ const output = (status: string, updatedAt = "2026-07-30T00:00:00Z") => ({
 });
 
 describe("workspace dashboard model", () => {
-  it("derives all statuses with processing precedence and unknown-safe handling", () => {
+  it("derives all statuses with processing_failed > needs_review > processing > ready > empty precedence", () => {
     expect(deriveWorkspaceStatus(workspace())).toBe("empty");
     expect(deriveWorkspaceStatus(workspace({ documentCount: 1 }))).toBe("needs_review");
-    expect(deriveWorkspaceStatus(workspace({ canonicalVersionCount: 1, recentOutputs: [output("failed")] }))).toBe("needs_review");
+    expect(deriveWorkspaceStatus(workspace({ canonicalVersionCount: 1, recentOutputs: [output("failed")] }))).toBe("processing_failed");
     expect(deriveWorkspaceStatus(workspace({ recentOutputs: [output("ready")] }))).toBe("ready");
     expect(deriveWorkspaceStatus(workspace({ recentOutputs: [output("ready"), output("pending")] }))).toBe("processing");
     expect(deriveWorkspaceStatus(workspace({ recentOutputs: [output("mystery")] }))).toBe("needs_review");
   });
 
-  it("builds workspace-only card data and routes", () => {
-    expect(buildWorkspaceCardModel(workspace({ documentCount: 2, quizOutputCount: 3, flashcardOutputCount: 4 }))).toEqual({
+  it("builds workspace card data with role, counts, and latest output link", () => {
+    expect(buildWorkspaceCardModel(workspace({ documentCount: 2, canonicalVersionCount: 2, quizOutputCount: 3, flashcardOutputCount: 4 }))).toEqual({
       id: "ws-1",
       title: "Biology",
       subtitle: "Cell structure",
+      role: "owner",
       sourceCount: 2,
+      readySourceCount: 2,
       quizCount: 3,
       flashcardCount: 4,
       updatedAt: "2026-07-30T00:00:00Z",
       status: "needs_review",
+      latestOutputTitle: null,
+      latestOutputHref: null,
       href: "/workspace/ws-1",
     });
     expect(workspaceDashboardLinks.resume({ kind: "quiz", bridgeStudySetId: "set-1" })).toBe("/quiz/set-1");

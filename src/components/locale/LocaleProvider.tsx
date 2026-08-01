@@ -51,18 +51,11 @@ export function useLocale(): LocaleContextValue {
   return value;
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
-  const [hydrated, setHydrated] = useState(false);
+export function LocaleProvider({ children, initialLocale = DEFAULT_LOCALE }: { children?: React.ReactNode; initialLocale?: Locale }) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const [hydrated, setHydrated] = useState(true);
   const rotatorRef = useRef<SlangRotator | null>(null);
   if (!rotatorRef.current) rotatorRef.current = createSlangRotator();
-
-  useEffect(() => {
-    const storedLocale = readInitialLocale();
-    setLocaleState(storedLocale);
-    applyDocumentLocale(storedLocale, document.documentElement);
-    setHydrated(true);
-  }, []);
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {

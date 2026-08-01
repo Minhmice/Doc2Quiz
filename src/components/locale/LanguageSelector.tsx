@@ -3,6 +3,7 @@
 import { CheckIcon } from "lucide-react";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import {
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -29,9 +30,11 @@ export function LanguageSelector({ mode = "full" }: { mode?: "compact" | "full" 
   if (mode === "compact") {
     return (
       <>
-        <DropdownMenuLabel className="px-2 pt-2 text-sm font-semibold">
-          {messages.settings.languageTitle}
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2 pt-2 text-sm font-semibold">
+            {messages.settings.languageTitle}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuRadioGroup value={locale} onValueChange={(value) => setLocale(value as Locale)}>
           {options.map((option) => (
             <DropdownMenuRadioItem

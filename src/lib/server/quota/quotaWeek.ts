@@ -19,7 +19,7 @@ function getIctParts(date: Date) {
 
 export function getQuotaWeekStartIct(date = new Date()): Date {
   const { weekday, year, month, day } = getIctParts(date);
-  const offset = ({ Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 } as const)[weekday];
+  const offset = ({ Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 } as const)[weekday] ?? 0;
   return new Date(Date.UTC(year, month - 1, day - offset, -7));
 }
 

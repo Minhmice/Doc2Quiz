@@ -20,6 +20,13 @@ describe("friends service", () => {
     await expect(sendFriendRequest({ rpc }, "someone")).rejects.toEqual(new FriendRequestUnavailableError());
   });
 
+  it("rethrows unknown RPC errors instead of masking them as unavailable", async () => {
+    const rpcError = { message: "permission denied for function send_friend_request" };
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: rpcError });
+
+    await expect(sendFriendRequest({ rpc }, "someone")).rejects.toEqual(rpcError);
+  });
+
   it("maps rate_limited RPC errors to retry metadata", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: null,

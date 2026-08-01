@@ -1,7 +1,7 @@
 const HTML_PREFIX = /^\s*<!DOCTYPE/i;
 
 export function isRetryableUpstreamAiError(status: number, body: string): boolean {
-  if (status === 524 || status === 502 || status === 503 || status === 429) {
+  if (status === 520 || status === 524 || status === 502 || status === 503 || status === 429) {
     return true;
   }
   const sample = body.slice(0, 2000);
@@ -23,8 +23,12 @@ export function formatUpstreamAiError(status: number, body: string): string {
     );
   }
 
+  if (status === 520) {
+    return "AI provider is temporarily unavailable (Cloudflare 520). Your document was processed with the built-in fallback; retry later for an AI-enhanced result.";
+  }
+
   if (HTML_PREFIX.test(body.trim()) || sample.includes("cf-error-details")) {
-    return `AI gateway returned an error page (${status}). Try again with a smaller document or check AI_PROVIDER_URL.`;
+    return `AI gateway returned an error page (${status}). Your document was processed with the built-in fallback; retry later or check AI_PROVIDER_URL for an AI-enhanced result.`;
   }
 
   const compact = body.replace(/\s+/g, " ").trim();

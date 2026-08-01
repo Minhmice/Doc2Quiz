@@ -141,6 +141,7 @@ async function postIngestMultipart(
   }
 }
 
+/** @deprecated Use `ingestWorkspaceSource`; retained only for legacy study-set callers. */
 export async function ingestStudySetSource(params: {
   input: IngestSourceInput;
   contentKind: StudyContentKind;

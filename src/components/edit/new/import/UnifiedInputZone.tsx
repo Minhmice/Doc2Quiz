@@ -52,6 +52,7 @@ export type UnifiedInputZoneProps = Readonly<{
   pageHeading: string;
   pageSubcopy: string;
   getPostIngestHref: (identity: WorkspaceIngestIdentity) => string;
+  workspaceId?: string;
 }>;
 
 type InputTab = "file" | "paste" | "youtube";
@@ -61,6 +62,7 @@ export function UnifiedInputZone({
   pageHeading,
   pageSubcopy,
   getPostIngestHref,
+  workspaceId,
 }: UnifiedInputZoneProps) {
   const router = useRouter();
   const { messages } = useLocale();
@@ -137,6 +139,7 @@ export function UnifiedInputZone({
     try {
       const identity = await ingestWorkspaceSource({
         input,
+        workspaceId,
         onStep: (step) => {
           setIngestStep(step);
           if (step === "validating" || step === "uploading" || step === "converting") {
@@ -177,6 +180,7 @@ export function UnifiedInputZone({
     router,
     setStep,
     tab,
+    workspaceId,
     youtubeUrl,
   ]);
 
@@ -186,12 +190,12 @@ export function UnifiedInputZone({
     ingestStep === "converting";
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14 lg:px-8">
-      <header className="d2q-import-enter mb-8 max-w-3xl" style={{ "--i": 0 } as CSSProperties}>
+    <main className="w-full px-4 pb-10 pt-5 sm:px-6 sm:pt-6 lg:px-8">
+      <header className="d2q-import-enter mb-5 max-w-5xl" style={{ "--i": 0 } as CSSProperties}>
         <p className="mb-3 font-label text-xs font-bold tracking-[0.16em] text-primary">
           {copy.eyebrow}
         </p>
-        <h1 className="font-display text-balance text-[clamp(2rem,5vw,3.5rem)] font-extrabold leading-[1.04] tracking-[-0.03em] text-foreground">
+        <h1 className="font-display text-balance text-[clamp(2.25rem,5vw,4rem)] font-extrabold leading-[1.02] tracking-[-0.03em] text-foreground">
           {pageHeading}
         </h1>
         <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -207,18 +211,18 @@ export function UnifiedInputZone({
         />
       ) : (
         <div
-          className="d2q-import-enter d2q-import-panel rounded-2xl border border-border/60 bg-card p-6 shadow-sm sm:p-8"
+          className="d2q-import-enter d2q-import-panel w-full rounded-xl border border-border/60 bg-card p-4 ring-1 ring-foreground/5 sm:p-5"
           style={{ "--i": 1 } as CSSProperties}
         >
           <Tabs value={tab} onValueChange={(value) => setTab(value as InputTab)}>
-            <TabsList variant="line" className="mb-6 w-full justify-start gap-3 border-b border-border/50">
-              <TabsTrigger value="file" className="d2q-import-tab font-label text-xs font-bold uppercase tracking-widest">
+            <TabsList variant="line" className="mb-4 w-full justify-start gap-6 border-b border-border/50">
+              <TabsTrigger value="file" className="d2q-import-tab font-label text-sm font-bold uppercase tracking-[0.12em]">
                 {copy.file}
               </TabsTrigger>
-              <TabsTrigger value="paste" className="d2q-import-tab font-label text-xs font-bold uppercase tracking-widest">
+              <TabsTrigger value="paste" className="d2q-import-tab font-label text-sm font-bold uppercase tracking-[0.12em]">
                 {copy.paste}
               </TabsTrigger>
-              <TabsTrigger value="youtube" className="d2q-import-tab font-label text-xs font-bold uppercase tracking-widest">
+              <TabsTrigger value="youtube" className="d2q-import-tab font-label text-sm font-bold uppercase tracking-[0.12em]">
                 YouTube
               </TabsTrigger>
             </TabsList>
@@ -240,7 +244,7 @@ export function UnifiedInputZone({
                   value={pasteText}
                   onChange={(event) => setPasteText(event.target.value)}
                   placeholder={copy.pastePlaceholder}
-                  className="min-h-[280px] resize-y font-mono text-sm leading-relaxed"
+                  className="min-h-70 resize-y font-mono text-sm leading-relaxed"
                   disabled={busy}
                 />
               </label>

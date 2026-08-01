@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { listAcceptedFriends } from "@/lib/client/friends";
+import { updateReactionPreferences } from "@/lib/client/messages";
 import {
   blockUser,
   cancelFriendRequest,
@@ -65,6 +68,9 @@ export function SocialSafetySettings() {
   const [loading, setLoading] = useState(true);
   const [panelError, setPanelError] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  const [reactionsEnabled, setReactionsEnabled] = useState(true);
+  const [mutedReactionSenders, setMutedReactionSenders] = useState<string[]>([]);
+  const [reactionFriends, setReactionFriends] = useState<{ userId: string; username: string | null }[]>([]);
 
   const [sendRequestOpen, setSendRequestOpen] = useState(false);
   const [requestUsername, setRequestUsername] = useState("");
@@ -117,7 +123,19 @@ export function SocialSafetySettings() {
 
   useEffect(() => {
     void refreshSocialData();
+    void listAcceptedFriends().then(setReactionFriends).catch(() => undefined);
   }, [refreshSocialData]);
+
+  const saveReactionPreferences = async (enabled: boolean, muted: string[]) => {
+    try {
+      await updateReactionPreferences({ enabled, blockedSenderIds: muted });
+      setReactionsEnabled(enabled);
+      setMutedReactionSenders(muted);
+      setLiveStatus("Đã lưu tùy chọn phản ứng.");
+    } catch {
+      setPanelError(copy.genericError);
+    }
+  };
 
   const saveUsername = async () => {
     setUsernameError(null);
@@ -146,7 +164,7 @@ export function SocialSafetySettings() {
     setSendRequestError(null);
     setSendRequestSubmitting(true);
     try {
-      await sendFriendRequest(requestUsername.trim());
+      await sendFriendRequest(requestUsername.trim(), copy.requestUnavailable);
       handleSendRequestOpenChange(false);
       await refreshSocialData();
     } catch (error) {
@@ -389,6 +407,14 @@ export function SocialSafetySettings() {
             </div>
           </div>
         )}
+      </section>
+
+      <section aria-labelledby="reaction-settings-heading" className="space-y-3 border-t border-border pt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div><h3 id="reaction-settings-heading" className="text-base font-semibold text-foreground">Phản ứng vui</h3><p className="mt-1 text-sm text-muted-foreground">Chỉ xuất hiện khi bạn đang dùng ứng dụng. Tắt để chặn tất cả phản ứng.</p></div>
+          <Switch checked={reactionsEnabled} onCheckedChange={(checked) => void saveReactionPreferences(checked, mutedReactionSenders)} aria-label="Bật phản ứng vui" />
+        </div>
+        {reactionFriends.length ? <ul className="space-y-2">{reactionFriends.map((friend) => { const muted = mutedReactionSenders.includes(friend.userId); return <li key={friend.userId} className="flex items-center justify-between rounded-lg border border-border/60 p-3"><span className="text-sm font-medium">{friend.username ?? "Bạn học"}</span><Button type="button" size="sm" variant="outline" onClick={() => void saveReactionPreferences(reactionsEnabled, muted ? mutedReactionSenders.filter((id) => id !== friend.userId) : [...mutedReactionSenders, friend.userId])}>{muted ? "Bỏ chặn phản ứng" : "Tắt phản ứng"}</Button></li>; })}</ul> : <p className="text-sm text-muted-foreground">Chưa có bạn để tùy chỉnh phản ứng.</p>}
       </section>
 
       <section aria-labelledby="social-blocks-heading" className="space-y-3 border-t border-border pt-6">

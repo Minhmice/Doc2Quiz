@@ -60,11 +60,11 @@ export function FormatSelectionCard({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className="group relative block h-full min-h-[320px] cursor-pointer outline-none ring-offset-background transition-[box-shadow] duration-300 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="group relative block h-full min-h-[280px] cursor-pointer outline-none ring-offset-background transition-[box-shadow] duration-300 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <InteractiveTiltSurface className="h-full">
-        <div className="relative flex h-full min-h-[inherit] flex-col overflow-hidden border border-border/10 bg-muted p-8 transition-[border-color,background-color,box-shadow] duration-300 group-hover:border-chart-2/20 group-hover:bg-secondary group-hover:shadow-lg">
-          <div className="mb-6 flex items-start justify-between">
+        <div className="relative flex h-full min-h-[inherit] flex-col overflow-hidden border border-border bg-card p-5 transition-[border-color,background-color,box-shadow] duration-300 group-hover:border-chart-2/40 group-hover:bg-secondary group-hover:shadow-md sm:p-6">
+          <div className="mb-4 flex items-start justify-between">
             <div className="flex size-12 items-center justify-center rounded-sm bg-accent">
               <Icon className="size-7 text-accent-foreground" strokeWidth={1.75} />
             </div>
@@ -78,7 +78,7 @@ export function FormatSelectionCard({
             {eyebrow}
           </p>
 
-          <ul className="mb-8 space-y-3">
+          <ul className="mb-5 space-y-2">
             {features.map((item) => (
               <li
                 key={item}

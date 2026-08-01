@@ -62,6 +62,11 @@ function buildPublicShareUrl(token: string): string {
   return `/share/${token}`;
 }
 
+export async function copyShareLinkToClipboard(url: string): Promise<void> {
+  if (!navigator.clipboard) throw new Error("Clipboard unavailable.");
+  await navigator.clipboard.writeText(url);
+}
+
 async function collaborationRequest<T>(
   url: string,
   init?: RequestInit,

@@ -69,6 +69,8 @@ export type CanonicalVersionResult = {
   promptVersion: string;
   parserVersion: string;
   createdAt: string;
+  processingMode: "ai" | "heuristic";
+  fallbackReason: string | null;
   provenance: Record<string, unknown>;
 };
 
@@ -256,16 +258,20 @@ async function callCanonicalBuilder(params: {
     }
   }
 
-  console.warn(
-    "[canonicalVersion] AI builder failed; using heuristic fallback.",
-    lastUpstream
-      ? formatUpstreamAiError(lastUpstream.status, lastUpstream.body)
-      : "no upstream response",
-  );
-
   const upstreamError = lastUpstream
     ? formatUpstreamAiError(lastUpstream.status, lastUpstream.body)
     : "Canonical AI returned invalid output.";
+
+  console.warn("[canonicalVersion] AI fallback report", {
+    outcome: "saved_with_fallback",
+    sourceId: params.sourceId,
+    provider: providerHostFromUrl(aiConfig.url),
+    model: aiConfig.model,
+    attempts: llmInputLimits.length,
+    upstreamStatus: lastUpstream?.status ?? null,
+    reason: upstreamError,
+    nextStep: "Retry canonicalize later to replace this fallback version with an AI-enhanced version.",
+  });
 
   return {
     output: resolveHeuristicCanonicalOutput({
@@ -365,14 +371,26 @@ async function persistCanonicalVersionWithRetry(
     }
 
     lastMessage = error?.message ?? lastMessage;
+    console.error("[canonicalVersion] persist_canonical_version failed", {
+      attempt,
+      documentVersionId: args.p_document_version_id,
+      sectionCount: args.p_expected_section_count,
+      code: error?.code ?? null,
+      details: error?.details ?? null,
+      hint: error?.hint ?? null,
+      message: lastMessage,
+    });
     if (
       !error ||
       !isSupabaseNetworkError(error.message) ||
       attempt === SUPABASE_WRITE_MAX_ATTEMPTS
     ) {
-      throw new CanonicalVersionPersistenceError(
-        formatSupabaseNetworkError(lastMessage),
-      );
+      const message =
+        error?.code === "42501" &&
+        /permission denied for schema private/i.test(lastMessage)
+          ? "Database permission setup is incomplete: canonical content was built, but Supabase blocked saving it. Apply migration 20260730192000_fix_workspace_rpc_private_schema.sql, then try again."
+          : formatSupabaseNetworkError(lastMessage);
+      throw new CanonicalVersionPersistenceError(message);
     }
 
     await sleep(750 * attempt);
@@ -630,6 +648,8 @@ export async function runCanonicalVersion(params: {
     promptVersion,
     parserVersion,
     createdAt: completedAt,
+    processingMode: builderResult.mode,
+    fallbackReason: builderResult.upstreamError,
     provenance,
   };
 }

@@ -34,6 +34,7 @@ export async function POST(request: Request) {
         supabase: auth.supabase,
         userId: auth.user.id,
         payload: { kind: "multipart_file", file },
+        workspaceId: form.get("workspaceId")?.toString() ?? null,
       });
 
       return NextResponse.json({
@@ -58,13 +59,15 @@ export async function POST(request: Request) {
     }
 
     const body = workspaceIngestJsonBodySchema.parse(jsonBody);
+    const { workspaceId, ...payload } = body;
     const result = await runWorkspaceIngest({
       supabase: auth.supabase,
       userId: auth.user.id,
+      workspaceId: workspaceId ?? null,
       payload:
-        body.kind === "file_ref"
-          ? { ...body, mimeType: body.mimeType as SupportedMimeType }
-          : body,
+        payload.kind === "file_ref"
+          ? { ...payload, mimeType: payload.mimeType as SupportedMimeType }
+          : payload,
     });
 
     return NextResponse.json({

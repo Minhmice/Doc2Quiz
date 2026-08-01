@@ -21,7 +21,7 @@
 - Creator chooses one existing quiz, practice or score mode, deadline, optional message, then sends.
 - Defaults: score challenge, no deadline, one attempt, reveal results after both finish.
 - Deadline options: none, 24 hours, 3 days, 7 days, custom.
-- First MVP source supports only creator-owned quizzes. Server transaction requires owner equals current user, published status, not deleted, and at least one question.
+- First MVP source supports only creator-owned quizzes. Server transaction requires owner equals current user, `learning_outputs.status = 'ready'`, not deleted, and at least one question. No separate publish gate exists.
 
 ### Generic study-session foundation
 - Model `study_sessions.type` now as `asynchronous_challenge | live_session`; implement asynchronous only.
@@ -155,7 +155,9 @@ Creator browser
       → auth.uid + accepted-friend check
       → lock/validate owner-owned ready non-deleted quiz
       → build canonical snapshot JSON + digest
-      → insert session + two participants + creator attempt if started
+      → insert session + two participants; no creator attempt at send
+  → creator later opens/starts challenge
+  → start_study_challenge_attempt RPC creates-or-reopens creator attempt
       → insert recipient notification (unique dedupe key)
       → commit
       → notification AFTER INSERT trigger calls realtime.send
@@ -302,7 +304,9 @@ grant execute on function public.accept_study_challenge(uuid) to authenticated;
 - Lock output and friendship/request rows during create where relevant, then snapshot in same function. A friend removal/block occurring after commit cannot mutate prior snapshot; it can prevent future action. [ASSUMED: exact locking coverage requires schema decision]
 - `accept_study_challenge` locks session and recipient participant and uses `INSERT ... ON CONFLICT` into attempts. On existing in-progress attempt, return it; on completed/declined/expired, return generic unavailable reason mapped at HTTP boundary. [VERIFIED: existing direct conversation uses `ON CONFLICT`; existing friend response uses `FOR UPDATE`; exact challenge contract is ASSUMED]
 - `complete_study_attempt` locks attempt and rejects duplicate completion. It calculates score server-side from private snapshot answer keys, updates participant/session status, evaluates reveal policy, inserts all notifications inside same transaction. [ASSUMED: required implementation design based on locked policy]
-- `remove_friend(p_other_user_id)` must change accepted `friend_requests` row to `cancelled` under lock, not insert a block. Existing friend relationship is represented solely by accepted request; `block_user` only cancels pending requests today and is distinct. [VERIFIED: social safety and messaging migrations; CONTEXT]
+- `remove_friend(p_other_user_id)` changes the accepted `friend_requests` row to `cancelled` under lock, cancels pending challenge invites, blocks new friend-gated actions, and preserves active/completed snapshot sessions through normal terminal/result-reveal lifecycle. It never inserts a block. [RESOLVED: CONTEXT locked policy]
+- `block_user` cancels pending and active sessions for both participants, preserves completed result readability, and blocks future contact/challenges. [RESOLVED: CONTEXT locked policy]
+- `create_study_challenge` creates no creator attempt. `start_study_challenge_attempt` creates-or-reopens the creator attempt only when creator opens/starts. [RESOLVED: CONTEXT locked policy]
 
 ## Don’t Hand-Roll
 
@@ -443,27 +447,14 @@ This is proposed code. Existing channel setup/cleanup and focus/visibility patte
 | A5 | Row locks should cover source and friendship membership during create. | RLS and authorization | Exact race semantics need SQL test proof. |
 | A6 | Dedicated mobile message page/drawer can share current conversation transport cleanly. | Mobile chat | Component extraction scope may be larger than expected. |
 
-## Open Questions
+## Resolved Research Decisions
 
-1. **What exposes “published” for current `learning_outputs`?**
-   - What we know: current schema/source filters prove `kind='quiz'`, `status='ready'`, `deleted_at is null`; no `published` field was found in inspected migration/schema. [VERIFIED: `20260730150000_workspace_foundation.sql`; share migrations]
-   - What's unclear: CONTEXT says published, but current data model uses ready status and no visible publish column.
-   - Recommendation: Treat `status='ready'` as current eligible state only if product owner confirms it is intended published equivalent; otherwise add explicit publication state before challenge creation.
-
-2. **Which scheduler is provisioned in deployed Supabase?**
-   - What we know: local `supabase` CLI exists; repo has no scheduler config/job; Supabase Cron is supported only after module enablement. [VERIFIED: environment/codebase; CITED: https://supabase.com/docs/guides/cron/install]
-   - What's unclear: hosted project Cron entitlement/enabled state and operator ownership.
-   - Recommendation: Human checkpoint before creating `cron.schedule`; ship callable idempotent reminder sweep first.
-
-3. **Does remove-friend cancel active sessions or only future social actions?**
-   - What we know: locked context says remove is distinct from block and snapshots survive source changes/revocation.
-   - What's unclear: participant access semantics after friendship removal/block for active session and chat history.
-   - Recommendation: Lock explicit policy before writing RLS: preserve a valid active session to completion, but block all new challenges/messages; or cancel outstanding invites. Do not let implicit friend predicate silently revoke snapshot access.
-
-4. **How should creator start their own one-attempt challenge?**
-   - What we know: challenger may start before recipient accepts; default one attempt.
-   - What's unclear: whether create immediately creates creator attempt or separate start action.
-   - Recommendation: `start_study_challenge_attempt` uses same idempotent attempt primitive as accept, but creator can invoke it while pending. [ASSUMED]
+1. **Quiz eligibility:** `learning_outputs.status = 'ready'` is the complete eligible state for Phase 12; no publish field or separate publish gate is added. [RESOLVED: CONTEXT]
+2. **Deadline reminder:** Phase 12 ships a callable idempotent reminder sweep and leaves it unscheduled. No `cron.schedule` or operator checkpoint is required in this phase. [RESOLVED: CONTEXT]
+3. **Remove friend:** cancel pending invites, block new social actions, preserve active/completed snapshot sessions and normal reveal lifecycle. [RESOLVED: CONTEXT]
+4. **Block:** cancel pending and active sessions for both participants, preserve completed result readability, block future contact/challenges. [RESOLVED: CONTEXT]
+5. **Creator attempt timing:** challenge send creates no creator attempt; `start_study_challenge_attempt` creates-or-reopens it only when creator opens/starts. [RESOLVED: CONTEXT]
+6. **Realtime migration:** new private-topic RLS/invalidation support belongs in a later additive Phase 12 migration, never a retroactive edit to the foundation migration. [RESOLVED: final plan contract]
 
 ## Environment Availability
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Doc2QuizAnimatedLoading } from "@/components/processing/doc2quiz-animated-loading";
+import { Doc2QuizAnimatedLoading } from "@/legacy/loading/doc2quiz-animated-loading";
 
 export default function AppLoadingPage() {
   const router = useRouter();

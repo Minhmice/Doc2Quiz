@@ -89,7 +89,7 @@ describe("social safety client", () => {
     vi.stubGlobal("fetch", mockFetch);
 
     await expect(sendFriendRequest("ghost")).rejects.toThrow(
-      "Social settings are unavailable.",
+      "Friend request could not be sent. Check the username and try again.",
     );
   });
 
