@@ -2,18 +2,19 @@ export type SocialDestination = "friends" | "requests" | "invites" | "messages" 
 export type SocialPage<T> = Readonly<{ items: readonly T[]; nextCursor: string | null; hasMore: boolean; totalCount?: number }>;
 
 type RpcClient = { rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string } | null }> };
-type CursorPayload = { v: 1; d: SocialDestination; k: unknown[] };
+type CursorPayload = { v: 1; d: SocialDestination; k: unknown[]; p?: PresenceBucket };
 
+export type PresenceBucket = "online" | "offline";
 const unavailable = () => new Error("social_unavailable");
 
-export function encodeSocialCursor(destination: SocialDestination, keys: unknown[]): string {
-  return Buffer.from(JSON.stringify({ v: 1, d: destination, k: keys } satisfies CursorPayload)).toString("base64url");
+export function encodeSocialCursor(destination: SocialDestination, keys: unknown[], presence?: PresenceBucket): string {
+  return Buffer.from(JSON.stringify({ v: 1, d: destination, k: keys, ...(destination === "friends" ? { p: presence } : {}) } satisfies CursorPayload)).toString("base64url");
 }
 
-export function decodeSocialCursor(destination: SocialDestination, cursor: string): unknown[] {
+export function decodeSocialCursor(destination: SocialDestination, cursor: string, presence?: PresenceBucket): unknown[] {
   try {
     const value = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as CursorPayload;
-    if (value.v !== 1 || value.d !== destination || !Array.isArray(value.k) || value.k.length === 0) throw unavailable();
+    if (value.v !== 1 || value.d !== destination || !Array.isArray(value.k) || value.k.length === 0 || (destination === "friends" && value.p !== presence)) throw unavailable();
     return value.k;
   } catch { throw unavailable(); }
 }
@@ -26,8 +27,9 @@ async function list<T extends Record<string, unknown>>(
   cursor: string | null,
   keys: (row: T) => unknown[],
   extra: Record<string, unknown> = {},
+  cursorPresence?: PresenceBucket,
 ): Promise<SocialPage<T>> {
-  const cursorKeys = cursor ? decodeSocialCursor(destination, cursor) : null;
+  const cursorKeys = cursor ? decodeSocialCursor(destination, cursor, cursorPresence) : null;
   const { data, error } = await client.rpc(rpcName, { p_limit: limit + 1, p_cursor: cursorKeys, ...extra });
   if (error) throw unavailable();
   const payload = (data ?? {}) as { items?: unknown; totalCount?: unknown };
@@ -36,7 +38,7 @@ async function list<T extends Record<string, unknown>>(
   const hasMore = rows.length > limit;
   return {
     items,
-    nextCursor: hasMore && items.length ? encodeSocialCursor(destination, keys(items.at(-1)!)) : null,
+    nextCursor: hasMore && items.length ? encodeSocialCursor(destination, keys(items.at(-1)!), cursorPresence) : null,
     hasMore,
     ...(typeof payload.totalCount === "number" ? { totalCount: payload.totalCount } : {}),
   };
@@ -48,7 +50,7 @@ export type SocialInvite = Record<string, unknown> & { sessionId: string; create
 export type SocialConversation = Record<string, unknown> & { conversationId: string; lastMessageAt: string | null };
 export type SocialBlock = Record<string, unknown> & { userId: string; blockedAt: string };
 
-export const listSocialFriends = (c: RpcClient, l: number, cursor: string | null) => list<SocialFriend>(c,"friends","list_social_friends",l,cursor,r=>[r.presenceRank,r.username??"",r.userId]);
+export const listSocialFriends = (c: RpcClient, l: number, cursor: string | null, presence: PresenceBucket) => list<SocialFriend>(c,"friends","list_social_friends",l,cursor,r=>[r.presenceRank,r.username??"",r.userId],{p_presence: presence},presence);
 export const listSocialRequests = (c: RpcClient, l: number, cursor: string | null, direction: "incoming"|"outgoing") => list<SocialRequest>(c,"requests","list_social_friend_requests",l,cursor,r=>[r.createdAt,r.requestId],{p_direction:direction});
 export const listSocialInvites = (c: RpcClient, l: number, cursor: string | null) => list<SocialInvite>(c,"invites","list_social_invites",l,cursor,r=>[r.createdAt,r.sessionId]);
 export const listSocialConversations = (c: RpcClient, l: number, cursor: string | null) => list<SocialConversation>(c,"messages","list_social_conversations",l,cursor,r=>[r.lastMessageAt,r.conversationId]);

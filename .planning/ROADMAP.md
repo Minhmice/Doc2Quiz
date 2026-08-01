@@ -26,6 +26,7 @@ Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder s
 - [x] **Phase 4: Quiz Pipeline** — Concept detection, MCQ generation, save, review, practice wire-up (completed 2026-07-25)
 - [x] **Phase 5: Flashcards & E2E** — Flashcard wizard, generation, learning, dashboard integration (completed 2026-07-25)
 - [ ] **Phase 12: Study Together** — Durable friend lifecycle, asynchronous quiz challenges, immutable quiz snapshots, in-app notifications, scalable friends hub, and responsive messaging. Depends on existing quiz practice and Phase 11 social primitives. Requirements: SOCIAL-01–10. Success: a user can challenge an accepted friend with an owned quiz; recipient accepts and starts a snapshot-based attempt; both see result comparison under configured reveal policy; missed realtime events reconcile from durable notifications.
+- [ ] **Phase 14: Friend presence and chat layout repair** — Correct online/offline tabs and presence indicators in friend lists; wrap long chat messages inside their bubbles. Depends on Phase 12 social UI.
 
 ### Phase 12: Study Together
 
@@ -66,6 +67,24 @@ Plans:
 **Wave 7** *(blocked on all implementation plans)*
 - [ ] 12-06-PLAN.md — Validation-contract proof and two-account responsive verification
 
+
+### Phase 14: Friend presence and chat layout repair
+
+**Goal:** Friends appear in their actual presence tab with offline presence visuals suppressed, while all chat messages remain readable inside their bubbles.
+**Depends on:** Phase 12 social UI
+**Requirements:** SOCIAL-09, SOCIAL-10
+**Success Criteria:**
+
+1. An online friend appears only in the Online tab; an offline friend appears only in the Offline tab.
+2. Offline friend rows never show an online presence dot or online status text; online rows retain the existing live presence presentation.
+3. Long unbroken and normal chat text wraps or breaks safely within its bubble on desktop and mobile, without horizontal overflow.
+4. Existing friend-list paging, realtime presence updates, messaging history, and responsive chat behavior remain intact.
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Tracer: server-authoritative presence buckets, cursor paging, and contract tests
+- [ ] 14-02-PLAN.md — Presence tabs/row visuals and shared chat-bubble overflow repair
 
 ---
 
