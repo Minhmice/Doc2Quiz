@@ -21,8 +21,7 @@ export type AcceptedFriendSummary = {
   userId: string;
   username: string | null;
   avatarUrl: string | null;
-  isOnline: boolean;
-  presence: "online" | "recently active" | "offline";
+  presence: "online" | "recently_active" | "offline";
   lastActiveAt: string | null;
   unreadCount: number;
 };
@@ -148,13 +147,20 @@ async function fetchFriendsOverview(): Promise<FriendsOverview> {
   return socialRequest<FriendsOverview>("/api/friends");
 }
 
-export async function listAcceptedFriendPage(cursor?: string): Promise<Page<AcceptedFriendSummary>> {
-  const params = new URLSearchParams({ limit: "20", ...(cursor ? { cursor } : {}) });
+export async function listAcceptedFriendPage(
+  presence: "online" | "offline",
+  cursor?: string,
+): Promise<Page<AcceptedFriendSummary>> {
+  const params = new URLSearchParams({ limit: "20", presence, ...(cursor ? { cursor } : {}) });
   return socialRequest<Page<AcceptedFriendSummary>>(`/api/friends?${params}`);
 }
 
 export async function listAcceptedFriends(): Promise<AcceptedFriendSummary[]> {
-  return [...(await listAcceptedFriendPage()).items];
+  const [online, offline] = await Promise.all([
+    listAcceptedFriendPage("online"),
+    listAcceptedFriendPage("offline"),
+  ]);
+  return [...online.items, ...offline.items];
 }
 
 export async function fetchIncomingFriendRequests(): Promise<{
