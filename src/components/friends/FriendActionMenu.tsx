@@ -21,15 +21,23 @@ import { PRESET_REACTION_IDS, sendPresetReaction, type PresetReactionId } from "
 
 const reactions: Record<PresetReactionId, string> = { xin_chao: "Ê, tập trung học nè!", co_len: "Đừng để điểm số chạy mất!", dinh_qua: "Làm một câu nữa đi!", qua_hay: "Nghỉ chút rồi chiến tiếp!", ban_gioi: "Quiz đang đợi kìa!", thu_gian: "Bạn làm được mà!", good_luck: "Cố lên nhé!", tuyet_voi: "Tuyệt vời!" };
 
+type FriendPresence = "online" | "recently_active" | "offline";
+
 type DestructiveAction = "remove" | "block";
 
-export function FriendActionMenu({ userId, username, avatarUrl, presence, onStudyTogether, onMessage, onRefresh, onStatus }: { userId: string; username: string | null; avatarUrl: string | null; presence: "online" | "recently active" | "offline"; onStudyTogether: () => void; onMessage: () => void; onRefresh: () => void; onStatus: (status: string) => void }) {
+export function getFriendPresencePresentation(presence: FriendPresence) {
+  const isOnline = presence === "online";
+  return { isOnline, showOnlineAffordance: isOnline };
+}
+
+export function FriendActionMenu({ userId, username, avatarUrl, presence, onStudyTogether, onMessage, onRefresh, onStatus }: { userId: string; username: string | null; avatarUrl: string | null; presence: "online" | "recently_active" | "offline"; onStudyTogether: () => void; onMessage: () => void; onRefresh: () => void; onStatus: (status: string) => void }) {
   const router = useRouter();
   const { messages } = useLocale();
   const copy = messages.friendActions;
   const [destructiveAction, setDestructiveAction] = useState<DestructiveAction | null>(null);
   const [busy, setBusy] = useState(false);
-  const presenceLabel = copy[presence === "recently active" ? "recentlyActive" : presence];
+  const { isOnline } = getFriendPresencePresentation(presence);
+  const presenceLabel = isOnline ? copy.online : null;
 
   const confirm = async () => {
     if (!destructiveAction) return;
@@ -64,8 +72,8 @@ export function FriendActionMenu({ userId, username, avatarUrl, presence, onStud
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm outline-none focus:bg-accent">
         <span className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-semibold text-muted-foreground">{avatarUrl ? <img src={avatarUrl} alt="" className="size-full object-cover" /> : (username?.[0]?.toUpperCase() ?? "?")}</span>
-        <span className="size-2 rounded-full bg-muted-foreground" />
-        <span>{username ?? "Study buddy"}<small className="ml-2 text-xs text-muted-foreground">{presenceLabel}</small></span>
+        {isOnline ? <span className="size-2 rounded-full bg-muted-foreground" /> : null}
+        <span>{username ?? "Study buddy"}{presenceLabel ? <small className="ml-2 text-xs text-muted-foreground">{presenceLabel}</small> : null}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
         <DropdownMenuGroup><DropdownMenuLabel>{username ?? "Study buddy"}</DropdownMenuLabel></DropdownMenuGroup>
