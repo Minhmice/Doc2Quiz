@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createSocialCountsController, refreshSocialCounts } from "./socialCounts";
+import { createSocialCountsController, emptySocialCountsSnapshot, refreshSocialCounts } from "./socialCounts";
 
 const tick = async () => { await Promise.resolve(); await Promise.resolve(); };
 
@@ -24,6 +24,11 @@ describe("social counts reconciliation", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("does not manufacture counts when authenticated HTTP fails", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ count: 999 }), { status: 500 }));
+    await expect(refreshSocialCounts()).rejects.toThrow("social_unavailable");
+  });
+
   it("reconciles on private events, subscribe, focus, and visibility without trusting payload counts", async () => {
     const handlers = new Map<string, () => void>();
     const channels: Array<{ event?: () => void; subscribed?: (status: string) => void }> = [];
@@ -42,7 +47,7 @@ describe("social counts reconciliation", () => {
     });
     const windowTarget = { addEventListener: vi.fn((name, fn) => handlers.set(`w:${name}`, fn)), removeEventListener: vi.fn() };
     const documentTarget = { visibilityState: "visible", addEventListener: vi.fn((name, fn) => handlers.set(`d:${name}`, fn)), removeEventListener: vi.fn() };
-    const fetched = { notificationUnreadCount: 1, incomingRequestCount: 2, unreadMessageCount: 3, notifications: [] };
+    const fetched = { ...emptySocialCountsSnapshot(), notificationUnreadCount: 1, incomingRequestCount: 2, unreadMessageCount: 3 };
     const reconcile = vi.fn().mockResolvedValue(fetched);
     const onSnapshot = vi.fn();
 

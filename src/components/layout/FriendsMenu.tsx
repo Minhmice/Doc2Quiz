@@ -9,7 +9,7 @@ import { AddFriendDialog } from "@/components/friends/AddFriendDialog";
 import { DirectMessageDialog } from "@/components/friends/DirectMessageDialog";
 import { FriendActionMenu } from "@/components/friends/FriendActionMenu";
 import { fetchIncomingFriendRequests, listAcceptedFriends, respondFriendRequest, type AcceptedFriendSummary, type IncomingFriendRequestSummary } from "@/lib/client/friends";
-import { createSocialCountsController, type SocialCountsSnapshot } from "@/lib/client/socialCounts";
+import { createSocialCountsController, emptySocialCountsSnapshot, type SocialCountsSnapshot } from "@/lib/client/socialCounts";
 import { openDirectConversation } from "@/lib/client/messages";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ export function FriendsMenu() {
   const [messageFriend, setMessageFriend] = useState<AcceptedFriendSummary | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [status, setStatus] = useState("");
-  const [counts, setCounts] = useState<SocialCountsSnapshot>({ notificationUnreadCount: 0, incomingRequestCount: 0, unreadMessageCount: 0, notifications: [] });
+  const [counts, setCounts] = useState<SocialCountsSnapshot>(emptySocialCountsSnapshot);
   const refresh = useCallback(async () => {
     try {
       const [nextFriends, nextIncoming] = await Promise.all([listAcceptedFriends(), fetchIncomingFriendRequests()]);
