@@ -19,6 +19,11 @@ export type ConversationTransport = {
 
 type ControllerOptions = { conversationId: string; transport: ConversationTransport; onChange: (state: ConversationState) => void; onMessageReceived?: () => void; onConversationRead?: () => void };
 
+export function messageBubbleClassName(sent: boolean, body: string) {
+  void body;
+  return `min-w-0 max-w-[75%] wrap-anywhere rounded-2xl px-3 py-2 text-sm leading-5 ${sent ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md bg-muted text-foreground"}`;
+}
+
 export function mergeDirectMessages(current: DirectMessage[], incoming: DirectMessage[]) {
   const byId = new Map(current.map((item) => [item.id, item]));
   for (const item of incoming) if (item?.id && item.body && item.senderId && item.createdAt) byId.set(item.id, item);
@@ -129,7 +134,7 @@ export function ConversationView({ conversationId, friendName, friendAvatarUrl, 
   return <div className={`flex min-h-0 flex-1 flex-col ${className}`}>
     <div ref={scrollRef} onScroll={(event) => { const element = event.currentTarget; stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24; if (element.scrollTop === 0) void loadOlder(); }} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/60 p-4" aria-label="Lịch sử tin nhắn">
       {state.hasOlder && state.messages.length ? <div className="text-center"><Button type="button" variant="ghost" size="sm" disabled={state.loadingOlder} onClick={() => void loadOlder()}>{state.loadingOlder ? "Đang tải…" : "Tải tin nhắn cũ hơn"}</Button></div> : null}
-      {state.messages.map((message) => { const sent = message.senderId === state.currentUserId; return <div key={message.id} className={`flex items-end gap-2 ${sent ? "justify-end" : "justify-start"}`}>{!sent ? <ChatAvatar url={friendAvatarUrl} name={friendName} /> : null}<p className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-5 ${sent ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md bg-muted text-foreground"}`}>{message.body}</p>{sent ? <ChatAvatar url={ownAvatarUrl} name={displayName} /> : null}</div>; })}
+      {state.messages.map((message) => { const sent = message.senderId === state.currentUserId; return <div key={message.id} className={`flex items-end gap-2 ${sent ? "justify-end" : "justify-start"}`}>{!sent ? <ChatAvatar url={friendAvatarUrl} name={friendName} /> : null}<p className={messageBubbleClassName(sent, message.body)}>{message.body}</p>{sent ? <ChatAvatar url={ownAvatarUrl} name={displayName} /> : null}</div>; })}
       {!state.messages.length ? <p className="pt-12 text-center text-sm text-muted-foreground">{state.loading ? "Đang tải tin nhắn…" : state.error || "Chưa có tin nhắn."}</p> : null}
     </div>
     <div className="shrink-0 border-t border-border bg-card p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]"><label className="sr-only" htmlFor={`direct-message-${conversationId}`}>Tin nhắn</label><Textarea autoFocus id={`direct-message-${conversationId}`} value={body} maxLength={2000} disabled={state.sending || state.loading} onChange={(event) => setBody(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }} placeholder="Viết tin nhắn…" className="min-h-16 resize-none" /><div className="mt-2 flex items-center justify-between gap-2"><p className="text-xs text-destructive" aria-live="polite">{state.error}</p><Button type="button" size="sm" disabled={state.sending || !body.trim() || state.loading} onClick={() => void send()}>{state.sending ? "Đang gửi…" : "Gửi"}</Button></div></div>

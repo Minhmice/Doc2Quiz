@@ -50,8 +50,16 @@ describe("shared conversation bubble presentation", () => {
     const source = await import("node:fs").then(({ readFileSync }) =>
       readFileSync(new URL("./ConversationView.tsx", import.meta.url), "utf8"),
     );
-    expect(source).toContain("<ConversationView");
-    expect(source).toContain("min-w-0 wrap-anywhere");
+    const desktop = await import("node:fs").then(({ readFileSync }) =>
+      readFileSync(new URL("./DirectMessageDialog.tsx", import.meta.url), "utf8"),
+    );
+    const mobile = await import("node:fs").then(({ readFileSync }) =>
+      readFileSync(new URL("../../app/(app)/friends/messages/[conversationId]/ConversationPageClient.tsx", import.meta.url), "utf8"),
+    );
+    expect(desktop).toContain("<ConversationView");
+    expect(mobile).toContain("<ConversationView");
+    expect(source).toContain("min-w-0");
+    expect(source).toContain("wrap-anywhere");
     expect(source).toContain("createConversationController");
   });
 });
