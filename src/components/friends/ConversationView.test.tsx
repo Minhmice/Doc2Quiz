@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createConversationController,
   mergeDirectMessages,
+  messageBubbleClassName,
   type ConversationTransport,
 } from "./ConversationView";
 import type { DirectMessage } from "@/lib/client/messages";
@@ -30,6 +31,30 @@ function transport(pages: DirectMessage[][]): ConversationTransport & { emit: ()
     removed: () => isRemoved,
   };
 }
+
+describe("shared conversation bubble presentation", () => {
+  it.each([
+    [false, "A long sentence with normal whitespace that should remain readable inside its bubble."],
+    [true, "A long sentence with normal whitespace that should remain readable inside its bubble."],
+    [false, "x".repeat(2000)],
+    [true, "x".repeat(2000)],
+  ] as const)("contains safe wrapping classes for sent=%s and body length=%s", (sent, body) => {
+    const classes = messageBubbleClassName(sent, body);
+    expect(classes).toContain("min-w-0");
+    expect(classes).toContain("wrap-anywhere");
+    expect(classes).toContain("max-w-[75%]");
+    expect(classes).toContain(sent ? "bg-primary" : "bg-muted");
+  });
+
+  it("keeps wrapping in shared desktop and mobile view without a second controller", async () => {
+    const source = await import("node:fs").then(({ readFileSync }) =>
+      readFileSync(new URL("./ConversationView.tsx", import.meta.url), "utf8"),
+    );
+    expect(source).toContain("<ConversationView");
+    expect(source).toContain("min-w-0 wrap-anywhere");
+    expect(source).toContain("createConversationController");
+  });
+});
 
 describe("shared conversation controller", () => {
   it("dedupes and orders initial, older, and reconnect history using before cursor", async () => {
