@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   blockUser,
   listBlockedUsers,
+  listAcceptedFriendPage,
   listFriendRequests,
   mapSocialHttpError,
   reportUser,
@@ -106,6 +107,21 @@ describe("social safety client", () => {
       name: "SocialRateLimitedError",
       retryAfterSeconds: 120,
     });
+  });
+
+  it("requests each accepted-friend bucket with server cursor and enum DTO", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { items: [{ userId: USER_ID, username: "bob", presence: "recently_active" }], nextCursor: "next", hasMore: true } }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const online = await listAcceptedFriendPage("online");
+    const offline = await listAcceptedFriendPage("offline", "cursor-offline");
+
+    expect(online.items[0].presence).toBe("recently_active");
+    expect(mockFetch).toHaveBeenNthCalledWith(1, "/api/friends?limit=20&presence=online", undefined);
+    expect(mockFetch).toHaveBeenNthCalledWith(2, "/api/friends?limit=20&presence=offline&cursor=cursor-offline", undefined);
   });
 
   it("lists friend requests and blocked users from protected APIs", async () => {

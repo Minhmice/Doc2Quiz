@@ -18,6 +18,7 @@ const removeFriendMock = vi.fn();
 const unblockUserMock = vi.fn();
 const listBlockedUsersMock = vi.fn();
 const reportUserMock = vi.fn();
+const listSocialFriendsMock = vi.fn();
 const createSupabaseAdminClientMock = vi.fn();
 const broadcastSocialEventMock = vi.fn();
 
@@ -31,6 +32,10 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({
   broadcastSocialEvent: (...args: unknown[]) => broadcastSocialEventMock(...args),
+}));
+
+vi.mock("@/lib/server/friends/socialLists", () => ({
+  listSocialFriends: (...args: unknown[]) => listSocialFriendsMock(...args),
 }));
 
 vi.mock("@/lib/server/friends/friends", async (importOriginal) => {
@@ -66,6 +71,7 @@ import {
 } from "@/app/api/friends/blocks/route";
 import { POST as postReport } from "@/app/api/friends/reports/route";
 import { DELETE as deleteFriend } from "@/app/api/friends/[userId]/route";
+import { GET as getFriends } from "@/app/api/friends/route";
 
 const supabase = { tag: "client" };
 const requestId = "00000000-0000-4000-8000-000000000010";
@@ -80,6 +86,48 @@ function jsonRequest(url: string, method: string, body?: unknown) {
 }
 
 describe("social API routes", () => {
+  describe("GET /api/friends", () => {
+    it("authenticates before parsing and defaults to offline bucket", async () => {
+      const response = (await getFriends(new Request("http://localhost/api/friends"))) as Response;
+
+      expect(response.status).toBe(200);
+      expect(listSocialFriendsMock).toHaveBeenCalledWith(supabase, 20, null, "offline");
+    });
+
+    it("accepts explicit online and offline buckets", async () => {
+      await getFriends(new Request("http://localhost/api/friends?presence=online&limit=7&cursor=opaque"));
+      expect(listSocialFriendsMock).toHaveBeenCalledWith(supabase, 7, "opaque", "online");
+
+      listSocialFriendsMock.mockClear();
+      await getFriends(new Request("http://localhost/api/friends?presence=offline"));
+      expect(listSocialFriendsMock).toHaveBeenCalledWith(supabase, 20, null, "offline");
+    });
+
+    it("rejects invalid presence before the adapter and keeps auth first", async () => {
+      const authOrder: string[] = [];
+      requireApiUserMock.mockImplementationOnce(async () => {
+        authOrder.push("auth");
+        return { supabase, user: { id: "user-1" } };
+      });
+
+      const response = (await getFriends(new Request("http://localhost/api/friends?presence=recently_active"))) as Response;
+      authOrder.push("after");
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "invalid" });
+      expect(listSocialFriendsMock).not.toHaveBeenCalled();
+      expect(authOrder).toEqual(["auth", "after"]);
+    });
+
+    it("returns 401 before parsing untrusted query data", async () => {
+      requireApiUserMock.mockResolvedValueOnce({ error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) });
+
+      const response = (await getFriends(new Request("http://localhost/api/friends?presence=invalid"))) as Response;
+      expect(response.status).toBe(401);
+      expect(listSocialFriendsMock).not.toHaveBeenCalled();
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     requireApiUserMock.mockResolvedValue({
@@ -95,6 +143,7 @@ describe("social API routes", () => {
     removeFriendMock.mockResolvedValue({ ok: true });
     unblockUserMock.mockResolvedValue({ ok: true });
     listBlockedUsersMock.mockResolvedValue({ blocks: [] });
+    listSocialFriendsMock.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
     reportUserMock.mockResolvedValue({ ok: true });
     broadcastSocialEventMock.mockResolvedValue(true);
   });
