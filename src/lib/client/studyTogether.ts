@@ -11,6 +11,17 @@ export type EligibleChallengeQuiz = Readonly<{ outputId: string; title: string; 
 
 const unavailable = "Challenge is unavailable.";
 
+function isEligibleChallengeQuiz(value: unknown): value is EligibleChallengeQuiz {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.outputId === "string" && typeof row.title === "string" && row.status === "ready" && typeof row.questionCount === "number" && Number.isInteger(row.questionCount) && row.questionCount > 0;
+}
+
+export async function listEligibleChallengeQuizzes(): Promise<EligibleChallengeQuiz[]> {
+  const rows = await request<unknown>("/api/friends/study-challenges/sources");
+  return Array.isArray(rows) ? rows.filter(isEligibleChallengeQuiz) : [];
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     const response = await fetch(url, init);
