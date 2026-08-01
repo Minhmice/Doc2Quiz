@@ -1,4 +1,4 @@
-export const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+export const PROFILE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 export const PROFILE_IMAGE_EXTENSIONS = {
   "image/png": "png",
@@ -13,7 +13,7 @@ const avatarPathPattern = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 
 export function validateProfileImage(file: Pick<File, "type" | "size">): string | null {
   if (!profileImageExtension(file.type)) return "Choose a PNG, JPEG, WebP, or GIF image.";
-  if (file.size > PROFILE_IMAGE_MAX_BYTES) return "Image must be 2 MB or smaller.";
+  if (file.size >= PROFILE_IMAGE_MAX_BYTES) return "Image must be smaller than 10 MB.";
   return null;
 }
 

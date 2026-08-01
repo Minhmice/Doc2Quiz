@@ -18,10 +18,12 @@ describe("profileValidation", () => {
     expect(profileImageExtension("image/gif")).toBe("gif");
   });
 
-  it("exports one MIME allowlist and rejects bad image inputs", () => {
+  it("exports one MIME allowlist and enforces the exclusive 10 MiB boundary", () => {
     expect(PROFILE_IMAGE_EXTENSIONS).toEqual({ "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" });
+    expect(PROFILE_IMAGE_MAX_BYTES).toBe(10 * 1024 * 1024);
+    expect(validateProfileImage({ type: "image/jpeg", size: PROFILE_IMAGE_MAX_BYTES - 1 })).toBeNull();
+    expect(validateProfileImage({ type: "image/jpeg", size: PROFILE_IMAGE_MAX_BYTES })).toBe("Image must be smaller than 10 MB.");
     expect(validateProfileImage({ type: "image/svg+xml", size: 1 })).toMatch(/PNG, JPEG, WebP, or GIF/);
-    expect(validateProfileImage({ type: "image/jpeg", size: PROFILE_IMAGE_MAX_BYTES + 1 })).toMatch(/2 MB/);
   });
 
   it("builds and parses only canonical avatar paths", () => {
