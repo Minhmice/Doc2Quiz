@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-08-01T18:15:00.000Z"
-last_activity: 2026-08-02 -- Completed quick task 260802-0nr: study challenge handoff and social count consolidation
+last_updated: "2026-08-01T18:56:00.000Z"
+last_activity: 2026-08-02 -- Completed quick task 260802-2hj: increase avatar upload limit to exclusive 10 MiB
 progress:
   total_phases: 13
   completed_phases: 9
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 Phase: 14 (friend-presence-and-chat-layout-repair) — EXECUTING
 Plan: 1 of 2
 Status: Executing Phase 14
-Last activity: 2026-08-02 -- Completed quick task 260802-0nr: study challenge handoff and social count consolidation
+Last activity: 2026-08-02 -- Completed quick task 260802-2hj: increase avatar upload limit to exclusive 10 MiB
 
 Progress: [██████████] 100%
 
@@ -90,6 +90,7 @@ Progress: [██████████] 100%
 | 2026-07-31 | Rebuild dashboard as workspace-only dashboard | `.planning/quick/260731-0t1-rebuild-dashboard-as-workspace-only-dash/SUMMARY.md` | `d8c76b0`, `1a2d54f`, `f817082` |
 | 2026-07-31 | Create clean maintainable Supabase schema mirror | `.planning/quick/260731-tui-create-clean-maintainable-supabase-schem/260731-tui-SUMMARY.md` | `b0be5bd` |
 | 2026-08-02 | Study challenge handoff and social count consolidation | `.planning/quick/260802-0nr-fix-friendshubclient-studywith-modal-lau/SUMMARY.md` | `1e83c23`, `50d1708`, `02d1b8b` |
+| 2026-08-02 | Increase avatar upload limit to exclusive 10 MiB | `.planning/quick/260802-2hj-increase-avatar-upload-limit-from-2-mb-t/260802-2hj-SUMMARY.md` | `fea4200` |
 
 ## Blockers
 
