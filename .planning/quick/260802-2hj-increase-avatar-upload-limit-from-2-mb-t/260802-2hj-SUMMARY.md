@@ -62,7 +62,8 @@ completed: 2026-08-02
 
 - RED: `npm test -- --run src/lib/profile/profileValidation.test.ts src/app/api/profile/route.test.ts` failed against old 2 MiB constant as expected.
 - PASS: `npm test -- --run src/lib/profile/profileValidation.test.ts src/app/api/profile/route.test.ts` — 13 tests passed.
-- PASS: `npm run typecheck`.
+- PASS: `npm run typecheck` immediately after implementation.
+- Final typecheck rerun was blocked by concurrent unrelated friend-test edits importing six not-yet-exported symbols; avatar files produced no type errors.
 - Existing `ProfilePageClient.test.tsx` focused check was attempted but has a pre-existing failure from unrelated localization work: source now uses `messages.profile.*` while test expects old hard-coded English copy.
 
 ## Decisions Made
@@ -91,7 +92,7 @@ None - no external service configuration required.
 
 - Summary exists.
 - Commit `fea4200` exists.
-- Shared boundary tests and TypeScript typecheck pass.
+- Shared boundary tests pass; implementation-time typecheck passed, while final rerun reports only concurrent unrelated friend-test export errors.
 
 ## Next Phase Readiness
 
