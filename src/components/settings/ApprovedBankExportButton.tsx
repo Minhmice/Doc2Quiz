@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/locale/LocaleProvider";
 import {
   ensureStudySetDb,
   getApprovedBank,
@@ -13,6 +14,7 @@ import {
  * One JSON object per line: `{ studySetId, question }`.
  */
 export function ApprovedBankExportButton() {
+  const { messages } = useLocale();
   const [busy, setBusy] = useState(false);
 
   const onExport = async () => {
@@ -31,7 +33,7 @@ export function ApprovedBankExportButton() {
         }
       }
       if (lines.length === 0) {
-        window.alert("No approved items to export.");
+        window.alert(messages.export.empty);
         return;
       }
       const blob = new Blob([lines.join("\n")], {
@@ -51,8 +53,7 @@ export function ApprovedBankExportButton() {
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        Download approved multiple-choice items from all study sets on this device
-        (JSON Lines). For research or external training only — see{" "}
+        {messages.export.description}{" "}
         <span className="font-mono text-xs">docs/EVAL-quiz-style-criteria.md</span>.
       </p>
       <Button
@@ -62,7 +63,7 @@ export function ApprovedBankExportButton() {
         disabled={busy}
         onClick={() => void onExport()}
       >
-        {busy ? "Exporting…" : "Export approved items (JSONL)"}
+        {busy ? messages.export.busy : messages.export.action}
       </Button>
     </div>
   );

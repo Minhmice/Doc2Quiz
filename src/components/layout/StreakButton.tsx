@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { ACTIVITY_STATS_CHANGED_EVENT } from "@/lib/appEvents";
 import { recoveryAvailable, streakTier, type LearningStreak } from "@/lib/streak";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 const emptyStreak: LearningStreak = { currentStreak: 0, lostStreak: 0, lostAt: null, recoveryStartedAt: null, recoveryQuizCount: 0, recoveriesThisMonth: 0 };
 const tierClass = {
@@ -19,6 +20,7 @@ const tierClass = {
 };
 
 export function StreakButton() {
+  const { messages } = useLocale();
   const [mounted, setMounted] = useState(false);
   const [streak, setStreak] = useState<LearningStreak>(emptyStreak);
   const load = useCallback(async () => {
@@ -39,11 +41,11 @@ export function StreakButton() {
     const response = await fetch("/api/streak", { method: "POST", headers: { "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone } });
     const payload = await response.json() as { data?: LearningStreak; error?: string };
     if (!response.ok || !payload.data) {
-      toast.error(payload.error === "recovery_limit" ? "Monthly streak recovery limit reached." : "Streak recovery is unavailable.");
+      toast.error(payload.error === "recovery_limit" ? messages.streak.recoveryLimit : messages.streak.unavailable);
       return;
     }
     setStreak(payload.data);
-    toast.success("Complete 2 quizzes within 48 hours to restore your streak.");
+    toast.success(messages.streak.recoveryInstructions);
   };
 
   const canRecover = recoveryAvailable(streak);
@@ -51,7 +53,7 @@ export function StreakButton() {
   if (!mounted) return <span className="block h-10 w-12" aria-hidden="true" />;
   return <DropdownMenu>
     <DropdownMenuTrigger
-      aria-label={`Learning streak: ${streak.currentStreak} days`}
+      aria-label={messages.streak.aria(streak.currentStreak)}
       className={cn(
         buttonVariants({ variant: "ghost", size: "default" }),
         "h-10 gap-1.5 px-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -62,11 +64,11 @@ export function StreakButton() {
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-64">
       <DropdownMenuGroup>
-        <DropdownMenuLabel>{streak.currentStreak} day streak</DropdownMenuLabel>
+        <DropdownMenuLabel>{messages.streak.dayStreak(streak.currentStreak)}</DropdownMenuLabel>
       </DropdownMenuGroup>
-      <p className="px-1.5 pb-2 text-xs text-muted-foreground">Complete one quiz each local day to keep it going.</p>
-      {streak.recoveryStartedAt ? <><DropdownMenuSeparator /><p className="px-1.5 py-1.5 text-sm">Recovery in progress: {streak.recoveryQuizCount}/2 quizzes</p></> : null}
-      {canRecover ? <><DropdownMenuSeparator /><DropdownMenuItem className="cursor-pointer" onClick={() => void startRecovery()}><Flame />Recover {streak.lostStreak}-day streak</DropdownMenuItem></> : null}
+      <p className="px-1.5 pb-2 text-xs text-muted-foreground">{messages.streak.keepGoing}</p>
+      {streak.recoveryStartedAt ? <><DropdownMenuSeparator /><p className="px-1.5 py-1.5 text-sm">{messages.streak.recoveryInProgress(streak.recoveryQuizCount)}</p></> : null}
+      {canRecover ? <><DropdownMenuSeparator /><DropdownMenuItem className="cursor-pointer" onClick={() => void startRecovery()}><Flame />{messages.streak.recover(streak.lostStreak)}</DropdownMenuItem></> : null}
     </DropdownMenuContent>
   </DropdownMenu>;
 }

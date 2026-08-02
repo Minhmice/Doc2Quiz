@@ -1,22 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   AlertCircle,
   ArrowRight,
-  BookOpen,
-  CheckCircle2,
   FileText,
   Layers,
-  MoreHorizontal,
   Play,
   Plus,
-  Share2,
-  Sparkles,
 } from "lucide-react";
 
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
+import { DashboardHomeSkeleton } from "@/components/dashboard/DashboardHomeSkeleton";
 import { DashboardLibraryHeader } from "@/components/dashboard/DashboardLibraryHeader";
 import { DashboardMobileBottomNav } from "@/components/dashboard/DashboardMobileBottomNav";
 import { formatRelativeShort } from "@/components/dashboard/dashboardFormat";
@@ -27,8 +23,8 @@ import {
 } from "@/components/dashboard/workspaceDashboardModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { useLibrarySearch } from "@/components/layout/LibrarySearchContext";
 import { useDashboardHome } from "@/hooks/useDashboardHome";
@@ -36,34 +32,35 @@ import { useDashboardHome } from "@/hooks/useDashboardHome";
 function RecentOutputCard({ output }: { output: DashboardOutputCardModel }) {
   const isFlashcard = output.kind === "flashcards";
   return (
-    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-primary/40 flex flex-col justify-between gap-3">
-      <div className="space-y-1.5">
+    <article className="flex min-w-0 flex-col justify-between gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:ring-primary/30">
+      <div className="min-w-0 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <Badge
             variant={isFlashcard ? "secondary" : "default"}
-            className="font-label text-[10px] tracking-wider uppercase font-bold"
+            className="font-label text-[10px] font-bold uppercase tracking-wider"
           >
             {isFlashcard ? "Flashcards" : "Quiz"}
           </Badge>
-          <span className="text-[11px] text-muted-foreground tabular-nums">
+          <time dateTime={output.updatedAt} className="text-[11px] tabular-nums text-muted-foreground">
             {formatRelativeShort(output.updatedAt)}
-          </span>
+          </time>
         </div>
-        <h3 className="font-heading font-bold text-base text-foreground truncate">
+        <h3 className="truncate font-heading text-base font-bold text-foreground" title={output.title}>
           {output.title}
         </h3>
-        <p className="text-xs text-muted-foreground truncate">
+        <p className="truncate text-xs text-muted-foreground">
           in <span className="font-medium text-foreground">{output.workspaceTitle}</span>
         </p>
       </div>
 
-      <Link href={output.href} className="w-full">
-        <Button size="sm" className="w-full gap-2 font-medium bg-oxblood-primary text-white">
-          <Play className="size-3.5 fill-current" />
-          Practice
-        </Button>
+      <Link
+        href={output.href}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <Play className="size-3.5 fill-current" aria-hidden />
+        Practice
       </Link>
-    </div>
+    </article>
   );
 }
 
@@ -107,39 +104,24 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceCardModel }) {
   };
 
   return (
-    <article className="group relative flex flex-col justify-between rounded-xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs space-y-4">
-      <div className="space-y-2 min-w-0">
-        {/* Header Badges & Actions */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {getStatusBadge()}
-            {workspace.role !== "owner" ? (
-              <Badge variant="outline" className="text-[10px] capitalize font-medium">
-                {workspace.role}
-              </Badge>
-            ) : null}
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon-sm" className="size-8" aria-label={`Actions for ${workspace.title}`} />}>
-              <MoreHorizontal className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => { window.location.href = workspace.href; }}>
-                Open workspace
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { window.location.href = workspace.href; }}>
-                Share
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <article className="group relative flex min-w-0 flex-col justify-between gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:ring-primary/30">
+      <div className="min-w-0 space-y-2">
+        <div className="flex min-h-7 flex-wrap items-center gap-1.5">
+          {getStatusBadge()}
+          {workspace.role !== "owner" ? (
+            <Badge variant="outline" className="text-[10px] font-medium capitalize">
+              {workspace.role}
+            </Badge>
+          ) : null}
+          <time dateTime={workspace.updatedAt} className="ml-auto text-[11px] tabular-nums text-muted-foreground">
+            {formatRelativeShort(workspace.updatedAt)}
+          </time>
         </div>
 
-        {/* Title & Subtitle */}
         <div>
           <h3 className="font-heading text-base font-bold text-foreground truncate group-hover:text-primary transition-colors">
-            <Link href={workspace.href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
-              {workspace.title}
+            <Link href={workspace.href} className="inline-flex min-h-11 max-w-full items-center rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+              <span className="truncate">{workspace.title}</span>
             </Link>
           </h3>
           {workspace.subtitle ? (
@@ -147,41 +129,37 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceCardModel }) {
           ) : null}
         </div>
 
-        {/* Metrics Summary */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground font-medium pt-1">
-          <span className="flex items-center gap-1">
-            <FileText className="size-3.5 text-primary" />
-            <strong className="text-foreground">{workspace.sourceCount}</strong> sources ({workspace.readySourceCount} ready)
-          </span>
-          <span className="text-border">•</span>
-          <span className="flex items-center gap-1">
-            <Layers className="size-3.5 text-oxblood-primary" />
-            <strong className="text-foreground">{workspace.quizCount + workspace.flashcardCount}</strong> outputs
-          </span>
-        </div>
+        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs font-medium text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <FileText className="size-3.5 text-primary" aria-hidden />
+            <dt className="sr-only">Sources</dt>
+            <dd><strong className="text-foreground">{workspace.sourceCount}</strong> sources · {workspace.readySourceCount} ready</dd>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Layers className="size-3.5 text-primary" aria-hidden />
+            <dt className="sr-only">Outputs</dt>
+            <dd><strong className="text-foreground">{workspace.quizCount + workspace.flashcardCount}</strong> outputs</dd>
+          </div>
+        </dl>
 
-        {/* Latest Output Tag */}
         {workspace.latestOutputTitle ? (
-          <p className="text-[11px] text-muted-foreground truncate bg-muted/40 rounded-md px-2 py-1 font-medium">
-            Latest: <span className="text-foreground font-semibold">{workspace.latestOutputTitle}</span>
+          <p className="truncate rounded-md bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground" title={workspace.latestOutputTitle}>
+            Latest: <span className="font-semibold text-foreground">{workspace.latestOutputTitle}</span>
           </p>
         ) : null}
       </div>
 
-      {/* Primary Contextual Action */}
-      <div className="pt-2 border-t border-border/40">
-        <Link href={action.href} className="w-full block">
-          <Button
-            type="button"
-            variant={workspace.status === "ready" ? "default" : "outline"}
-            size="sm"
-            className={`w-full justify-between font-medium text-xs ${
-              workspace.status === "ready" ? "bg-oxblood-primary text-white" : ""
-            }`}
-          >
-            <span>{action.label}</span>
-            <ArrowRight className="size-3.5" />
-          </Button>
+      <div className="border-t border-border/40 pt-3">
+        <Link
+          href={action.href}
+          className={`inline-flex min-h-11 w-full items-center justify-between rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
+            workspace.status === "ready"
+              ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/90"
+              : "border-border bg-background text-foreground hover:bg-muted"
+          }`}
+        >
+          <span>{action.label}</span>
+          <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </div>
     </article>
@@ -219,13 +197,7 @@ export function DashboardHomeClient() {
   }, []);
 
   if (loading && workspaces.length === 0) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 py-8 text-center" role="status">
-        <p className="text-sm font-medium text-muted-foreground animate-pulse">
-          {copy.loadingDashboard}
-        </p>
-      </div>
-    );
+    return <DashboardHomeSkeleton />;
   }
 
   // Workspaces that need attention
@@ -247,12 +219,11 @@ export function DashboardHomeClient() {
       {recentOutputs.length > 0 ? (
         <section aria-labelledby="continue-studying-heading" className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 id="continue-studying-heading" className="font-heading text-lg font-bold text-foreground flex items-center gap-2">
-              <BookOpen className="size-4 text-oxblood-primary" />
+            <h2 id="continue-studying-heading" className="font-heading text-lg font-bold text-foreground">
               Continue studying
             </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             {recentOutputs.map((output) => (
               <RecentOutputCard key={output.id} output={output} />
             ))}
@@ -262,19 +233,24 @@ export function DashboardHomeClient() {
 
       {/* Section 2: Needs Attention (Conditional) */}
       {needsAttentionWorkspaces.length > 0 && filter === "all" ? (
-        <section aria-labelledby="needs-attention-heading" className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 id="needs-attention-heading" className="font-heading text-lg font-bold text-foreground flex items-center gap-2">
-              <AlertCircle className="size-4 text-amber-600" />
-              Needs attention ({needsAttentionWorkspaces.length})
-            </h2>
+        <aside aria-labelledby="needs-attention-heading" className="flex flex-col gap-3 rounded-xl bg-amber-500/8 p-4 ring-1 ring-amber-700/20 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300">
+              <AlertCircle className="size-4" aria-hidden />
+            </span>
+            <div>
+              <h2 id="needs-attention-heading" className="font-heading text-sm font-bold text-foreground">
+                {needsAttentionWorkspaces.length} {needsAttentionWorkspaces.length === 1 ? "workspace needs" : "workspaces need"} attention
+              </h2>
+              <p className="mt-0.5 text-xs text-amber-950/75 dark:text-amber-100/75">
+                Review sources, retry failed processing, or check active progress.
+              </p>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {needsAttentionWorkspaces.slice(0, 3).map((ws) => (
-              <WorkspaceCard key={ws.id} workspace={ws} />
-            ))}
-          </div>
-        </section>
+          <button type="button" onClick={() => setFilter("needs_attention")} className="min-h-11 shrink-0 rounded-lg px-3 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-500/15 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:text-amber-100">
+            Show workspaces
+          </button>
+        </aside>
       ) : null}
 
       {/* Section 3: Workspaces */}
@@ -288,17 +264,17 @@ export function DashboardHomeClient() {
         />
 
         {loadError ? (
-          <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
-            <p className="text-sm font-semibold text-destructive">{loadError}</p>
+          <Alert variant="destructive" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <AlertDescription className="font-semibold">{loadError}</AlertDescription>
             <Button type="button" variant="outline" size="sm" onClick={() => void refresh()}>
               {copy.tryAgain}
             </Button>
-          </div>
+          </Alert>
         ) : null}
 
         {filteredSortedWorkspaces.length === 0 ? (
-          <Card className="p-8 text-center border-dashed space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">
+          <Card className="flex min-h-56 flex-col items-center justify-center space-y-4 border-dashed p-8 text-center">
+            <p className="max-w-lg text-pretty text-sm font-medium text-muted-foreground">
               {workspaces.length === 0
                 ? copy.emptyDescription
                 : search.trim()
@@ -306,14 +282,14 @@ export function DashboardHomeClient() {
                 : copy.noFilterMatch}
             </p>
             {workspaces.length === 0 ? (
-              <Link href="/create" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-oxblood-primary px-4 text-sm font-semibold text-white">
+              <Link href="/create" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
                 <Plus className="size-4" />
                 {copy.newWorkspace}
               </Link>
             ) : null}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {filteredSortedWorkspaces.map((workspace) => (
               <WorkspaceCard key={workspace.id} workspace={workspace} />
             ))}

@@ -119,7 +119,7 @@ Step 7c: SKIPPED — no probe scripts declared or conventional `scripts/*/tests/
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
 | — | — | No TBD/FIXME/XXX in phase files | — | Clean |
-| `src/lib/server/generateFromFile/*` | — | Legacy v1 canonical extraction still present | ℹ️ Info | D-12 partial cleanup; not wired into v2.1 ingest→canonical express path |
+| `src/lib/server/generateFromFile/*` | — | Legacy v1 canonical extraction path is absent from current source tree | ℹ️ Info | Verification note is stale; current canonical path is `src/lib/pipeline/canonicalize.ts` |
 | `canonicalize.ts` | 329–360 | Section delete+insert without DB transaction | ⚠️ Warning | Partial failure after delete could lose sections; low probability |
 
 ### Human Verification Required

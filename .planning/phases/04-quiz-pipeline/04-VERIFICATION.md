@@ -46,8 +46,8 @@ human_verification:
 | 6 | QUIZ-05: Questions saved to Supabase before review UI | ✓ VERIFIED | `runQuizGenerate` DELETE+INSERT before `study_sets` update; test asserts `delete → insert → study_set_update` order |
 | 7 | QUIZ-06: User can review, edit, delete generated questions | ✓ VERIFIED | `ReviewSection` loads `getApprovedBank`; edit/delete call `putApprovedBankForStudySet`; `studySetDb.test.ts` |
 | 8 | QUIZ-07: User can start quiz practice from saved questions | ✓ VERIFIED | Review `handleDone` → `/quiz/{id}`; resume strip + dashboard `playHref` |
-| 9 | CORE-DASH-01: Dashboard lists study sets | ✓ VERIFIED | `useDashboardHome` → `listStudySetMetas()` Supabase query; `DashboardLibraryClient` grid |
-| 10 | CORE-DASH-02: User can open set to practice or continue generation | ✓ VERIFIED | `cardVariantFor` ready when `pipeline_stage=quiz` + approved>0; Continue setup → `/sets/{id}/source` |
+| 9 | CORE-DASH-01: Dashboard lists study sets | ✓ VERIFIED | `useDashboardHome` → `listStudySetMetas()` Supabase query; `DashboardHomeClient` workspace grid |
+| 10 | CORE-DASH-02: User can open set to practice or continue generation | ✓ VERIFIED | `getContextualAction` uses workspace status and latest output; review/source and continue-studying links remain available from the workspace grid |
 | 11 | CORE-PRAC-01: Keyboard 1/2/3/4 answers questions | ✓ VERIFIED | `QuizSession.tsx` keydown handler maps keys 1–4 to choice indices |
 | 12 | CORE-PRAC-02: End-of-session score summary | ✓ VERIFIED | `recordQuizCompletion` inserts `quiz_sessions`; done page `getLatestQuizSession`; `activityTracking.test.ts` |
 
@@ -66,12 +66,12 @@ human_verification:
 | `src/lib/client/studySetDb.ts` | Approved bank CRUD | ✓ VERIFIED | `getApprovedBank`, `putApprovedBankForStudySet` query `approved_questions` |
 | `src/lib/client/activityTracking.ts` | Quiz session persistence | ✓ VERIFIED | `recordQuizCompletion`, `getLatestQuizSession` on `quiz_sessions` |
 | `src/lib/client/quizGenerateStudySet.ts` | Client POST helper | ✓ VERIFIED | `postQuizGenerate` → `/api/study-sets/{id}/quiz/generate` |
-| `src/app/(app)/sets/[id]/source/page.tsx` | Mode selection + generation UX | ✓ VERIFIED | `putStudySetMeta` mode_selected → `postQuizGenerate` → redirect |
+| `src/components/review/ReviewSection.tsx` | Quiz review and regeneration UX | ✓ VERIFIED | Loads approved bank and calls `postQuizGenerate` for regeneration |
 | `src/components/canonical/CanonicalModeSelectionFooter.tsx` | Quiz + Flashcards CTAs | ✓ VERIFIED | Resume strip when quiz ready |
 | `src/components/quiz/QuizGenerateProgressCard.tsx` | Generation progress | ✓ VERIFIED | Shows recommended/generated counts |
 | `src/components/review/ReviewSection.tsx` | Review edit/delete | ✓ VERIFIED | Supabase-backed bank load/save |
 | `src/app/(app)/quiz/[id]/done/page.tsx` | Score display | ✓ VERIFIED | `getLatestQuizSession` score line |
-| `src/components/dashboard/DashboardLibraryClient.tsx` | Dashboard CTAs | ✓ VERIFIED | `cardVariantFor` + `DashboardStudySetCard` |
+| `src/components/dashboard/DashboardHomeClient.tsx` | Dashboard workspace CTAs | ✓ VERIFIED | `getContextualAction` + workspace cards |
 
 ### Key Link Verification
 
@@ -81,12 +81,12 @@ human_verification:
 | `quiz/generate/route.ts` | `runQuizGenerate` | import + call | ✓ WIRED | POST handler delegates |
 | `runQuizGenerate` | `approved_questions` | DELETE + INSERT | ✓ WIRED | Before JSON return |
 | `runQuizGenerate` | `openAiChatCompletion` | `postChatCompletionAssistantText` | ✓ WIRED | JSON object response format |
-| `source/page.tsx` | `/quiz/generate` | `postQuizGenerate` | ✓ WIRED | After `putStudySetMeta` mode_selected |
+| `ReviewSection` | `/api/study-sets/{id}/quiz/generate` | `postQuizGenerate` | ✓ WIRED | Regeneration request is sent from review UI |
 | `ReviewSection` | `studySetDb` | `getApprovedBank` / `putApprovedBankForStudySet` | ✓ WIRED | Mount + auto-save on edit |
 | `QuizSession` | `studySetDb` | `getApprovedBank` | ✓ WIRED | Loads bank on mount |
 | `QuizSession` | `activityTracking` | `recordQuizCompletion` | ✓ WIRED | Before `router.push` to done |
 | `done/page.tsx` | `activityTracking` | `getLatestQuizSession` | ✓ WIRED | Score display |
-| `DashboardLibraryClient` | `studySetDb` | `useDashboardHome` counts | ✓ WIRED | `getApprovedBank` per set |
+| `DashboardHomeClient` | `studySetDb` | `useDashboardHome` counts | ✓ WIRED | `getApprovedBank` per workspace |
 
 ### Data-Flow Trace (Level 4)
 
@@ -95,8 +95,8 @@ human_verification:
 | `ReviewSection` | `questions` | `getApprovedBank(studySetId)` | Supabase `approved_questions` select | ✓ FLOWING |
 | `QuizSession` | `playable` | `getApprovedBank` | Same Supabase path | ✓ FLOWING |
 | `done/page.tsx` | `latestScore` | `getLatestQuizSession` | Supabase `quiz_sessions` order desc | ✓ FLOWING |
-| `DashboardLibraryClient` | `counts[s.id].approved` | `getApprovedBank` per set | Live count from DB | ✓ FLOWING |
-| `source/page.tsx` | `approvedCount` | `getApprovedBank` when stage=quiz | Live count | ✓ FLOWING |
+| `DashboardHomeClient` | `counts[s.id].approved` | `getApprovedBank` per workspace | Live count from DB | ✓ FLOWING |
+| `ReviewSection` | `questions` | `getApprovedBank` from approved question bank | Live count/data | ✓ FLOWING |
 
 ### Behavioral Spot-Checks
 

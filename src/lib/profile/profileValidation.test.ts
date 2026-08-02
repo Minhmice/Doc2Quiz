@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildProfileAvatarPath,
+  hasProfileImageSignature,
   isOwnProfileAvatarPath,
   parseProfileAvatarPath,
   PROFILE_IMAGE_EXTENSIONS,
@@ -24,6 +25,14 @@ describe("profileValidation", () => {
     expect(validateProfileImage({ type: "image/jpeg", size: PROFILE_IMAGE_MAX_BYTES - 1 })).toBeNull();
     expect(validateProfileImage({ type: "image/jpeg", size: PROFILE_IMAGE_MAX_BYTES })).toBe("Image must be smaller than 10 MB.");
     expect(validateProfileImage({ type: "image/svg+xml", size: 1 })).toMatch(/PNG, JPEG, WebP, or GIF/);
+  });
+
+  it("checks image bytes against declared MIME type", () => {
+    expect(hasProfileImageSignature(Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]), "image/png")).toBe(true);
+    expect(hasProfileImageSignature(Uint8Array.from([0xff, 0xd8, 0xff]), "image/jpeg")).toBe(true);
+    expect(hasProfileImageSignature(new TextEncoder().encode("RIFF1234WEBP"), "image/webp")).toBe(true);
+    expect(hasProfileImageSignature(new TextEncoder().encode("GIF89a"), "image/gif")).toBe(true);
+    expect(hasProfileImageSignature(new TextEncoder().encode("<svg>"), "image/png")).toBe(false);
   });
 
   it("builds and parses only canonical avatar paths", () => {

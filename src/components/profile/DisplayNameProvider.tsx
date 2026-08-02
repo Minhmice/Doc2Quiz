@@ -22,6 +22,7 @@ const MAX_LEN = 40;
 type DisplayNameContextValue = {
   displayName: string;
   avatarUrl: string | null;
+  setAvatarUrl: (value: string | null) => void;
   setDisplayName: (value: string) => void;
   refreshAvatar: () => Promise<string | null>;
   dismissPrompt: () => void;
@@ -105,6 +106,7 @@ export function DisplayNameProvider({
     () => ({
       displayName,
       avatarUrl,
+      setAvatarUrl,
       setDisplayName,
       refreshAvatar,
       dismissPrompt,

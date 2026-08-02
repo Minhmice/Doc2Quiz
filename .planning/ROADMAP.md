@@ -26,7 +26,8 @@ Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder s
 - [x] **Phase 4: Quiz Pipeline** — Concept detection, MCQ generation, save, review, practice wire-up (completed 2026-07-25)
 - [x] **Phase 5: Flashcards & E2E** — Flashcard wizard, generation, learning, dashboard integration (completed 2026-07-25)
 - [ ] **Phase 12: Study Together** — Durable friend lifecycle, asynchronous quiz challenges, immutable quiz snapshots, in-app notifications, scalable friends hub, and responsive messaging. Depends on existing quiz practice and Phase 11 social primitives. Requirements: SOCIAL-01–10. Success: a user can challenge an accepted friend with an owned quiz; recipient accepts and starts a snapshot-based attempt; both see result comparison under configured reveal policy; missed realtime events reconcile from durable notifications.
-- [ ] **Phase 14: Friend presence and chat layout repair** — Correct online/offline tabs and presence indicators in friend lists; wrap long chat messages inside their bubbles. Depends on Phase 12 social UI.
+- [x] **Phase 14: Friend presence and chat layout repair** — Correct online/offline tabs and presence indicators in friend lists; wrap long chat messages inside their bubbles. Depends on Phase 12 social UI. (completed 2026-08-01)
+- [x] **Phase 15: Social presence scaling** — Validate and implement Redis-backed ephemeral presence, conversation-scoped typing indicators, durable activity batching, rate limits, accepted-friend privacy, and last-known/unknown Redis failure behavior for 100–1,000 concurrent users. Depends on Phase 14 and Spike 001. Requirements: SCALE-01–10. Success: heartbeat load produces no per-heartbeat Postgres writes; presence and typing TTLs expire correctly; authorized snapshots remain bounded; Redis outage preserves chat and reports unknown after grace; batched activity retries idempotently. (completed 2026-08-01)
 
 ### Phase 12: Study Together
 
@@ -68,6 +69,22 @@ Plans:
 - [ ] 12-06-PLAN.md — Validation-contract proof and two-account responsive verification
 
 
+### Phase 15: Social presence scaling
+
+**Goal:** Keep hot presence and typing traffic out of PostgreSQL while preserving privacy, durable activity, and graceful Redis failure behavior at 100–1,000 concurrent users.
+**Depends on:** Phase 14, Spike 001 (`.planning/spikes/001-redis-social-presence-scaling/README.md`)
+**Requirements:** SCALE-01–10
+**Success Criteria:**
+
+1. Stateless Next.js heartbeat handlers write per-session presence keys to Redis with bounded cadence and TTL; no heartbeat writes to Postgres.
+2. Accepted-friend snapshots aggregate multiple sessions, use bounded batched Redis reads, expose coarse status buckets, and suppress blocked users.
+3. Conversation participants see five-second TTL typing indicators with server-side throttling and automatic expiry.
+4. Meaningful activity drains through a retryable idempotent batch path to durable `private.social_activity`.
+5. Redis outage preserves messaging, serves last-known state only during grace, then returns `unknown`; no high-frequency Postgres fallback occurs.
+6. Rate limits, privacy checks, observability, load evidence, and focused failure tests pass.
+
+**Plans:** Not planned
+
 ### Phase 14: Friend presence and chat layout repair
 
 **Goal:** Friends appear in their actual presence tab with offline presence visuals suppressed, while all chat messages remain readable inside their bubbles.
@@ -80,11 +97,11 @@ Plans:
 3. Long unbroken and normal chat text wraps or breaks safely within its bubble on desktop and mobile, without horizontal overflow.
 4. Existing friend-list paging, realtime presence updates, messaging history, and responsive chat behavior remain intact.
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 14-01-PLAN.md — Tracer: server-authoritative presence buckets, cursor paging, and contract tests
-- [ ] 14-02-PLAN.md — Presence tabs/row visuals and shared chat-bubble overflow repair
+- [x] 14-01-PLAN.md — Tracer: server-authoritative presence buckets, cursor paging, and contract tests
+- [x] 14-02-PLAN.md — Presence tabs/row visuals and shared chat-bubble overflow repair
 
 ---
 
@@ -246,6 +263,7 @@ Plans:
 | 3. Canonical Knowledge | 3/3 | Complete   | 2026-07-25 |
 | 4. Quiz Pipeline | 4/4 | Complete   | 2026-07-25 |
 | 5. Flashcards & E2E | 4/4 | Complete   | 2026-07-25 |
+| 15. Social presence scaling | 0/? | Planned | — |
 
 ### Phase 6: Bilingual EN/VI language selector and reusable contextual slang system
 

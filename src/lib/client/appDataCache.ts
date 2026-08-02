@@ -37,16 +37,19 @@ function readDashboardFromSession(): CacheEnvelope<DashboardCachePayload> | null
     if (!raw) {
       return null;
     }
-    const parsed = JSON.parse(raw) as CacheEnvelope<DashboardCachePayload>;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    const candidate = parsed as Partial<CacheEnvelope<DashboardCachePayload>>;
     if (
-      !parsed ||
-      typeof parsed.fetchedAt !== "number" ||
-      !parsed.data ||
-      !Array.isArray(parsed.data.workspaces)
+      typeof candidate.fetchedAt !== "number" ||
+      !candidate.data ||
+      !Array.isArray(candidate.data.workspaces)
     ) {
       return null;
     }
-    return parsed;
+    return candidate as CacheEnvelope<DashboardCachePayload>;
   } catch {
     return null;
   }

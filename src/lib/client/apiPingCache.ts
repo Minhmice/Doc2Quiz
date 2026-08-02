@@ -24,16 +24,19 @@ function readFromSession(): PingEnvelope | null {
     if (!raw) {
       return null;
     }
-    const parsed = JSON.parse(raw) as PingEnvelope;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    const candidate = parsed as Partial<PingEnvelope>;
     if (
-      !parsed ||
-      typeof parsed.fetchedAt !== "number" ||
-      !parsed.data ||
-      typeof parsed.data.ok !== "boolean"
+      typeof candidate.fetchedAt !== "number" ||
+      !candidate.data ||
+      typeof candidate.data.ok !== "boolean"
     ) {
       return null;
     }
-    return parsed;
+    return candidate as PingEnvelope;
   } catch {
     return null;
   }

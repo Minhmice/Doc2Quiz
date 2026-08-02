@@ -32,6 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import {
@@ -413,7 +414,7 @@ export function WorkspaceDetailClient({
           </span>
           <span className="text-border">•</span>
           <span className="flex items-center gap-1.5">
-            <Layers className="size-3.5 text-oxblood-primary" />
+            <Layers className="size-3.5 text-primary" />
             <strong className="text-foreground">{detail.outputs.length}</strong> {detail.outputs.length === 1 ? "output" : "outputs"}
           </span>
           <span className="flex items-center gap-1.5 sm:ml-auto tabular-nums text-muted-foreground/80">
@@ -547,7 +548,7 @@ export function WorkspaceDetailClient({
                             type="button"
                             size="sm"
                             variant="default"
-                            className="min-h-9 gap-1.5 text-xs font-medium bg-oxblood-primary text-white"
+                            className="min-h-9 gap-1.5 text-xs font-medium bg-primary text-primary-foreground"
                             disabled={retryingVersionId === latestVersion.id}
                             onClick={() => void runSourceAction("retry", document.id, latestVersion.id)}
                           >
@@ -675,7 +676,7 @@ export function WorkspaceDetailClient({
           <section className="rounded-xl border border-border/60 bg-card p-5 shadow-2xs space-y-4" aria-labelledby="create-output-heading">
             <div className="space-y-1">
               <h2 id="create-output-heading" className="font-heading text-lg font-bold text-foreground flex items-center gap-2">
-                <Sparkles className="size-4 text-oxblood-primary" />
+                <Sparkles className="size-4 text-primary" />
                 Create output
               </h2>
               <p className="text-xs text-muted-foreground">
@@ -721,7 +722,7 @@ export function WorkspaceDetailClient({
                   type="button"
                   variant="default"
                   size="sm"
-                  className="gap-2 font-medium bg-oxblood-primary text-white"
+                  className="gap-2 font-medium bg-primary text-primary-foreground"
                   disabled={generating !== null || selectedVersionIds.length === 0}
                   onClick={() => void runGenerate("quiz")}
                 >
@@ -831,7 +832,7 @@ export function WorkspaceDetailClient({
                           </Button>
                         </Link>
                         <Link href={practiceHref} className="flex-1">
-                          <Button variant="default" size="sm" className="w-full text-xs font-medium h-8 bg-oxblood-primary text-white">
+                          <Button variant="default" size="sm" className="w-full text-xs font-medium h-8 bg-primary text-primary-foreground">
                             Practice
                           </Button>
                         </Link>
@@ -876,14 +877,17 @@ export function WorkspaceDetailClient({
                     placeholder="User ID or email address"
                     className="h-10 text-sm"
                   />
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as WorkspaceMemberRole)}
-                    className="h-10 rounded-md border border-input bg-background px-3 text-xs font-medium"
-                  >
-                    <option value="editor">Editor</option>
-                    <option value="viewer">Viewer</option>
-                  </select>
+                  <Select value={role} onValueChange={(value) => setRole(value as WorkspaceMemberRole)}>
+                    <SelectTrigger className="h-10 min-w-24 text-xs font-medium">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="editor">Editor</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                   <Button type="button" className="h-10" disabled={!recipient.trim() || shareSubmitting} onClick={() => void inviteCollaborator()}>
                     Send
                   </Button>

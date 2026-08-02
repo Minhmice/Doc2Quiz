@@ -8,22 +8,28 @@ const source = readFileSync(
 );
 
 describe("ProfilePageClient avatar flow", () => {
-  it("accepts supported static and animated image formats", () => {
+  it("posts only the file to authenticated profile endpoint", () => {
     expect(source).toContain('accept="image/jpeg,image/png,image/webp,image/gif"');
     expect(source).toContain("validateProfileImage(file)");
-    expect(source).toContain("buildProfileAvatarPath(user.id, file.type)");
+    expect(source).toContain('form.set("file", file)');
+    expect(source).toContain('fetch("/api/profile", { method: "POST", body: form })');
+    expect(source).not.toContain("createSupabaseBrowserClient");
+    expect(source).not.toContain("supabase.storage");
+    expect(source).not.toContain("buildProfileAvatarPath");
   });
 
-  it("reports upload, persistence, and private preview failures", () => {
-    expect(source).toContain("Avatar upload failed. Try again.");
-    expect(source).toContain("Avatar uploaded, but profile save failed. Try again.");
-    expect(source).toContain("Avatar saved, but private preview could not load. Refresh and try again.");
+  it("reports server and private preview failures", () => {
+    expect(source).toContain("avatarUploadFailed");
+    expect(source).toContain("avatarUploadAuth");
+    expect(source).toContain("avatarPreviewFailed");
+    expect(source).not.toContain("Profile avatar request failed");
   });
 
-  it("keeps confirmed avatar until a refreshed signed URL succeeds", () => {
-    expect(source).toContain("const avatarUrl = await refreshAvatar()");
-    expect(source).toContain("if (!avatarUrl) throw new Error");
+  it("renders the signed upload response and updates shared avatar state", () => {
+    expect(source).toContain("const avatarUrl = body?.data?.avatarUrl");
+    expect(source).toContain("if (!avatarUrl)");
     expect(source).toContain("setProfile((current) => current ? { ...current, avatarUrl } : current)");
+    expect(source).toContain("setAvatarUrl(avatarUrl)");
     expect(source).toContain("onError={() => setAvatarFailed(true)}");
   });
 });

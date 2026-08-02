@@ -188,6 +188,5 @@ export function useResumeRecommendation(workspaces: readonly WorkspaceSummary[])
 export function useDashboardHome() {
   const data = useDashboardData();
   const filters = useWorkspaceFilters(data.workspaces);
-  const recommendations = useResumeRecommendation(data.workspaces);
-  return { ...data, ...filters, ...recommendations };
+  return { ...data, ...filters };
 }

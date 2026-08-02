@@ -1,9 +1,9 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import type { DashboardFilter, DashboardSort } from "@/hooks/useDashboardHome";
-import { cn } from "@/lib/utils";
 
 export type DashboardLibraryHeaderProps = Readonly<{
   totalWorkspaces: number;
@@ -31,52 +31,38 @@ export function DashboardLibraryHeader({
   const copy = messages.dashboard;
 
   return (
-    <div className="flex flex-col justify-between gap-3 border-b border-border/60 pb-3 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-3 border-b border-border/60 pb-3 xl:flex-row xl:items-end xl:justify-between">
       <div className="flex items-baseline gap-3">
         <h2 className="font-heading text-xl font-bold text-foreground">{copy.workspaces}</h2>
-        <span className="text-xs text-muted-foreground font-medium">
+        <span className="text-xs font-medium tabular-nums text-muted-foreground">
           {copy.totalWorkspaces(new Intl.NumberFormat(locale).format(totalWorkspaces))}
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Horizontal filter tabs */}
-        <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-1" role="tablist" aria-label={copy.filterAria}>
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              onClick={() => onFilterChange(tab.id)}
-              aria-selected={filter === tab.id}
-              className={cn(
-                "min-h-8 rounded-md px-3 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                filter === tab.id
-                  ? "bg-card text-foreground shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="min-w-0 overflow-x-auto pb-1 sm:pb-0">
+          <Tabs value={filter} onValueChange={(value) => onFilterChange(value as DashboardFilter)}>
+            <TabsList aria-label={copy.filterAria} className="w-max border border-border/60 bg-muted/40">
+              {FILTER_TABS.map((tab) => (
+                <TabsTrigger key={tab.id} value={tab.id} className="min-h-11 min-w-11 px-3 text-xs font-semibold">
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
-        {/* Sort Dropdown */}
-        <div className="relative shrink-0">
-          <label className="sr-only" htmlFor="dashboard-workspace-sort">
-            {copy.sortAria}
-          </label>
-          <select
-            id="dashboard-workspace-sort"
-            value={sort}
-            onChange={(event) => onSortChange(event.target.value as DashboardSort)}
-            className="h-9 appearance-none rounded-lg border border-border/60 bg-card pl-3 pr-8 text-xs font-semibold text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="recent">{copy.sortRecent}</option>
-            <option value="title">{copy.sortTitle}</option>
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        </div>
+        <Select value={sort} onValueChange={(value) => onSortChange(value as DashboardSort)}>
+          <SelectTrigger aria-label={copy.sortAria} className="min-h-11 w-full border-border/60 bg-card text-xs font-semibold sm:min-h-9 sm:w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="recent">{copy.sortRecent}</SelectItem>
+              <SelectItem value="title">{copy.sortTitle}</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

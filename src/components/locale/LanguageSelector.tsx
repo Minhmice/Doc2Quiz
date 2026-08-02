@@ -55,11 +55,11 @@ export function LanguageSelector({ mode = "full" }: { mode?: "compact" | "full" 
       <legend className="font-heading text-2xl font-bold tracking-[-0.03em] text-foreground text-wrap-balance sm:text-3xl">
         {messages.settings.languageTitle}
       </legend>
-      <p className="mt-2 max-w-prose text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
+      <p className="mt-2 max-w-prose text-pretty text-sm leading-6 text-muted-foreground">
         {messages.settings.languageSubtitle}
       </p>
       <div
-        className="mt-6 grid gap-3 sm:grid-cols-2"
+        className="mt-5 grid gap-3 sm:grid-cols-2"
         role="radiogroup"
         aria-label={`${messages.settings.languageTitle}. ${messages.settings.languageSubtitle}`}
       >
@@ -76,7 +76,7 @@ export function LanguageSelector({ mode = "full" }: { mode?: "compact" | "full" 
                     aria-label={option.label}
                     onClick={() => setLocale(option.value)}
                     className={cn(
-                      "flex min-h-[3.25rem] w-full items-center justify-between rounded-lg border px-5 py-3.5 text-left text-xl font-bold tracking-[-0.03em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring sm:min-h-14 sm:text-2xl",
+                      "flex min-h-11 w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-base font-bold outline-none transition-colors hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring sm:min-h-12",
                       selected
                         ? "border-primary bg-accent text-accent-foreground"
                         : "border-border bg-background hover:bg-accent/50",

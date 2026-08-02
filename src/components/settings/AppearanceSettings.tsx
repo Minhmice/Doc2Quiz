@@ -5,45 +5,43 @@ import { useState } from "react";
 import { useThemePreference } from "@/components/providers/ThemePreferenceProvider";
 import type { ThemePreference } from "@/lib/profile/themePreference";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
-const OPTIONS: Array<{
-  value: ThemePreference;
-  label: string;
-  description: string;
-  swatches: [string, string, string];
-}> = [
-  { value: "system", label: "Theo hệ thống", description: "Theo giao diện sáng hoặc tối của thiết bị.", swatches: ["#f7faf8", "#0c1a17", "#ff967d"] },
-  { value: "vscode-dark", label: "VS Code Dark", description: "Nền tối, điểm nhấn xanh quen thuộc.", swatches: ["#1e1e1e", "#d4d4d4", "#569cd6"] },
-  { value: "vscode-light", label: "VS Code Light", description: "Nền sáng, tương phản nhẹ mắt.", swatches: ["#ffffff", "#1e1e1e", "#0070c1"] },
-  { value: "monokai", label: "Monokai", description: "Nền than chì, điểm nhấn vàng và hồng.", swatches: ["#272822", "#f8f8f2", "#f92672"] },
-  { value: "high-contrast", label: "High Contrast", description: "Tương phản mạnh, viền và tiêu điểm rõ ràng.", swatches: ["#000000", "#ffffff", "#ffff00"] },
+const OPTIONS: Array<{ value: ThemePreference; swatches: [string, string, string] }> = [
+  { value: "system", swatches: ["#f7faf8", "#0c1a17", "#ff967d"] },
+  { value: "vscode-dark", swatches: ["#1e1e1e", "#d4d4d4", "#569cd6"] },
+  { value: "vscode-light", swatches: ["#ffffff", "#1e1e1e", "#0070c1"] },
+  { value: "monokai", swatches: ["#272822", "#f8f8f2", "#f92672"] },
+  { value: "high-contrast", swatches: ["#000000", "#ffffff", "#ffff00"] },
 ];
 
 export function AppearanceSettings() {
+  const { messages } = useLocale();
   const { themePreference, setThemePreference } = useThemePreference();
   const [feedback, setFeedback] = useState("");
+  const options = OPTIONS.map((option) => ({ ...option, ...messages.settings.themes[option.value] }));
 
   const selectTheme = async (theme: ThemePreference) => {
     if (theme === themePreference) return;
-    setFeedback("Đang lưu giao diện…");
+    setFeedback(messages.settings.savingAppearance);
     try {
       await setThemePreference(theme);
-      setFeedback("Đã lưu giao diện.");
+      setFeedback(messages.settings.appearanceSaved);
     } catch {
-      setFeedback("Không thể lưu giao diện. Thử lại sau.");
+      setFeedback(messages.settings.appearanceSaveFailed);
     }
   };
 
   return (
     <fieldset>
       <legend className="font-heading text-2xl font-bold tracking-[-0.03em] text-foreground text-wrap-balance sm:text-3xl">
-        Giao diện
+        {messages.settings.appearance}
       </legend>
-      <p className="mt-2 max-w-prose text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
-        Chọn bảng màu IDE cho không gian học tập của bạn.
+      <p className="mt-2 max-w-prose text-pretty text-sm leading-6 text-muted-foreground">
+        {messages.settings.appearanceDescription}
       </p>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Chọn giao diện">
-        {OPTIONS.map((option) => {
+      <div className="mt-5 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={messages.settings.appearanceAria}>
+        {options.map((option) => {
           const selected = themePreference === option.value;
           return (
             <button
@@ -62,7 +60,7 @@ export function AppearanceSettings() {
               }}
               id={`theme-${option.value}`}
               className={cn(
-                "flex min-h-24 w-full items-start gap-3 rounded-lg border p-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                "flex min-h-24 w-full items-start gap-3 rounded-lg border p-4 text-left outline-none transition-colors hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
                 selected ? "border-primary bg-accent text-accent-foreground" : "border-border bg-background hover:bg-accent/50",
               )}
             >

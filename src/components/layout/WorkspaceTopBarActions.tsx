@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchWorkspaceDetail } from "@/lib/client/workspaceApi";
 import {
   copyShareLinkToClipboard,
@@ -128,9 +129,10 @@ export function WorkspaceTopBarActions({ workspaceId }: { workspaceId: string })
                 <label className="sr-only" htmlFor="workspace-recipient">Add people</label>
                 <Input id="workspace-recipient" value={recipient} onChange={(event) => setRecipient(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void invite(); }} placeholder="Add people by user ID or email" className="h-12 text-base" />
                 <div className="flex flex-wrap justify-end gap-2">
-                  <select value={role} onChange={(event) => setRole(event.target.value as WorkspaceMemberRole)} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-medium">
-                    <option value="editor">Editor</option><option value="viewer">Viewer</option>
-                  </select>
+                  <Select value={role} onValueChange={(value) => setRole(value as WorkspaceMemberRole)}>
+                    <SelectTrigger className="h-10 min-w-24 text-sm font-medium"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectGroup><SelectItem value="editor">Editor</SelectItem><SelectItem value="viewer">Viewer</SelectItem></SelectGroup></SelectContent>
+                  </Select>
                   <Button type="button" className="h-10" disabled={!recipient.trim() || submitting} onClick={() => void invite()}>Send</Button>
                 </div>
               </div>
@@ -144,7 +146,7 @@ export function WorkspaceTopBarActions({ workspaceId }: { workspaceId: string })
               </div>
             </section>
 
-            <section aria-labelledby="general-access" className="space-y-3"><h2 id="general-access" className="text-lg font-semibold">General access</h2><div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-full bg-muted"><LockKeyhole className="size-5" /></div><div className="min-w-0"><button type="button" className="flex items-center gap-1 font-medium" aria-label="General access is restricted">Restricted <ChevronDown className="size-4" /></button><p className="mt-1 text-sm text-muted-foreground">Only people with access can open this workspace link.</p></div></div></section>
+            <section aria-labelledby="general-access" className="space-y-3"><h2 id="general-access" className="text-lg font-semibold">General access</h2><div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-full bg-muted"><LockKeyhole className="size-5" /></div><div className="min-w-0"><Button type="button" variant="ghost" size="sm" className="h-auto gap-1 p-0 font-medium" aria-label="General access is restricted">Restricted <ChevronDown className="size-4" /></Button><p className="mt-1 text-sm text-muted-foreground">Only people with access can open this workspace link.</p></div></div></section>
             {status ? <p role="status" aria-live="polite" className="text-sm text-muted-foreground">{status}</p> : null}
           </div>
           <div className="flex flex-col-reverse gap-3 border-t border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-9"><Button type="button" variant="outline" className="h-11 gap-2 sm:w-auto" disabled={submitting} onClick={() => void copyLink()}>{status === "Link copied." ? <Check className="size-4" /> : <Link2 className="size-4" />}{status === "Link copied." ? "Copied link" : "Copy link"}</Button><Button type="button" className="h-11" onClick={() => setSharingOpen(false)}>Done</Button></div>

@@ -16,6 +16,7 @@ import {
   type FlashcardLearningDepth,
 } from "@/types/flashcardGeneration";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 export type FlashcardsGenerationControlsProps = {
   value: FlashcardGenerationConfig;
@@ -24,20 +25,8 @@ export type FlashcardsGenerationControlsProps = {
   className?: string;
 };
 
-const DEPTH_OPTIONS: { value: FlashcardLearningDepth; label: string }[] = [
-  { value: "quick_recall", label: "Quick recall" },
-  { value: "standard", label: "Standard" },
-  { value: "deep", label: "Deep" },
-];
-
-const FOCUS_OPTIONS: { value: FlashcardFocusMode; label: string }[] = [
-  { value: "definitions", label: "Definitions" },
-  { value: "key_points", label: "Key points" },
-  { value: "formulas", label: "Formulas & notation" },
-  { value: "processes", label: "Processes & steps" },
-  { value: "comparisons", label: "Comparisons" },
-  { value: "mixed", label: "Mixed" },
-];
+const DEPTH_OPTIONS: FlashcardLearningDepth[] = ["quick_recall", "standard", "deep"];
+const FOCUS_OPTIONS: FlashcardFocusMode[] = ["definitions", "key_points", "formulas", "processes", "comparisons", "mixed"];
 
 export function FlashcardsGenerationControls({
   value,
@@ -45,6 +34,7 @@ export function FlashcardsGenerationControls({
   disabled = false,
   className,
 }: FlashcardsGenerationControlsProps) {
+  const { messages } = useLocale();
   const targetModeId = useId();
   const sliderId = useId();
   const countAuto = value.targetCount === "auto";
@@ -59,14 +49,12 @@ export function FlashcardsGenerationControls({
       )}
     >
       <p className="text-sm text-muted-foreground">
-        This path emphasizes <span className="font-medium text-foreground">theory</span>{" "}
-        (concepts, definitions, relationships). The multiple-choice path is for{" "}
-        <span className="font-medium text-foreground">exam-style practice</span>.
+        {messages.flashcardControls.theoryDescription}
       </p>
 
       <div className="space-y-2">
         <Label id={targetModeId} className="text-sm font-medium text-foreground">
-          Item count target
+          {messages.flashcardControls.itemCountTarget}
         </Label>
         <RadioGroup
           className="flex flex-wrap gap-4"
@@ -92,21 +80,21 @@ export function FlashcardsGenerationControls({
             className="flex cursor-pointer items-center gap-2 text-sm"
           >
             <RadioGroupItem id={`${targetModeId}-auto`} value="auto" disabled={disabled} />
-            Auto
+            {messages.flashcardControls.auto}
           </Label>
           <Label
             htmlFor={`${targetModeId}-fixed`}
             className="flex cursor-pointer items-center gap-2 text-sm"
           >
             <RadioGroupItem id={`${targetModeId}-fixed`} value="fixed" disabled={disabled} />
-            Set range (10–60)
+            {messages.flashcardControls.setRange}
           </Label>
         </RadioGroup>
         {!countAuto ? (
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between gap-3">
               <Label id={sliderId} className="text-sm text-muted-foreground">
-                Target items (approx.)
+                {messages.flashcardControls.targetItems}
               </Label>
               <span className="tabular-nums text-sm font-medium text-foreground">
                 {countNumber}
@@ -137,7 +125,7 @@ export function FlashcardsGenerationControls({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label className="text-sm font-medium text-foreground">
-            Learning depth
+            {messages.flashcardControls.learningDepth}
           </Label>
           <Select
             value={value.learningDepth}
@@ -154,8 +142,8 @@ export function FlashcardsGenerationControls({
             </SelectTrigger>
             <SelectContent>
               {DEPTH_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value} className="cursor-pointer">
-                  {o.label}
+                <SelectItem key={o} value={o} className="cursor-pointer">
+                  {messages.flashcardControls.depth[o]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -163,7 +151,7 @@ export function FlashcardsGenerationControls({
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground">Focus</Label>
+          <Label className="text-sm font-medium text-foreground">{messages.flashcardControls.focus}</Label>
           <Select
             value={value.focusMode}
             onValueChange={(v) =>
@@ -179,8 +167,8 @@ export function FlashcardsGenerationControls({
             </SelectTrigger>
             <SelectContent>
               {FOCUS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value} className="cursor-pointer">
-                  {o.label}
+                <SelectItem key={o} value={o} className="cursor-pointer">
+                  {messages.flashcardControls.focusOptions[o]}
                 </SelectItem>
               ))}
             </SelectContent>

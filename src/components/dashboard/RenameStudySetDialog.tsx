@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { putStudySetMeta } from "@/lib/client/studySetDb";
 import type { StudySetMeta } from "@/types/studySet";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 export type RenameStudySetDialogProps = {
   open: boolean;
@@ -27,6 +28,7 @@ export function RenameStudySetDialog({
   meta,
   onSaved,
 }: RenameStudySetDialogProps) {
+  const { messages } = useLocale();
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function RenameStudySetDialog({
   const handleSave = async () => {
     const next = title.trim();
     if (!meta || next.length === 0) {
-      setError("Title cannot be empty.");
+      setError(messages.rename.empty);
       return;
     }
     if (next === meta.title) {
@@ -59,7 +61,7 @@ export function RenameStudySetDialog({
       onSaved();
       onOpenChange(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save.");
+      setError(e instanceof Error ? e.message : messages.rename.failed);
     } finally {
       setSaving(false);
     }
@@ -69,14 +71,14 @@ export function RenameStudySetDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Rename study set</DialogTitle>
+          <DialogTitle>{messages.rename.title}</DialogTitle>
           <DialogDescription>
-            Choose a new display name for this set.
+            {messages.rename.description}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">
           <label className="text-sm font-medium text-foreground" htmlFor="rename-title">
-            Title
+            {messages.rename.label}
           </label>
           <Input
             id="rename-title"
@@ -88,7 +90,7 @@ export function RenameStudySetDialog({
                 void handleSave();
               }
             }}
-            placeholder="Study set name"
+            placeholder={messages.rename.placeholder}
             autoFocus
           />
           {error ? (
@@ -104,10 +106,10 @@ export function RenameStudySetDialog({
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
-            Cancel
+            {messages.rename.cancel}
           </Button>
           <Button type="button" onClick={() => void handleSave()} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? messages.rename.saving : messages.rename.save}
           </Button>
         </DialogFooter>
       </DialogContent>

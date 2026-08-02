@@ -36,6 +36,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   canManageWorkspaceCollaboration,
   changeWorkspaceMemberRole,
@@ -332,9 +335,9 @@ export function WorkspaceCollaborationPanel({
           ) : null}
 
           {panelError ? (
-            <p className="text-xs font-semibold text-destructive bg-destructive/10 p-2.5 rounded-lg border border-destructive/20" role="alert">
-              {panelError}
-            </p>
+            <Alert variant="destructive" className="py-2.5">
+              <AlertDescription className="text-xs font-semibold">{panelError}</AlertDescription>
+            </Alert>
           ) : null}
 
           {/* Quick Invite & Share Action Bar */}
@@ -355,14 +358,17 @@ export function WorkspaceCollaborationPanel({
                 }}
                 className="h-8 text-xs bg-background shrink"
               />
-              <select
-                className="h-8 rounded-lg border border-input bg-background px-2 text-xs font-medium shrink-0"
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as WorkspaceMemberRole)}
-              >
-                <option value="editor">{roleLabels.editor}</option>
-                <option value="viewer">{roleLabels.viewer}</option>
-              </select>
+              <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as WorkspaceMemberRole)}>
+                <SelectTrigger size="sm" className="h-8 min-w-24 shrink-0 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="editor">{roleLabels.editor}</SelectItem>
+                    <SelectItem value="viewer">{roleLabels.viewer}</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
               <Button
                 ref={inviteTriggerRef}
                 type="button"
@@ -423,55 +429,13 @@ export function WorkspaceCollaborationPanel({
 
           {/* Segmented View Tabs */}
           <div className="space-y-3 pt-1">
-            <div className="flex rounded-lg bg-muted/60 p-1 gap-1 border border-border/50 text-xs font-medium">
-              <button
-                type="button"
-                onClick={() => setActiveTab("members")}
-                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-xs ${
-                  activeTab === "members"
-                    ? "bg-card text-foreground font-semibold shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Users className="size-3.5" />
-                <span>{panel.membersHeading}</span>
-                <Badge variant={activeTab === "members" ? "default" : "secondary"} className="px-1.5 py-0 h-4 text-[10px] min-w-4 justify-center">
-                  {members.length}
-                </Badge>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("invitations")}
-                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-xs ${
-                  activeTab === "invitations"
-                    ? "bg-card text-foreground font-semibold shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <UserPlus className="size-3.5" />
-                <span>Invites</span>
-                <Badge variant={activeTab === "invitations" ? "default" : "secondary"} className="px-1.5 py-0 h-4 text-[10px] min-w-4 justify-center">
-                  {invitations.length}
-                </Badge>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("shares")}
-                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-xs ${
-                  activeTab === "shares"
-                    ? "bg-card text-foreground font-semibold shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Share2 className="size-3.5" />
-                <span>Shares</span>
-                <Badge variant={activeTab === "shares" ? "default" : "secondary"} className="px-1.5 py-0 h-4 text-[10px] min-w-4 justify-center">
-                  {shares.length}
-                </Badge>
-              </button>
-            </div>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
+              <TabsList className="w-full border border-border/50 bg-muted/60 text-xs">
+                <TabsTrigger value="members" className="gap-1.5 text-xs"><Users data-icon="inline-start" /><span>{panel.membersHeading}</span><Badge variant="secondary" className="min-w-4 px-1.5 py-0 text-[10px]">{members.length}</Badge></TabsTrigger>
+                <TabsTrigger value="invitations" className="gap-1.5 text-xs"><UserPlus data-icon="inline-start" /><span>Invites</span><Badge variant="secondary" className="min-w-4 px-1.5 py-0 text-[10px]">{invitations.length}</Badge></TabsTrigger>
+                <TabsTrigger value="shares" className="gap-1.5 text-xs"><Share2 data-icon="inline-start" /><span>Shares</span><Badge variant="secondary" className="min-w-4 px-1.5 py-0 text-[10px]">{shares.length}</Badge></TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             {/* Tab 1: Members */}
             {activeTab === "members" ? (
@@ -502,21 +466,12 @@ export function WorkspaceCollaborationPanel({
 
                           {!isMemberOwner ? (
                             <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                              <label className="text-xs text-muted-foreground">
+                              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 {panel.changeRole}
-                                <select
-                                  className="ml-1.5 rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium"
-                                  value={member.role}
-                                  onChange={(event) =>
-                                    void handleMemberRoleChange(
-                                      member.userId,
-                                      event.target.value as WorkspaceMemberRole,
-                                    )
-                                  }
-                                >
-                                  <option value="editor">{roleLabels.editor}</option>
-                                  <option value="viewer">{roleLabels.viewer}</option>
-                                </select>
+                                <Select value={member.role} onValueChange={(value) => void handleMemberRoleChange(member.userId, value as WorkspaceMemberRole)}>
+                                  <SelectTrigger size="sm" className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent><SelectGroup><SelectItem value="editor">{roleLabels.editor}</SelectItem><SelectItem value="viewer">{roleLabels.viewer}</SelectItem></SelectGroup></SelectContent>
+                                </Select>
                               </label>
                               <Button
                                 type="button"
@@ -647,7 +602,7 @@ export function WorkspaceCollaborationPanel({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <label className="block space-y-1 text-sm">
+            <label className="flex flex-col gap-1.5 text-sm">
               <span>{panel.recipientUserIdLabel}</span>
               <Input
                 value={recipientUserId}
@@ -655,18 +610,12 @@ export function WorkspaceCollaborationPanel({
                 autoComplete="off"
               />
             </label>
-            <label className="block space-y-1 text-sm">
+            <label className="flex flex-col gap-1.5 text-sm">
               <span>{panel.roleLabel}</span>
-              <select
-                className="h-8 w-full rounded-lg border border-input px-2 text-sm bg-background"
-                value={inviteRole}
-                onChange={(event) =>
-                  setInviteRole(event.target.value as WorkspaceMemberRole)
-                }
-              >
-                <option value="editor">{roleLabels.editor}</option>
-                <option value="viewer">{roleLabels.viewer}</option>
-              </select>
+              <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as WorkspaceMemberRole)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectGroup><SelectItem value="editor">{roleLabels.editor}</SelectItem><SelectItem value="viewer">{roleLabels.viewer}</SelectItem></SelectGroup></SelectContent>
+              </Select>
             </label>
             <div
               className="text-sm text-muted-foreground"

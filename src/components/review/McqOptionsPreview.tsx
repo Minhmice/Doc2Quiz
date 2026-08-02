@@ -5,6 +5,7 @@ import { MathText } from "@/components/math/MathText";
 import { hasValidCorrectIndex } from "@/lib/review/validateMcq";
 import type { Question } from "@/types/question";
 import { Button } from "@/components/buttons/button";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 const LABELS = ["A", "B", "C", "D"] as const;
 
@@ -22,6 +23,7 @@ export function McqOptionsPreview({
   renderAfterOption,
   listClassName = "mt-3 list-none space-y-2 p-0",
 }: McqOptionsPreviewProps) {
+  const { messages } = useLocale();
   const valid = hasValidCorrectIndex(question);
   const { options, correctIndex } = question;
 
@@ -57,7 +59,7 @@ export function McqOptionsPreview({
                 ) : null}
               </span>
               {isCorrect ? (
-                <span className="sr-only">(correct answer)</span>
+                <span className="sr-only">{messages.reviewLabels.correctAnswer}</span>
               ) : null}
             </li>
           );
@@ -66,14 +68,14 @@ export function McqOptionsPreview({
 
       {!valid && onSetCorrectIndex ? (
         <div className="rounded-md border border-orange-500/30 bg-orange-950/35 px-3 py-2 text-sm text-amber-100">
-          <p className="font-medium text-amber-200">No correct answer set</p>
+          <p className="font-medium text-amber-200">{messages.reviewLabels.noCorrectAnswer}</p>
           <p className="mt-1 text-xs text-amber-100/90">
-            Pick A–D below to mark the correct choice.
+            {messages.reviewLabels.pickCorrectAnswer}
           </p>
           <div
             className="mt-2 flex flex-wrap gap-2"
             role="group"
-            aria-label="Set correct answer"
+            aria-label={messages.reviewLabels.setCorrectAnswer}
           >
             {LABELS.map((label, idx) => {
               const i = idx as 0 | 1 | 2 | 3;

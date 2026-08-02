@@ -17,6 +17,15 @@ export function validateProfileImage(file: Pick<File, "type" | "size">): string 
   return null;
 }
 
+export function hasProfileImageSignature(bytes: Uint8Array, mimeType: string): boolean {
+  if (mimeType === "image/png") return bytes.length >= 8 && [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte);
+  if (mimeType === "image/jpeg") return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const header = String.fromCharCode(...bytes.subarray(0, 12));
+  if (mimeType === "image/webp") return bytes.length >= 12 && header.startsWith("RIFF") && header.slice(8) === "WEBP";
+  if (mimeType === "image/gif") return bytes.length >= 6 && (header.startsWith("GIF87a") || header.startsWith("GIF89a"));
+  return false;
+}
+
 export function profileImageExtension(type: string): string | null {
   return PROFILE_IMAGE_EXTENSIONS[type as ProfileImageMime] ?? null;
 }

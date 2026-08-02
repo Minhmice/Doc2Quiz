@@ -29,6 +29,23 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 
 ---
 
+## Social Scaling (SCALE)
+
+| ID | Requirement |
+|----|-------------|
+| SCALE-01 | Presence heartbeats use Redis ephemeral session keys with a 60-second TTL and do not write to PostgreSQL on every heartbeat. |
+| SCALE-02 | Presence heartbeats run through stateless Next.js Route Handlers at a bounded cadence near 20 seconds; multiple sessions aggregate into one user status. |
+| SCALE-03 | Presence snapshots expose coarse buckets (`online`, `active_15m`, `active_today`, `offline`) and return `unknown` during stale or Redis-unavailable periods instead of falsely reporting offline. |
+| SCALE-04 | Presence and current activity are returned only to authenticated accepted friends; blocked users receive no presence data. |
+| SCALE-05 | Typing indicators use conversation-scoped Redis keys with a five-second TTL, refresh no more than once every two seconds, and are visible only to conversation participants. |
+| SCALE-06 | Meaningful social activity is queued for batched durable upserts to `private.social_activity` every 10–30 seconds; Next.js request handlers do not own worker timers or in-process queue state. |
+| SCALE-07 | Presence and typing endpoints enforce per-user/IP rate limits and return structured `429` responses with `Retry-After` when limits are exceeded. |
+| SCALE-08 | Redis failures do not block durable messaging; social UI keeps last-known presence briefly, then shows `unknown`, and never increases PostgreSQL write frequency as a fallback. |
+| SCALE-09 | Realtime events only invalidate or accelerate authenticated HTTP reconciliation; Redis event payloads never become direct client truth. |
+| SCALE-10 | Presence friend snapshots use bounded batched Redis reads and avoid unbounded key scans such as `KEYS` in request paths. |
+
+---
+
 ## Input Zone (INPUT)
 
 | ID | Requirement |

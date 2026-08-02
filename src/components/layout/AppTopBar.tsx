@@ -49,7 +49,7 @@ export function AppTopBar({ hidden = false, onOpenNavigation }: { hidden?: boole
   const searchable = pathname === "/dashboard";
 
   return (
-    <header className="sticky top-0 z-40 grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border/60 bg-card/85 px-3 backdrop-blur-xl sm:px-6" role="banner">
+    <header className="sticky top-0 z-40 grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border/60 bg-card px-3 sm:px-6" role="banner">
       <div className="flex min-w-0 items-center gap-3">
         <Button type="button" variant="ghost" size="icon" className="size-11 lg:hidden" onClick={onOpenNavigation} aria-label={messages.navigation.openNavigation}>
           <Menu className="size-5" />
@@ -64,7 +64,7 @@ export function AppTopBar({ hidden = false, onOpenNavigation }: { hidden?: boole
           onChange={(event) => setSearch(event.target.value)}
           placeholder={messages.navigation.searchWorkspacesPlaceholder}
           aria-label={messages.navigation.searchWorkspaces}
-          className="hidden h-9 w-[min(36vw,28rem)] rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring md:block"
+          className="hidden h-9 w-[min(36vw,28rem)] rounded-md border border-border bg-background px-3 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:block motion-reduce:transition-none"
         />
       ) : (
         <div />

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/buttons/button";
+import { Button, buttonVariants } from "@/components/buttons/button";
+import { cn } from "@/lib/utils";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { DISPLAY_NAME_MAX_LEN, useDisplayName } from "@/components/profile/DisplayNameProvider";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,7 @@ export function DashboardHero({
     : `${totalWorkspaces} ${totalWorkspaces === 1 ? "workspace" : "workspaces"} · ${readyCount} ready · ${needsAttentionCount} need attention`;
 
   return (
-    <section className="rounded-xl border border-border/60 bg-card p-4 sm:p-5 shadow-2xs">
+    <section className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="max-w-2xl space-y-1">
           <h1 className="text-balance font-heading text-2xl font-bold tracking-[-0.02em] text-foreground">
@@ -60,10 +61,10 @@ export function DashboardHero({
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Link
             href={createHref}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-oxblood-primary px-4 text-sm font-semibold text-white shadow-2xs hover:bg-oxblood-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={cn(buttonVariants({ size: "lg" }), "min-h-11 px-4 font-semibold")}
           >
             <Plus className="size-4" />
-            New workspace
+            {copy.newWorkspace}
           </Link>
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { SimpleLoadingScreen } from "@/components/layout/SimpleLoadingScreen";
+import { DashboardHomeSkeleton } from "@/components/dashboard/DashboardHomeSkeleton";
 
 export default function DashboardLoading() {
-  return <SimpleLoadingScreen message="Loading dashboard…" />;
+  return <DashboardHomeSkeleton />;
 }

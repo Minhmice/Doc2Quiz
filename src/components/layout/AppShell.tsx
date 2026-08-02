@@ -19,12 +19,11 @@ function FocusSearchListener() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("doc2quiz_sidebar_collapsed") === "true";
-    }
-    return false;
-  });
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("doc2quiz_sidebar_collapsed") === "true");
+  }, []);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {

@@ -3,45 +3,31 @@
 import { LanguageSelector } from "@/components/locale/LanguageSelector";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
-import { ApprovedBankExportButton } from "@/components/settings/ApprovedBankExportButton";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function SettingsPage() {
   const { messages } = useLocale();
 
   return (
-    <div className="max-w-2xl space-y-2">
-      <div>
-        <p className="font-label text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="w-full max-w-3xl space-y-6 pb-8">
+      <header className="border-b border-border/70 pb-5">
+        <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
           Application
         </p>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-[var(--d2q-text)]">
+        <h1 className="mt-2 font-heading text-3xl font-extrabold leading-tight tracking-[-0.03em] text-foreground sm:text-4xl">
           {messages.navigation.settings}
         </h1>
-        <p className="mt-1 text-sm text-[var(--d2q-muted)]">
-          Document processing is configured on the server. API URLs, keys, and models are not stored in the browser.
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground text-pretty">
+          Choose how Doc2Quiz looks and reads on this device.
         </p>
-      </div>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <AppearanceSettings />
-      </div>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <LanguageSelector />
-      </div>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <p className="text-sm text-[var(--d2q-muted)]">
-          Ask your administrator if uploads fail or processing is unavailable.
-        </p>
-      </div>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <p className="font-label text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Data export
-        </p>
-        <h2 className="font-heading mt-1 text-lg font-semibold text-[var(--d2q-text)]">
-          Training / evaluation
-        </h2>
-        <div className="mt-4">
-          <ApprovedBankExportButton />
-        </div>
+      </header>
+      <div className="grid gap-4">
+        <Card className="rounded-lg">
+          <CardContent className="p-5 sm:p-6"><AppearanceSettings /></CardContent>
+        </Card>
+        <Card className="rounded-lg">
+          <CardContent className="p-5 sm:p-6"><LanguageSelector /></CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/api/requireApiUser";
-import { isOwnProfileAvatarPath, validateProfileText } from "@/lib/profile/profileValidation";
+import { buildProfileAvatarPath, hasProfileImageSignature, isOwnProfileAvatarPath, validateProfileImage, validateProfileText } from "@/lib/profile/profileValidation";
 import { validateUsername } from "@/lib/profile/usernameValidation";
 import { isThemePreference, themePreferenceOrDefault } from "@/lib/profile/themePreference";
 import { mapSocialRouteError, setProfileUsername } from "@/lib/server/friends/friends";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const AVATAR_SIGNED_URL_TTL_SECONDS = 5 * 60;
+
+function cacheBustSignedUrl(signedUrl: string) {
+  return `${signedUrl}${signedUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
+}
 
 function fallbackName(email: string | undefined) {
   return email?.split("@")[0] || "Student";
@@ -34,11 +41,17 @@ export async function GET() {
   let avatarUrl: string | null = null;
   let avatarStatus: "available" | "avatar_unavailable" | null = null;
   if (data?.avatar_path) {
-    const signed = await supabase.storage.from("doc2quiz").createSignedUrl(data.avatar_path, 60 * 60);
-    if (signed.error || !signed.data?.signedUrl) avatarStatus = "avatar_unavailable";
-    else {
-      avatarUrl = signed.data.signedUrl;
-      avatarStatus = "available";
+    avatarStatus = "avatar_unavailable";
+    if (!isOwnProfileAvatarPath(data.avatar_path, user.id)) {
+      console.error("Profile avatar signing failed", { stage: "avatar-path-invalid" });
+    } else {
+      const signed = await createSupabaseAdminClient().storage.from("doc2quiz").createSignedUrl(data.avatar_path, AVATAR_SIGNED_URL_TTL_SECONDS);
+      if (signed.error || !signed.data?.signedUrl) {
+        console.error("Profile avatar signing failed", { stage: "avatar-sign" });
+      } else {
+        avatarUrl = cacheBustSignedUrl(signed.data.signedUrl);
+        avatarStatus = "available";
+      }
     }
   }
 
@@ -78,6 +91,53 @@ export async function GET() {
   });
 }
 
+export async function POST(request: Request) {
+  const auth = await requireApiUser();
+  if ("error" in auth) return auth.error;
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "Invalid multipart body" }, { status: 400 });
+  }
+
+  const file = form.get("file");
+  if (!(file instanceof File)) return NextResponse.json({ error: "Missing avatar file" }, { status: 400 });
+  const validationError = validateProfileImage(file);
+  if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
+
+  const avatarPath = buildProfileAvatarPath(auth.user.id, file.type);
+  if (!avatarPath) return NextResponse.json({ error: "Invalid avatar path" }, { status: 400 });
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!hasProfileImageSignature(bytes, file.type)) return NextResponse.json({ error: "File content does not match its image type." }, { status: 400 });
+
+  const admin = createSupabaseAdminClient();
+  const { error: uploadError } = await admin.storage.from("doc2quiz").upload(avatarPath, bytes, {
+    contentType: file.type,
+    upsert: true,
+    cacheControl: "3600",
+  });
+  if (uploadError) {
+    console.error("Profile avatar upload failed", { code: "storage_upload_failed" });
+    return NextResponse.json({ error: "Avatar upload failed" }, { status: 502 });
+  }
+
+  const { error: persistError } = await auth.supabase.from("profiles").upsert({ id: auth.user.id, avatar_path: avatarPath });
+  if (persistError) {
+    console.error("Profile avatar persistence failed", { code: persistError.code });
+    return NextResponse.json({ error: "Avatar profile update failed" }, { status: 500 });
+  }
+
+  const signed = await admin.storage.from("doc2quiz").createSignedUrl(avatarPath, AVATAR_SIGNED_URL_TTL_SECONDS);
+  if (signed.error || !signed.data?.signedUrl) {
+    console.error("Profile avatar signing failed", { stage: "avatar-sign-after-upload" });
+    return NextResponse.json({ error: "Avatar saved, but private preview is unavailable" }, { status: 502 });
+  }
+
+  return NextResponse.json({ data: { avatarUrl: cacheBustSignedUrl(signed.data.signedUrl) } });
+}
+
 export async function PATCH(request: Request) {
   const auth = await requireApiUser();
   if ("error" in auth) return auth.error;
@@ -101,6 +161,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  if (body.avatarPath !== undefined) {
+    return NextResponse.json({ error: "Avatar path cannot be updated directly" }, { status: 400 });
+  }
+
   if (body.username !== undefined) {
     const usernameError = validateUsername(body.username);
     if (usernameError) {
@@ -112,7 +176,6 @@ export async function PATCH(request: Request) {
       if (
         body.displayName === undefined &&
         body.bio === undefined &&
-        body.avatarPath === undefined &&
         body.themePreference === undefined
       ) {
         return NextResponse.json({ data: { username: usernameResult.username } });
@@ -127,7 +190,7 @@ export async function PATCH(request: Request) {
 
   const onboardingKeys = ["onboardingVersion", "onboardingCompleted", "coachMode", "studyIdentity", "commitment", "preferredStudyTime"] as const;
   const hasOnboarding = onboardingKeys.some((key) => body[key] !== undefined);
-  if (body.displayName === undefined && body.bio === undefined && body.avatarPath === undefined && body.themePreference === undefined && !hasOnboarding) {
+  if (body.displayName === undefined && body.bio === undefined && body.themePreference === undefined && !hasOnboarding) {
     return NextResponse.json({ error: "No profile fields to update" }, { status: 400 });
   }
   if (body.themePreference !== undefined && !isThemePreference(body.themePreference)) return NextResponse.json({ error: "Invalid theme preference" }, { status: 400 });
@@ -143,14 +206,10 @@ export async function PATCH(request: Request) {
   const bio = typeof body.bio === "string" ? body.bio.trim() : body.bio;
   const textError = validateProfileText(displayName, bio);
   if (textError) return NextResponse.json({ error: textError }, { status: 400 });
-  if (body.avatarPath !== undefined && !isOwnProfileAvatarPath(body.avatarPath, auth.user.id)) {
-    return NextResponse.json({ error: "Invalid avatar path" }, { status: 400 });
-  }
 
   const patch: Record<string, string | number | null> = { id: auth.user.id };
   if (body.displayName !== undefined) patch.display_name = (displayName as string) || null;
   if (body.bio !== undefined) patch.bio = (bio as string) || null;
-  if (body.avatarPath !== undefined) patch.avatar_path = body.avatarPath as string | null;
   if (body.onboardingVersion !== undefined) patch.onboarding_version = body.onboardingVersion as number;
   if (body.onboardingCompleted !== undefined) patch.onboarding_completed_at = body.onboardingCompleted ? new Date().toISOString() : null;
   if (body.coachMode !== undefined) patch.coach_mode = String(body.coachMode);
@@ -164,7 +223,10 @@ export async function PATCH(request: Request) {
     .upsert(patch)
     .select("display_name,bio,avatar_path,username,onboarding_version,onboarding_completed_at,coach_mode,study_identity,commitment,preferred_study_time,theme_preference")
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("Profile update failed", { stage: "profile-persist", code: error.code });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ data });
 }

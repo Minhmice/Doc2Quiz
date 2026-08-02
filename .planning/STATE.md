@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-08-01T18:56:00.000Z"
-last_activity: 2026-08-02 -- Completed quick task 260802-2hj: increase avatar upload limit to exclusive 10 MiB
+last_updated: "2026-08-01T19:25:32.361Z"
+last_activity: "2026-08-02 -- Completed quick task 260802-2hj: increase avatar upload limit to exclusive 10 MiB"
 progress:
   total_phases: 13
   completed_phases: 9
@@ -23,7 +23,7 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 14 (friend-presence-and-chat-layout-repair) — EXECUTING
+Phase: 14
 Plan: 1 of 2
 Status: Executing Phase 14
 Last activity: 2026-08-02 -- Completed quick task 260802-2hj: increase avatar upload limit to exclusive 10 MiB
@@ -81,6 +81,10 @@ Progress: [██████████] 100%
 - [Phase 12]: Realtime payloads only invalidate; every displayed social count comes from authenticated HTTP authority. — Prevents stale or forged event payloads from becoming UI truth.
 - [Phase 12]: Realtime chat events only invalidate; authenticated cursor history remains display authority.
 - [Phase 12]: Mobile message actions use full-screen routes; desktop actions retain floating dialogs.
+- [Phase 15 exploration]: Redis owns hot per-session presence and conversation typing state; Postgres receives only batched durable activity.
+- [Phase 15 exploration]: Accepted friends see presence/activity; conversation participants see typing; blocked users see none.
+- [Phase 15 exploration]: Redis failure keeps last-known state briefly, then returns `unknown`; never increases Postgres write frequency and never blocks messaging.
+- [Phase 15 exploration]: Existing authenticated HTTP snapshots remain display authority; realtime remains invalidation-only.
 
 ## Quick Tasks Completed
 
