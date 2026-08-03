@@ -39,7 +39,7 @@ Repository policy forbids editing `.env.example` in Phase 15. Plans document thi
 | `SOCIAL_WORKER_HEALTH_FILE` | Optional supervisor health record | Host-writable path, no secrets |
 | `SUPABASE_SERVICE_ROLE_KEY` | Worker-only durable RPC credential | Never browser-exposed |
 
-`PHASE12_TEST_DATABASE_URL` remains Phase 12-owned. Phase 15 scripts must not read, overwrite, or claim proof from it.
+Phase 15 SQL proof uses only its own explicitly configured test target; it does not inherit database variables from earlier phases.
 
 ## Artifact and test ownership
 
@@ -128,7 +128,7 @@ Evidence JSON schema must include `runId`, UTC timestamps, target class/version,
 
 ## Phase 14 baseline
 
-Phase 14 focused behavior was green. Known unrelated baseline debt remains separate: legacy aggregate fixtures (`incoming.items is not iterable` and four retired response-shape failures), repository lint errors in `src/app/share/[token]/page.tsx` and `src/legacy/loading/PageTransitionProvider.tsx`, existing warnings, and Phase 12/14 runtime SQL blocked without `PHASE12_TEST_DATABASE_URL`. Phase 15 focused tests must pass cleanly; no Phase 15 task may weaken or rewrite those baseline fixtures.
+Phase 14 focused behavior was green. Known unrelated baseline debt remains separate: legacy aggregate fixtures (`incoming.items is not iterable` and four retired response-shape failures), repository lint errors in `src/app/share/[token]/page.tsx` and `src/legacy/loading/PageTransitionProvider.tsx`, and existing warnings. Phase 15 focused tests must pass cleanly; no Phase 15 task may weaken or rewrite those baseline fixtures.
 
 ## Requirement traceability
 

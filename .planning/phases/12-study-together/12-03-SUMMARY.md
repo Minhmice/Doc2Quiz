@@ -80,7 +80,7 @@ completed: 2026-07-31
 
 ## Issues Encountered
 - Full `friends.route.test.ts` includes unrelated dirty onboarding test expecting numeric `onboarding_version`; current dirty profile route writes string. Scoped Plan 12 social tests pass. Typecheck passes.
-- Runtime SQL/RLS proof remains blocked by existing missing `PHASE12_TEST_DATABASE_URL`; no database connection attempted.
+- Database migration and RLS validation are owned by Supabase deployment; repository tests do not require a database URL.
 
 ## Known Stubs
 None.
@@ -95,7 +95,7 @@ None.
 
 ## Next Phase Readiness
 - Durable topbar count foundation ready for friends hub and responsive chat plans.
-- Existing disposable database blocker remains for runtime RLS proof.
+- Supabase deployment remains the authority for runtime RLS behavior.
 
 ## Self-Check: PASSED
 - Planned implementation and test files exist.

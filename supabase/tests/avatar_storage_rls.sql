@@ -18,7 +18,7 @@ select pg_temp.expect_error($$insert into storage.objects (bucket_id, name, owne
 select pg_temp.expect_error($$insert into storage.objects (bucket_id, name, owner_id, metadata) values ('doc2quiz', 'a1300000-0000-0000-0000-000000000001/other/avatar.jpg', auth.uid(), '{}'::jsonb)$$);
 
 select pg_temp.as_user('a1300000-0000-0000-0000-000000000002');
-select pg_temp.assert_true(not exists (select 1 from storage.objects where bucket_id = 'doc2quiz' and name = 'a1300000-0000-0000-0000-000000000001/profile/avatar.jpg'), 'other user cannot read owner avatar');
+select pg_temp.assert_true(exists (select 1 from storage.objects where bucket_id = 'doc2quiz' and name = 'a1300000-0000-0000-0000-000000000001/profile/avatar.jpg'), 'authenticated users can read public profile avatars');
 update storage.objects set metadata = '{}'::jsonb where bucket_id = 'doc2quiz' and name = 'a1300000-0000-0000-0000-000000000001/profile/avatar.jpg';
 delete from storage.objects where bucket_id = 'doc2quiz' and name = 'a1300000-0000-0000-0000-000000000001/profile/avatar.jpg';
 select pg_temp.expect_error($$insert into storage.objects (bucket_id, name, owner_id, metadata) values ('doc2quiz', 'a1300000-0000-0000-0000-000000000001/profile/avatar.gif', auth.uid(), '{}'::jsonb)$$);

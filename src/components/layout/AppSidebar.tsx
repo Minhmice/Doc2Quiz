@@ -166,7 +166,7 @@ export function AppSidebar({
             ? "size-11 justify-center px-0 mx-auto"
             : "px-3 w-full hover:translate-x-0.5",
           item.primary
-            ? "bg-oxblood-primary text-white shadow-2xs hover:bg-oxblood-primary/90 hover:shadow-xs active:scale-[0.98]"
+            ? "bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90 hover:shadow-xs active:scale-[0.98]"
             : isActive
             ? "bg-muted/80 text-foreground font-bold shadow-2xs"
             : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -176,7 +176,7 @@ export function AppSidebar({
         {isActive && !item.primary ? (
           <span
             className={cn(
-              "absolute bg-oxblood-primary rounded-full transition-all",
+              "absolute bg-primary rounded-full transition-all",
               compact
                 ? "left-0 top-2.5 bottom-2.5 w-1 rounded-r-full"
                 : "left-0 top-2 bottom-2 w-1 rounded-r-full",
@@ -189,7 +189,7 @@ export function AppSidebar({
           className={cn(
             "size-5 shrink-0 transition-transform duration-200 motion-reduce:transition-none",
             item.iconMotion,
-            isActive && !item.primary && "text-oxblood-primary",
+            isActive && !item.primary && "text-primary",
           )}
         />
         {!compact && <span className="truncate">{item.label}</span>}
@@ -251,7 +251,7 @@ export function AppSidebar({
     <button
       type="button"
       onClick={onToggle}
-      className="flex size-8 shrink-0 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors active:scale-95 shadow-2xs"
+      className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors active:scale-95 shadow-2xs lg:size-8"
       aria-label={collapsed ? n.expandSidebar : n.collapseSidebar}
     >
       <ChevronLeft className="size-4.5" />
@@ -262,7 +262,7 @@ export function AppSidebar({
     <button
       type="button"
       onClick={onToggle}
-      className="size-10 rounded-xl bg-oxblood-primary text-white font-black text-xs tracking-tighter flex items-center justify-center shadow-2xs hover:scale-105 active:scale-95 transition-all mx-auto"
+      className="size-10 cursor-pointer rounded-xl bg-primary text-primary-foreground font-black text-xs tracking-tighter flex items-center justify-center shadow-2xs hover:scale-105 active:scale-95 transition-all mx-auto"
       aria-label={n.expandSidebar}
     >
       <span>{logoBadgeText}</span>
@@ -293,7 +293,7 @@ export function AppSidebar({
         ) : (
           <div className="flex h-16 items-center justify-between border-b border-border/60 px-4 gap-2">
             <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 group">
-              <div className="size-8 rounded-lg bg-oxblood-primary text-white font-black text-xs tracking-tighter flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+              <div className="size-8 rounded-lg bg-primary text-primary-foreground font-black text-xs tracking-tighter flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                 <span>{logoBadgeText}</span>
               </div>
               <span className="font-heading text-lg font-extrabold tracking-tight text-foreground truncate">
@@ -318,9 +318,9 @@ export function AppSidebar({
 
       {/* Mobile Drawer Sheet */}
       <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
-        <SheetContent side="left" className="w-[min(20rem,85vw)] p-0 lg:hidden">
+        <SheetContent side="left" className="w-[min(20rem,85vw)] max-w-full p-0 lg:hidden">
           <SheetHeader className="border-b border-border/60 px-4 py-4 pr-14 flex flex-row items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-oxblood-primary text-white font-black text-xs tracking-tighter flex items-center justify-center">
+            <div className="size-8 rounded-lg bg-primary text-primary-foreground font-black text-xs tracking-tighter flex items-center justify-center">
               <span>{logoBadgeText}</span>
             </div>
             <SheetTitle className="font-heading font-extrabold text-lg">{n.brandName}</SheetTitle>

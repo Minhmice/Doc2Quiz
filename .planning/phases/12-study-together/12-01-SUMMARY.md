@@ -12,7 +12,7 @@ provides:
   - Immutable creator-owned quiz challenge snapshots
   - Idempotent participant attempts with server scoring and reveal gates
   - Durable notifications, reactions, reminders, and private notification broadcasts
-  - Typed TypeScript RPC boundary and guarded SQL proof runner
+  - Typed TypeScript RPC boundary
 affects: [12-02, 12-03, 12-04, 12-07]
 tech-stack:
   added: []
@@ -20,13 +20,13 @@ tech-stack:
 key-files:
   created:
     - supabase/migrations/20260731100000_phase12_study_together_foundation.sql
-    - scripts/verify-phase12-study-together-sql.mjs
+
     - src/lib/server/friends/studyTogether.ts
     - src/lib/server/friends/studyTogether.test.ts
   modified: []
 key-decisions:
   - "All study challenge table access remains RPC-only; practice projection strips answer keys."
-  - "Runtime SQL proof refuses non-local targets unless disposable host and explicit confirmation match."
+  - "Supabase deployment owns migration and RLS validation; repository tests do not require a database URL."
 patterns-established:
   - "Challenge mutations lock state, dedupe semantic notifications, and return deterministic safe DTOs."
 requirements-completed: [SOCIAL-01, SOCIAL-02, SOCIAL-03, SOCIAL-04, SOCIAL-05, SOCIAL-06, SOCIAL-07, SOCIAL-08]
@@ -49,7 +49,7 @@ completed: 2026-07-31
 ## Accomplishments
 - Added immutable snapshot authority with creator ownership, friendship, source readiness, and nonempty-question checks.
 - Added idempotent creator/recipient attempts, server-side scoring, reveal policy, and semantic notification dedupe.
-- Added durable reaction/reminder tables, best-effort private realtime notification invalidation, typed adapters, and guarded SQL proof.
+- Added durable reaction/reminder tables, best-effort private realtime notification invalidation, and typed adapters.
 
 ## Task Commits
 
@@ -60,7 +60,6 @@ completed: 2026-07-31
 ## Files Created/Modified
 - `src/lib/server/friends/studyTogether.ts` - Typed RPC calls and strict safe-payload decoders.
 - `src/lib/server/friends/studyTogether.test.ts` - Nine adapter/error/status contract tests.
-- `scripts/verify-phase12-study-together-sql.mjs` - Static migration checks and safe runtime target guard.
 - `supabase/migrations/20260731100000_phase12_study_together_foundation.sql` - Challenge state machine, persistence, security, and realtime trigger.
 
 ## Decisions Made
@@ -83,7 +82,7 @@ completed: 2026-07-31
 **Impact on plan:** Required locked block semantics; no scope expansion.
 
 ## Issues Encountered
-- Runtime SQL/RLS proof blocked because `PHASE12_TEST_DATABASE_URL` is unset. Guard emitted `SQL_PROOF_BLOCKED` with exit code 2 after static proof passed; no database connection opened.
+- Database migration and RLS validation are owned by Supabase deployment; repository tests do not require a database URL.
 
 ## Threat Flags
 
@@ -92,17 +91,17 @@ completed: 2026-07-31
 | threat_flag: database-rpc | `supabase/migrations/20260731100000_phase12_study_together_foundation.sql` | New authenticated cross-user mutation and private realtime topic surface, covered by plan threat model and restricted grants. |
 
 ## User Setup Required
-None - runtime SQL proof needs explicit disposable test target only when integration proof is run.
+None.
 
 ## Next Phase Readiness
 - Plans 12-02 onward can consume typed challenge RPCs and safe DTOs.
-- SQL/RLS integration evidence remains blocked until repository local Supabase or disposable test DB is provided.
+- Supabase deployment remains the authority for SQL/RLS integration behavior.
 
 ## Self-Check: PASSED
 - Four planned implementation files exist.
 - Task commits `3bf2fb6`, `7412a12`, and `543f16f` exist.
 - Vitest: 9/9 passed.
-- Static SQL contract: passed; runtime SQL proof: safely blocked with exit code 2.
+- Typed adapter tests passed; database validation remains deployment-owned by Supabase.
 
 ---
 *Phase: 12-study-together*

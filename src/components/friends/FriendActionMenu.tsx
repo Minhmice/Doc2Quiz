@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Ban, Flag, MessageCircle, Sparkles, UserMinus, UserRound, UsersRound } from "lucide-react";
 
 import { useLocale } from "@/components/locale/LocaleProvider";
+import { friendProfileHref } from "@/lib/profile/usernameValidation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,7 +71,7 @@ export function FriendActionMenu({ userId, username, avatarUrl, presence, onStud
 
   return <>
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm outline-none focus:bg-accent">
+      <DropdownMenuTrigger className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm outline-none focus:bg-accent">
         <span className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-semibold text-muted-foreground">{avatarUrl ? <img src={avatarUrl} alt="" className="size-full object-cover" /> : (username?.[0]?.toUpperCase() ?? "?")}</span>
         {isOnline ? <span className="size-2 rounded-full bg-muted-foreground" /> : null}
         <span>{username ?? "Study buddy"}{presenceLabel ? <small className="ml-2 text-xs text-muted-foreground">{presenceLabel}</small> : null}</span>
@@ -78,7 +79,7 @@ export function FriendActionMenu({ userId, username, avatarUrl, presence, onStud
       <DropdownMenuContent className="w-56">
         <DropdownMenuGroup><DropdownMenuLabel>{username ?? "Study buddy"}</DropdownMenuLabel></DropdownMenuGroup>
         <DropdownMenuItem onClick={onStudyTogether}><UsersRound />{copy.studyTogether}</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push(`/profile/${userId}`)}><UserRound />{copy.viewProfile}</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push(friendProfileHref(userId, username))}><UserRound />{copy.viewProfile}</DropdownMenuItem>
         <DropdownMenuItem onClick={onMessage}><MessageCircle />{copy.message}</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuSub><DropdownMenuSubTrigger><Sparkles />{copy.reactions}</DropdownMenuSubTrigger><DropdownMenuSubContent className="max-w-64">{PRESET_REACTION_IDS.map((reactionId) => <DropdownMenuItem key={reactionId} onClick={() => void sendPresetReaction(userId, reactionId).then(() => onStatus(copy.reported)).catch(() => onStatus(copy.failed))}>{reactions[reactionId]}</DropdownMenuItem>)}</DropdownMenuSubContent></DropdownMenuSub>

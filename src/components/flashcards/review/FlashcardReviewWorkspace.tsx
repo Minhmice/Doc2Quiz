@@ -509,7 +509,7 @@ export function FlashcardReviewWorkspace({
                     title={`Card ${index + 1}`}
                     onClick={() => card.id && handlePickCompact(card.id)}
                     className={cn(
-                      "flex aspect-square items-center justify-center rounded-md font-label text-[10px] font-bold transition-transform",
+                      "flex aspect-square min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md font-label text-[10px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       active &&
                         "z-10 ring-2 ring-primary ring-offset-2 ring-offset-background",
                       st === "approved" &&

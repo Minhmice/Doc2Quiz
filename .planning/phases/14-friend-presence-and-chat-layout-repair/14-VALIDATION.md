@@ -5,17 +5,16 @@
 **Status:** Pre-execution validation contract  
 **Scope:** SOCIAL-09, SOCIAL-10 and Phase 14 locked decisions D-01–D-03.
 
-## Test target safety
+## Database validation
 
-- SQL proof runs only against an explicit repository-local Supabase database or disposable dedicated test project named by `PHASE12_TEST_DATABASE_URL`.
-- Refuse production or shared developer database URLs. No SQL fixture cleanup without documented test-only target approval.
-- Until approved target exists, run static SQL/route/unit proof only and mark runtime SQL proof blocked; never guess a connection string.
+- Supabase owns migration application and database/RLS validation.
+- Repository validation uses route, adapter, client, component, and source-contract tests; no runtime database URL is required.
 
 ## Wave 0 coverage before implementation
 
 | Gap | Owner plan/task | Required first proof | Automated command |
 |---|---|---|---|
-| Bucket-before-keyset SQL and bucket-bound cursor | 14-01 Task 1 | RED adapter cursor/RPC assertions plus static SQL token/signature/grant proof in `supabase/tests/phase12_bounded_social_lists.sql` | `npx vitest run src/lib/server/friends/socialLists.test.ts` |
+| Bucket-before-keyset SQL and bucket-bound cursor | 14-01 Task 1 | RED adapter cursor/RPC assertions plus migration source-contract checks | `npx vitest run src/lib/server/friends/socialLists.test.ts` |
 | Presence query boundary and browser URL DTO | 14-01 Task 2 | RED route parser/auth-order/adapter forwarding and `presence=online|offline` URL assertions | `npx vitest run src/app/api/friends/friends.route.test.ts src/lib/client/friends.test.ts` |
 | Current FriendsHub membership refresh after recovery/transition | 14-02 Task 1 | RED fake lifecycle/timer controller assertions: focus, visible, 60-second revalidation, earliest online `lastActiveAt + 5 minutes`, cleanup, stale-result guard, and current-bucket first-page replacement | `npx vitest run src/components/friends/FriendsHub.test.tsx` |
 | Offline visual suppression and desktop dialog enum contract | 14-02 Task 1 | RED enum-only row model plus DirectMessageDialog header-status assertions for online versus recently_active/offline; typed dialog fixture has no `isOnline` contract | `npx vitest run src/components/friends/FriendActionMenu.test.tsx src/components/friends/DirectMessageDialog.test.tsx` |
@@ -46,7 +45,7 @@
 npx vitest run src/lib/server/friends/socialLists.test.ts src/app/api/friends/friends.route.test.ts src/lib/client/friends.test.ts && npm run typecheck
 ```
 
-Static SQL inspection must prove `p_presence`, accepted/block predicates, authenticated grant, bucket predicate in `rows` before cursor/order/limit, `limit + 1`, and cursor bucket binding. Do not alter Phase 12 migration.
+Migration source inspection must cover `p_presence`, accepted/block predicates, authenticated grant, bucket predicate in `rows` before cursor/order/limit, `limit + 1`, and cursor bucket binding. Do not alter Phase 12 migration.
 
 ### Plan 14-02
 

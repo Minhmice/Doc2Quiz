@@ -75,19 +75,21 @@ export function ImportStepTabStrip({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex w-full min-w-[220px] max-w-xl flex-col gap-1",
+        "flex w-full min-w-0 max-w-xl flex-col gap-1",
         className
       )}
     >
       <span className="font-label text-[10px] font-bold text-muted-foreground">
         Progress
       </span>
-      <div
+      <nav
         className="relative w-full"
-        role="tablist"
         aria-label="Import progress"
       >
-        <div className="grid w-full grid-cols-3 text-center font-label text-[10px] font-bold uppercase tracking-widest sm:text-[11px]">
+        <div
+          className="grid w-full grid-cols-3 text-center font-label text-[10px] font-bold uppercase tracking-widest sm:text-[11px]"
+          role="list"
+        >
           {(["upload", "read", "generate"] as const).map((key, i) => {
             const isActive = idx === i;
             const isComplete = i < idx;
@@ -95,8 +97,8 @@ export function ImportStepTabStrip({ className }: { className?: string }) {
             return (
               <motion.span
                 key={key}
-                role="tab"
-                aria-selected={isActive}
+                role="listitem"
+                aria-current={isActive ? "step" : undefined}
                 data-active={isActive ? "true" : "false"}
                 className={cn(
                   "d2q-import-phase px-0.5 py-1.5 leading-tight sm:px-1",
@@ -108,11 +110,6 @@ export function ImportStepTabStrip({ className }: { className?: string }) {
                   isActive
                     ? { opacity: 1, y: 0, scale: 1 }
                     : { opacity: isComplete ? 0.85 : 0.6, y: 1, scale: 1 }
-                }
-                whileHover={
-                  reduceMotion || isActive
-                    ? undefined
-                    : { opacity: 1, y: 0, scale: 1.03 }
                 }
                 transition={t}
               >
@@ -133,7 +130,7 @@ export function ImportStepTabStrip({ className }: { className?: string }) {
           animate={{ x: `${idx * 100}%` }}
           transition={t}
         />
-      </div>
+      </nav>
     </div>
   );
 }

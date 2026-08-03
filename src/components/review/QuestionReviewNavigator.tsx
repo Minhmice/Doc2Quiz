@@ -49,7 +49,7 @@ export function QuestionReviewNavigator({
   );
 
   const grid = (
-    <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-8">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(2.75rem,1fr))] gap-1.5 sm:grid-cols-8">
       {questions.map((q, i) => {
         const complete = isMcqComplete(q);
         const active = q.id === activeQuestionId;
@@ -60,7 +60,7 @@ export function QuestionReviewNavigator({
             title={`Question ${i + 1}`}
             onClick={() => onSelect(q.id)}
             className={cn(
-              "flex aspect-square items-center justify-center rounded-sm border text-[10px] font-bold transition-colors",
+              "flex aspect-square min-h-11 min-w-11 items-center justify-center rounded-sm border text-[10px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               active
                 ? "border-d2q-accent bg-chart-4/15 text-chart-4 ring-2 ring-d2q-accent/30"
                 : complete

@@ -460,7 +460,7 @@ Measure p50/p95/p99 route latency, Redis command latency, Postgres calls per hea
 ### Route and SQL tests
 
 - Extend route tests modeled on `src/app/api/friends/friends.route.test.ts` and existing `social-lists.route.test.ts`: auth-first behavior, malformed session/conversation IDs, privacy denial, rate limit, Redis unavailable, and generic error mapping.
-- Add `supabase/tests/phase15_social_presence.sql` to assert durable activity function signatures, authenticated-only grants, private-table revocation, participant/block predicates, and idempotent newest-timestamp behavior. Run only against approved local/disposable DB; current Phase 14 verification records `PHASE12_TEST_DATABASE_URL` unavailable.
+- Add `supabase/tests/phase15_social_presence.sql` to assert durable activity function signatures, authenticated-only grants, private-table revocation, participant/block predicates, and idempotent newest-timestamp behavior. Run only against the explicitly configured Phase 15 SQL target.
 - Update `supabase/schemas/70_functions.sql` and `80_rls.sql` mirrors with each migration; static proof must match exact current signatures.
 
 ### Integration and browser checks
@@ -632,7 +632,7 @@ All six prior questions are resolved by explicit decisions below. They remain on
 | Docker | disposable Redis/load validation | ✓ | 29.6.1 | Managed Redis target; Docker preferred locally. |
 | Redis server | TTL/integration/load proof | ✗ | `redis-cli` absent; server not verified | Start disposable Redis via Docker or use approved managed target. |
 | `redis` npm package | Node Redis adapter | ✓ registry only | 6.2.0 | No production fallback; disabled adapter only for local/unit tests. |
-| Supabase/PostgreSQL target | SQL/privacy/runtime proof | ? | `PHASE12_TEST_DATABASE_URL` not set per Phase 14 verification | Approved local/disposable target required; never use production/shared DB. |
+| Supabase/PostgreSQL target | SQL/privacy/runtime proof | ? | Phase 15 target not configured | Configure the Phase 15 disposable target before runtime proof; never use production/shared DB. |
 | Vitest | focused unit/route/component tests | ✓ | 3.2.4 from `package.json` | — |
 | Playwright | browser/manual automation support | ✓ | 1.52.0 from `package.json` | Manual browser checks. |
 | `redis-cli` | optional CLI inspection | ✗ | — | Node integration script or Docker exec; do not block implementation. |

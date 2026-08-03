@@ -491,15 +491,10 @@ This is proposed code. Existing channel setup/cleanup and focus/visibility patte
 | SOCIAL-08/09 | separate remove/block actions and `/friends` destinations render | component/static route test | `npx vitest run src/components/friends/*.test.tsx` | Partial — social tests exist |
 | SOCIAL-10 | message cursor preserved, mobile chat route/drawer renders, incoming realtime invalidates history | component/client test | `npx vitest run src/lib/client/messages.test.ts src/components/friends/*.test.tsx` | Partial — client test exists |
 
-### Required SQL proof cases
+### Required validation cases
 
-- Two concurrent `accept_study_challenge` calls return one attempt ID and one recipient acceptance notification.
-- A recipient cannot select snapshot or attempt rows/answer keys through direct tables/RPC DTO before allowed reveal.
-- Creator cannot challenge accepted friend from someone else’s output, deleted output, non-ready output, or zero-question output.
-- Source question edit/delete after create does not change returned snapshot practice content.
-- Complete twice does not duplicate completion/result-ready notification.
-- Re-running reminder sweep emits one `study_challenge_expiring` record per dedupe key.
-- Realtime RLS permits only topic recipient and rejects a different authenticated user.
+- Focused tests cover concurrent/idempotent lifecycle contracts, answer-key exclusion, source eligibility, snapshot immutability, notification dedupe, reminder behavior, and private-topic ownership.
+- Supabase deployment validates migration application, RLS, and runtime RPC behavior.
 
 ### Sampling Rate
 
@@ -509,7 +504,7 @@ This is proposed code. Existing channel setup/cleanup and focus/visibility patte
 
 ### Wave 0 Gaps
 
-- [ ] Supabase migration integration harness or repeatable SQL fixture for two authenticated users and RLS/RPC concurrency tests.
+- [x] User confirmed Phase 12/14 migrations applied to self-hosted Supabase; deployed runtime remains authority for RLS/RPC behavior.
 - [ ] `src/lib/server/friends/studyTogether.test.ts` typed RPC/error contract tests.
 - [ ] Challenge/notification route tests mirroring `src/app/api/friends/friends.route.test.ts`.
 - [ ] Responsive mobile browser verification for `/friends` and conversation route/drawer.

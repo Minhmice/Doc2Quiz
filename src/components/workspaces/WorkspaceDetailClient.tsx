@@ -409,7 +409,7 @@ export function WorkspaceDetailClient({
           </span>
           <span className="text-border">•</span>
           <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5 text-forest-sage" />
+            <CheckCircle2 className="size-3.5 text-[color:var(--d2q-blue)]" />
             <strong className="text-foreground">{completedVersions.length}</strong> {completedVersions.length === 1 ? "ready" : "ready"}
           </span>
           <span className="text-border">•</span>
@@ -518,7 +518,7 @@ export function WorkspaceDetailClient({
 
                           {/* Status Chips: Ready / Processing / Failed */}
                           {readyVersions.length > 0 ? (
-                            <Badge variant="default" className="bg-forest-sage text-white text-[10px] font-bold">
+                            <Badge variant="default" className="bg-[color:var(--d2q-blue)] text-white text-[10px] font-bold">
                               Ready
                             </Badge>
                           ) : isProcessing ? (
@@ -914,7 +914,7 @@ export function WorkspaceDetailClient({
 
             <div className="flex items-center justify-between pt-3 border-t border-border/60">
               <Button type="button" variant="outline" size="sm" disabled={shareSubmitting} onClick={() => void copyShareLink()}>
-                {shareStatus === "Link copied." ? <Check className="size-4 mr-1.5 text-forest-sage" /> : <Share2 className="size-4 mr-1.5" />}
+                {shareStatus === "Link copied." ? <Check className="size-4 mr-1.5 text-[color:var(--d2q-blue)]" /> : <Share2 className="size-4 mr-1.5" />}
                 {shareStatus === "Link copied." ? "Link copied" : "Copy share link"}
               </Button>
               <Button type="button" size="sm" onClick={() => setSharingOpen(false)}>

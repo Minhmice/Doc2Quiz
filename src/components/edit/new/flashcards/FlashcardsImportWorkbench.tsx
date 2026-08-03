@@ -11,7 +11,7 @@ export function FlashcardsImportWorkbench({
 }: Readonly<FlashcardsImportWorkbenchProps>) {
   return (
     <StudySetNewImportStepProvider>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-foreground selection:bg-accent selection:text-accent-foreground">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent pb-[env(safe-area-inset-bottom)] text-foreground selection:bg-accent selection:text-accent-foreground">
         <FlashcardsImportTechnicalGrid />
         <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
           <main className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-transparent">

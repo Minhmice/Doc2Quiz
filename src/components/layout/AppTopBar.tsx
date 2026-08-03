@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, Search } from "lucide-react";
+import { ArrowLeft, Menu, Search } from "lucide-react";
 import { Button } from "@/components/buttons/button";
 import { ApiStatusButton } from "@/components/layout/ApiStatusButton";
 import { FriendsMenu } from "@/components/layout/FriendsMenu";
@@ -47,13 +48,34 @@ export function AppTopBar({ hidden = false, onOpenNavigation }: { hidden?: boole
       : messages.navigation.currentSet;
 
   const searchable = pathname === "/dashboard";
+  const studyRoute = pathname.match(/^\/(quiz|flashcard)\/([^/]+)\/(play|drill-mistake|review|results|edit)$/);
+  const topLevelDestination = ["/dashboard", "/create", "/settings", "/help", "/profile", "/friends"].includes(pathname);
+  const backHref = studyRoute
+    ? `/${studyRoute[1]}/${studyRoute[2]}`
+    : pathname.startsWith("/workspace/")
+    ? "/dashboard"
+    : pathname.startsWith("/friends/messages/")
+    ? "/friends?view=messages"
+    : pathname.startsWith("/profile/")
+    ? "/profile"
+    : pathname.startsWith("/create/") || pathname.startsWith("/quiz/create") || pathname.startsWith("/flashcard/create")
+    ? "/create"
+    : "/dashboard";
 
   return (
-    <header className="sticky top-0 z-40 grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border/60 bg-card px-3 sm:px-6" role="banner">
-      <div className="flex min-w-0 items-center gap-3">
-        <Button type="button" variant="ghost" size="icon" className="size-11 lg:hidden" onClick={onOpenNavigation} aria-label={messages.navigation.openNavigation}>
-          <Menu className="size-5" />
-        </Button>
+    <header className="sticky top-0 z-40 grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border/60 bg-card px-2 sm:gap-3 sm:px-6" role="banner">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-3">
+        {topLevelDestination ? (
+          onOpenNavigation ? (
+            <Button type="button" variant="ghost" size="icon" className="size-11 lg:hidden" onClick={onOpenNavigation} aria-label={messages.navigation.openNavigation}>
+              <Menu className="size-5" />
+            </Button>
+          ) : null
+        ) : (
+          <Button render={<Link href={backHref} />} nativeButton={false} variant="ghost" size="icon" className="size-11" aria-label={messages.navigation.back}>
+            <ArrowLeft className="size-5" />
+          </Button>
+        )}
         <h1 className="truncate font-heading text-base font-bold">{title}</h1>
       </div>
       {searchable ? (

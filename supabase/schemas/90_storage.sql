@@ -36,14 +36,11 @@ create policy doc2quiz_storage_delete_workspace on storage.objects
     and (select private.can_edit_workspace(private.storage_object_workspace_id(name)))
   );
 
-create policy doc2quiz_storage_select_friend_profile_avatar on storage.objects
+create policy doc2quiz_storage_select_profile_avatar on storage.objects
   for select to authenticated
   using (
     bucket_id = 'doc2quiz'
-    and (select private.social_are_accepted_friends(
-      auth.uid(),
-      private.storage_object_profile_avatar_owner_id(name)
-    ))
+    and private.storage_object_profile_avatar_owner_id(name) is not null
   );
 
 create policy doc2quiz_storage_select_own_profile_avatar on storage.objects

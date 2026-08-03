@@ -7,13 +7,34 @@ import { AppShell } from "@/components/layout/AppShell";
 import { RoutePrefetch } from "@/components/layout/RoutePrefetch";
 import { LocaleProvider } from "@/components/locale/LocaleProvider";
 import { DisplayNameProvider } from "@/components/profile/DisplayNameProvider";
-import { PlayfulReactionOverlay } from "@/components/friends/PlayfulReactionOverlay";
 
 const CommandPalette = dynamic(
   () =>
     import("@/components/layout/CommandPalette").then((mod) => mod.CommandPalette),
   { ssr: false },
 );
+
+const PlayfulReactionOverlay = dynamic(
+  () =>
+    import("@/components/friends/PlayfulReactionOverlay").then((mod) => mod.PlayfulReactionOverlay),
+  { ssr: false },
+);
+
+function DeferredPlayfulReactionOverlay() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const start = () => setReady(true);
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(start, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(start, 2000);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  return ready ? <PlayfulReactionOverlay /> : null;
+}
 
 /** Avoid loading palette chunks during initial dev compile (Windows chunk races). */
 function DeferredCommandPalette() {
@@ -34,7 +55,13 @@ function DeferredCommandPalette() {
 
 function AnonymousQuizAttemptImporter() {
   useEffect(() => {
-    void importPendingAnonymousQuizAttempts();
+    const run = () => void importPendingAnonymousQuizAttempts();
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(run, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(run, 2000);
+    return () => window.clearTimeout(t);
   }, []);
 
   return null;
@@ -57,7 +84,7 @@ export function AppProviders({
         {/* CommandPalette must mount after AppShell so ssr:false does not shift useId for Base UI in the shell. */}
         <AppShell>{children}</AppShell>
         <DeferredCommandPalette />
-        <PlayfulReactionOverlay />
+        <DeferredPlayfulReactionOverlay />
       </DisplayNameProvider>
     </LocaleProvider>
   );

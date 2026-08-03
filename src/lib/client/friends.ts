@@ -9,6 +9,13 @@ export type FriendRequestSummary = {
   createdAt: string;
 };
 
+type SocialFriendRequest = {
+  requestId: string;
+  otherUserId: string;
+  username: string | null;
+  createdAt: string;
+};
+
 export type BlockedUserSummary = {
   userId: string;
   username: string | null;
@@ -138,15 +145,6 @@ export async function updateProfileUsername(username: string): Promise<{ usernam
   });
 }
 
-type FriendsOverview = {
-  friends?: AcceptedFriendSummary[];
-  incoming?: { count?: number; requests?: IncomingFriendRequestSummary[] };
-};
-
-async function fetchFriendsOverview(): Promise<FriendsOverview> {
-  return socialRequest<FriendsOverview>("/api/friends");
-}
-
 export async function listAcceptedFriendPage(
   presence: "online" | "offline",
   cursor?: string,
@@ -167,21 +165,29 @@ export async function fetchIncomingFriendRequests(): Promise<{
   count: number;
   requests: IncomingFriendRequestSummary[];
 }> {
-  const data = await fetchFriendsOverview();
+  const page = await listFriendRequestPage("incoming");
   return {
-    count: typeof data.incoming?.count === "number" ? data.incoming.count : 0,
-    requests: Array.isArray(data.incoming?.requests) ? data.incoming.requests : [],
+    count: page.totalCount ?? page.items.length,
+    requests: page.items.map((item) => ({
+      id: item.requestId,
+      userId: item.otherUserId,
+      username: item.username,
+      createdAt: item.createdAt,
+    })),
   };
 }
 
 export function listFriendRequestPage(direction: "incoming" | "outgoing", cursor?: string) {
   const params = new URLSearchParams({ direction, limit: "20", ...(cursor ? { cursor } : {}) });
-  return socialRequest<Page<FriendRequestSummary>>(`/api/friends/requests?${params}`);
+  return socialRequest<Page<SocialFriendRequest>>(`/api/friends/requests?${params}`);
 }
 
 export async function listFriendRequests(): Promise<FriendRequestSummary[]> {
   const [incoming, outgoing] = await Promise.all([listFriendRequestPage("incoming"), listFriendRequestPage("outgoing")]);
-  return [...incoming.items, ...outgoing.items];
+  return [
+    ...incoming.items.map((item) => ({ id: item.requestId, direction: "incoming" as const, otherUserId: item.otherUserId, otherUsername: item.username, status: "pending", createdAt: item.createdAt })),
+    ...outgoing.items.map((item) => ({ id: item.requestId, direction: "outgoing" as const, otherUserId: item.otherUserId, otherUsername: item.username, status: "pending", createdAt: item.createdAt })),
+  ];
 }
 
 export async function sendFriendRequest(

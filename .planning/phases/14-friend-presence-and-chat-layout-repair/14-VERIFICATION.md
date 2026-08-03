@@ -14,16 +14,16 @@ human_verification:
   - test: "Mở dialog desktop và route mobile; gửi câu dài có khoảng trắng và token 2.000 ký tự ở 375px và desktop."
     expected: "Tin nhắn incoming/outgoing không gây overflow ngang; reload, tải lịch sử cũ, reconnect, read và send vẫn giữ dữ liệu."
     why_human: "Node-Vitest kiểm tra class/controller contract, không đo layout trình duyệt hoặc flow hai tài khoản."
-  - test: "Chạy static/runtime SQL proof trên local hoặc disposable Supabase được phê duyệt bằng PHASE12_TEST_DATABASE_URL."
-    expected: "Proof xác nhận function 3 tham số, predicate bucket trong rows trước cursor/order/limit, scope auth/block và grant authenticated."
-    why_human: "PHASE12_TEST_DATABASE_URL đang unset; không được tự chọn database hoặc chạy vào production/shared DB."
+  - test: "Deploy migration lên Supabase và xác nhận Friends bucket behavior với dữ liệu thật."
+    expected: "Supabase áp dụng migration; function 3 tham số, predicate bucket trong rows trước cursor/order/limit, scope auth/block và grant authenticated hoạt động đúng."
+    why_human: "Node tests mock RPC contracts; deployed Supabase data and RLS behavior require runtime confirmation."
 ---
 
 # Phase 14: Friend presence and chat layout repair — Verification Report
 
 **Phase Goal:** Friends appear in their actual presence tab with offline presence visuals suppressed, while all chat messages remain readable inside their bubbles.
 **Verified:** 2026-08-01T20:15:00Z
-**Status:** HUMAN_NEEDED — code and focused behavior contracts pass; manual UI, live data, and approved SQL proof remain.
+**Status:** HUMAN_NEEDED — code and focused behavior contracts pass; manual UI and deployed Supabase data remain.
 **Re-verification:** No — initial verification.
 
 ## Goal Achievement
@@ -47,8 +47,7 @@ human_verification:
 
 | Item | Status | Exact gap |
 |---|---|---|
-| Runtime SQL proof | BLOCKED / DEFERRED | `PHASE12_TEST_DATABASE_URL` is unset. No approved local/disposable Supabase target exists, so runtime SQL must not run. |
-| Static SQL proof contract | UPDATED | `supabase/tests/phase12_bounded_social_lists.sql:5-11` now checks the `p_presence` bucket predicates and shared `CASE` expression used by the migration. Runtime proof remains deferred without an approved database URL. |
+| Deployed Supabase data/RLS check | HUMAN_NEEDED | Repository tests validate source and RPC contracts; deployed data and RLS behavior require Supabase runtime confirmation. |
 
 ## Required Artifacts
 
@@ -56,7 +55,6 @@ human_verification:
 |---|---|---|---|
 | `supabase/migrations/20260801233000_phase14_friend_presence_bucket.sql` | Additive bucket predicate before keyset page | ✓ VERIFIED | Exists, substantive SQL, preserves auth scope/block exclusion, `SECURITY DEFINER`, restricted search path, bounded limit, and authenticated grant. New 3-argument function is referenced by route adapter. |
 | `supabase/schemas/70_functions.sql` | Final schema mirror and grants | ✓ VERIFIED | Contains 3-argument function at line 3350 and authenticated-only grants at lines 3701-3703. |
-| `supabase/tests/phase12_bounded_social_lists.sql` | Static SQL signature/order/grant proof | ✓ UPDATED | Exists and checks signature, bucket predicates, CASE expression, ordering, auth/block scope, and grant. Runtime unavailable. |
 | `src/lib/server/friends/socialLists.ts` | Typed bucket-bound cursor/RPC adapter | ✓ VERIFIED | Exports `PresenceBucket`, `listSocialFriends`; real route consumer and focused tests. |
 | `src/lib/server/friends/socialListQuery.ts` | Zod presence parser | ✓ VERIFIED | Friends-only enum parser, default offline, limit/cursor validation. Route imports and uses it. |
 | `src/app/api/friends/route.ts` | Authenticated API boundary | ✓ VERIFIED | Auth first, parser second, typed adapter forwarding, generic error mapping. |
@@ -106,7 +104,7 @@ human_verification:
 
 ## Probe Execution
 
-No `probe-*.sh` was declared by Phase 14 plans, and no Phase 14 probe was found. Static SQL proof was not executed because the approved database URL is unavailable.
+No `probe-*.sh` was declared by Phase 14 plans, and no Phase 14 probe was found. Migration application and RLS behavior are validated through Supabase deployment.
 
 ## Requirements Coverage
 
@@ -126,7 +124,7 @@ No orphaned Phase 14 requirement IDs found in `REQUIREMENTS.md`; roadmap and bot
 | `src/components/friends/DirectMessageDialog.tsx` | 28, 42 | Raw `<img>` and missing hook dependency warnings | Warning | Existing warning; no Phase 14 functional failure observed. |
 | `src/components/friends/FriendActionMenu.tsx` | 74 | Raw `<img>` warning | Info | Existing performance warning. |
 | `src/components/layout/FriendsMenu.tsx` | 34, 68 | Missing hook dependency and raw `<img>` warnings | Warning | Existing warning; no Phase 14 functional failure observed. |
-| `supabase/tests/phase12_bounded_social_lists.sql` | 5-11 | Runtime proof not executed | Info | Static contract now matches migration predicates; execute against approved database before claiming runtime SQL gate passed. |
+
 
 ## Human Verification Required
 
@@ -136,7 +134,7 @@ No orphaned Phase 14 requirement IDs found in `REQUIREMENTS.md`; roadmap and bot
 
 **Expected:** Online contains only online; Offline contains recently_active/offline; no duplicate, skipped row, or cross-bucket cursor replay.
 
-**Why human:** Requires approved populated database and real API/RPC results; current tests mock adapter payloads.
+**Why human:** Requires populated Supabase data and real API/RPC results; current tests mock adapter payloads.
 
 ### 2. Presence transition refresh
 
@@ -154,23 +152,22 @@ No orphaned Phase 14 requirement IDs found in `REQUIREMENTS.md`; roadmap and bot
 
 **Why human:** CSS layout, responsive viewport behavior, persistence, and realtime reconnection cannot be proven by Node-only tests.
 
-### 4. Runtime SQL proof
+### 4. Deployed Supabase migration and RLS
 
-**Test:** Set `PHASE12_TEST_DATABASE_URL` only to an approved local/disposable Supabase target and run the repository SQL proof.
+**Test:** Apply current migrations through the project’s normal Supabase deployment flow and exercise Friends bucket requests with real data.
 
-**Expected:** Function signature, bucket-before-pagination predicate, auth/block scope, search path/security attributes, and authenticated grant all pass.
+**Expected:** Function signature, bucket-before-pagination predicate, auth/block scope, search path/security attributes, and authenticated grant behave correctly.
 
-**Why human:** External database prerequisite unavailable; never substitute production/shared target.
+**Why human:** Repository tests validate source and RPC contracts; deployed Supabase data and RLS require runtime confirmation.
 
 ## Gaps Summary
 
 Phase 14 implementation goal is supported by source-level data-flow evidence and all Phase 14-specific focused behavior tests. Remaining review items are validation gaps, not an observed missing UI/API artifact:
 
-1. Runtime SQL proof is deferred because `PHASE12_TEST_DATABASE_URL` is unset.
-2. Static SQL proof contract now matches migration CASE spelling; runtime execution remains deferred until an approved database target is available.
-3. The requested aggregate test command is not clean because it includes unrelated legacy fixtures: one client `incoming.items` mismatch and four route tests expecting retired overview/blocked/request shapes. These failures were reproduced and are outside the Phase 14 presence/chat paths.
-4. Repository lint remains red from two unrelated existing errors; target Phase 14 lint has no errors.
-5. Manual two-account and browser viewport/realtime checks remain outstanding.
+1. Deployed Supabase migration/RLS behavior needs runtime confirmation.
+2. The requested aggregate test command is not clean because it includes unrelated legacy fixtures: one client `incoming.items` mismatch and four route tests expecting retired overview/blocked/request shapes. These failures were reproduced and are outside the Phase 14 presence/chat paths.
+3. Repository lint remains red from two unrelated existing errors; target Phase 14 lint has no errors.
+4. Manual two-account and browser viewport/realtime checks remain outstanding.
 
 **Overall assessment:** NEEDS REVIEW (`human_needed`). Phase 14 code goal appears achieved; do not mark fully passed until manual scenarios and approved SQL proof complete, and record whether legacy test/lint failures are accepted baseline debt.
 

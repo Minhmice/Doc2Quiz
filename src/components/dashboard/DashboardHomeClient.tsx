@@ -14,7 +14,6 @@ import {
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardHomeSkeleton } from "@/components/dashboard/DashboardHomeSkeleton";
 import { DashboardLibraryHeader } from "@/components/dashboard/DashboardLibraryHeader";
-import { DashboardMobileBottomNav } from "@/components/dashboard/DashboardMobileBottomNav";
 import { formatRelativeShort } from "@/components/dashboard/dashboardFormat";
 import {
   getContextualAction,
@@ -71,7 +70,7 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceCardModel }) {
     switch (workspace.status) {
       case "ready":
         return (
-          <Badge variant="default" className="bg-forest-sage text-white text-[10px] font-bold">
+          <Badge variant="default" className="bg-[color:var(--d2q-blue)] text-white text-[10px] font-bold">
             Ready
           </Badge>
         );
@@ -297,8 +296,6 @@ export function DashboardHomeClient() {
         )}
       </section>
 
-      <DashboardMobileBottomNav />
-      <div className="h-16 md:hidden" aria-hidden />
     </div>
   );
 }

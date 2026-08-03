@@ -35,11 +35,21 @@ export function FriendsMenu() {
   useEffect(() => { if (open) void refresh(); }, [open, refresh]);
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
+    let active = true;
     let cleanup: () => void = () => undefined;
-    void supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.id) cleanup = createSocialCountsController({ supabase, userId: data.user.id, onSnapshot: setCounts });
-    });
-    return () => cleanup();
+    const timer = window.setTimeout(() => {
+      void supabase.auth.getUser().then(({ data }) => {
+        if (!active || !data.user?.id) return;
+        const nextCleanup = createSocialCountsController({ supabase, userId: data.user.id, onSnapshot: setCounts });
+        if (active) cleanup = nextCleanup;
+        else nextCleanup();
+      });
+    }, 2000);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      cleanup();
+    };
   }, []);
   const respond = async (id: string, action: "accept" | "decline") => {
     try { await respondFriendRequest(id, action); await refresh(); }
@@ -71,10 +81,10 @@ export function FriendsMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <div className="grid grid-cols-2 gap-1 px-2 py-2 text-center text-[11px] text-muted-foreground">
-          <button onClick={() => router.push("/friends?destination=requests")}>{messages.friends.requests} <strong className="block text-sm text-foreground">{counts.incomingRequestCount}</strong></button>
-          <button onClick={() => router.push("/friends?destination=invites")}>{messages.friends.studyInvites} <strong className="block text-sm text-foreground">{counts.notificationUnreadCount}</strong></button>
-          <button onClick={() => router.push("/friends?destination=friends")}>{messages.friends.activeFriends} <strong className="block text-sm text-foreground">{friends.filter(friend=>friend.presence === "online").length}</strong></button>
-          <button onClick={() => router.push("/friends?destination=messages")}>{messages.friends.messages} <strong className="block text-sm text-foreground">{counts.unreadMessageCount}</strong></button>
+          <button type="button" className="min-h-11 cursor-pointer rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push("/friends?destination=requests")}>{messages.friends.requests} <strong className="block text-sm text-foreground">{counts.incomingRequestCount}</strong></button>
+          <button type="button" className="min-h-11 cursor-pointer rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push("/friends?destination=invites")}>{messages.friends.studyInvites} <strong className="block text-sm text-foreground">{counts.notificationUnreadCount}</strong></button>
+          <button type="button" className="min-h-11 cursor-pointer rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push("/friends?destination=friends")}>{messages.friends.activeFriends} <strong className="block text-sm text-foreground">{friends.filter(friend=>friend.presence === "online").length}</strong></button>
+          <button type="button" className="min-h-11 cursor-pointer rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push("/friends?destination=messages")}>{messages.friends.messages} <strong className="block text-sm text-foreground">{counts.unreadMessageCount}</strong></button>
         </div>
         <DropdownMenuItem onClick={() => router.push("/friends?destination=friends")}>{messages.friends.viewAll}</DropdownMenuItem>
         <DropdownMenuSeparator />

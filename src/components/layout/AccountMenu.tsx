@@ -56,7 +56,7 @@ export function AccountMenu({
         aria-label="Account menu"
       >
         {/* Avatar Container with Oxblood Brand Background and Lucide User Icon Fallback */}
-        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-oxblood-primary text-white ring-2 ring-background/80 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 motion-reduce:transition-none shadow-2xs">
+        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground ring-2 ring-background/80 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 motion-reduce:transition-none shadow-2xs">
           {avatarUrl && !avatarFailed ? (
             <img src={avatarUrl} alt={`${name}'s avatar`} className="size-full object-cover" onError={() => setAvatarFailed(true)} />
           ) : (

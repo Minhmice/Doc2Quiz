@@ -1,3 +1,7 @@
+import { z } from "zod";
+
+import { normalizeUsername, validateUsername } from "@/lib/profile/usernameValidation";
+
 type FriendsRpcSupabase = {
   rpc: (
     functionName: string,
@@ -7,6 +11,29 @@ type FriendsRpcSupabase = {
     error: { message: string; details?: string | null } | null;
   }>;
 };
+
+const userIdSchema = z.string().uuid();
+
+async function resolveProfileIdentifier(supabase: FriendsRpcSupabase, identifier: string, rpcName: "resolve_friend_user" | "resolve_profile_user"): Promise<string> {
+  const parsedUserId = userIdSchema.safeParse(identifier);
+  if (parsedUserId.success) return parsedUserId.data;
+  if (validateUsername(identifier)) throw new Error("social_unavailable");
+
+  const { data, error } = await supabase.rpc(rpcName, {
+    p_username: normalizeUsername(identifier),
+  });
+  const userId = data?.userId;
+  if (error || !userIdSchema.safeParse(userId).success) throw new Error("social_unavailable");
+  return userId as string;
+}
+
+export function resolveFriendUserId(supabase: FriendsRpcSupabase, identifier: string): Promise<string> {
+  return resolveProfileIdentifier(supabase, identifier, "resolve_friend_user");
+}
+
+export function resolveProfileUserId(supabase: FriendsRpcSupabase, identifier: string): Promise<string> {
+  return resolveProfileIdentifier(supabase, identifier, "resolve_profile_user");
+}
 
 export type ReportAcknowledgement = { ok: true };
 

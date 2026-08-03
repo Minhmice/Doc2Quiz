@@ -89,7 +89,7 @@ None.
 
 ## Next Phase Readiness
 - SOCIAL-10 responsive chat implementation complete.
-- Full phase verification still carries existing disposable SQL target blocker and unrelated dirty Plan 12-08 compile work.
+- Full phase verification has no database target blocker; unrelated repository test and lint failures remain documented in `12-VALIDATION.md`.
 
 ## Self-Check: PASSED
 - All seven planned files exist.

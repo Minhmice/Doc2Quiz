@@ -4,7 +4,6 @@ import { z } from "zod";
 import { requireApiUser } from "@/lib/api/requireApiUser";
 import {
   blockUser,
-  listBlockedUsers,
   mapSocialRouteError,
   unblockUser,
 } from "@/lib/server/friends/friends";

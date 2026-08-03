@@ -131,25 +131,23 @@ describe("social safety client", () => {
         ok: true,
         json: async () => ({
           data: {
-            requests: [
-              {
-                id: REQUEST_ID,
-                direction: "incoming",
-                otherUserId: USER_ID,
-                otherUsername: "bob",
-                status: "pending",
-                createdAt: "2026-01-01",
-              },
-            ],
+            items: [{ requestId: REQUEST_ID, otherUserId: USER_ID, username: "bob", createdAt: "2026-01-01" }],
+            nextCursor: null,
+            hasMore: false,
+            totalCount: 1,
           },
         }),
       })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          data: {
-            blocks: [{ userId: USER_ID, username: "bob", blockedAt: "2026-01-02" }],
-          },
+          data: { items: [], nextCursor: null, hasMore: false, totalCount: 0 },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { items: [{ userId: USER_ID, username: "bob", blockedAt: "2026-01-02" }], nextCursor: null, hasMore: false },
         }),
       });
     vi.stubGlobal("fetch", mockFetch);
@@ -159,8 +157,9 @@ describe("social safety client", () => {
 
     expect(requests).toHaveLength(1);
     expect(blocks).toHaveLength(1);
-    expect(mockFetch).toHaveBeenCalledWith("/api/friends/requests", undefined);
-    expect(mockFetch).toHaveBeenCalledWith("/api/friends/blocks", undefined);
+    expect(mockFetch).toHaveBeenCalledWith("/api/friends/requests?direction=incoming&limit=20", undefined);
+    expect(mockFetch).toHaveBeenCalledWith("/api/friends/requests?direction=outgoing&limit=20", undefined);
+    expect(mockFetch).toHaveBeenCalledWith("/api/friends/blocks?limit=20", undefined);
   });
 
   it("blocks and unblocks with userId only", async () => {

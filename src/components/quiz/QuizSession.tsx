@@ -34,6 +34,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MathText } from "@/components/math/MathText";
 import { QuizInteractionHints } from "@/components/quiz/QuizInteractionHints";
 import { useLocale } from "@/components/locale/LocaleProvider";
@@ -102,7 +103,7 @@ export function QuizPlayNavigator({
           </span>
         </div>
         <div
-          className="grid grid-cols-5 gap-2 sm:grid-cols-6 lg:grid-cols-4"
+          className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-4"
           role="list"
         >
           {statuses.map((status, i) => (
@@ -112,7 +113,7 @@ export function QuizPlayNavigator({
               aria-label={`Question ${i + 1}, ${status}`}
               aria-current={status === "current" ? "step" : undefined}
               className={cn(
-                "flex aspect-square items-center justify-center rounded-sm text-sm font-bold tabular-nums transition-colors",
+                "flex aspect-square items-center justify-center rounded-sm text-sm font-bold tabular-nums",
                 status === "upcoming" &&
                   "border border-[color-mix(in_srgb,var(--qp-outline-variant)_40%,transparent)] text-[var(--qp-muted)]",
                 status === "current" &&
@@ -437,16 +438,26 @@ export function PlaySession({
 
   if (loading) {
     return (
-      <p
+      <div
         className={cn(
-          "text-sm text-muted-foreground",
-          stitch &&
-            "font-label text-[10px] tracking-[0.18em] text-[var(--qp-muted)]",
+          "space-y-4",
+          stitch && "rounded-sm bg-[var(--qp-surface-container-lowest)] p-6",
         )}
+        aria-busy="true"
         role="status"
       >
-        Loading…
-      </p>
+        <div className="flex items-center justify-between gap-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-6 w-20" />
+        </div>
+        <Skeleton className="h-2 w-full" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
     );
   }
 

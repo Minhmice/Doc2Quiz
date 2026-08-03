@@ -16,18 +16,14 @@ const cancelFriendRequestMock = vi.fn();
 const blockUserMock = vi.fn();
 const removeFriendMock = vi.fn();
 const unblockUserMock = vi.fn();
-const listBlockedUsersMock = vi.fn();
 const reportUserMock = vi.fn();
 const listSocialFriendsMock = vi.fn();
-const createSupabaseAdminClientMock = vi.fn();
+const listSocialRequestsMock = vi.fn();
+const listSocialBlocksMock = vi.fn();
 const broadcastSocialEventMock = vi.fn();
 
 vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
-}));
-
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => createSupabaseAdminClientMock(),
 }));
 
 vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({
@@ -36,6 +32,8 @@ vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({
 
 vi.mock("@/lib/server/friends/socialLists", () => ({
   listSocialFriends: (...args: unknown[]) => listSocialFriendsMock(...args),
+  listSocialRequests: (...args: unknown[]) => listSocialRequestsMock(...args),
+  listSocialBlocks: (...args: unknown[]) => listSocialBlocksMock(...args),
 }));
 
 vi.mock("@/lib/server/friends/friends", async (importOriginal) => {
@@ -50,12 +48,11 @@ vi.mock("@/lib/server/friends/friends", async (importOriginal) => {
     blockUser: (...args: unknown[]) => blockUserMock(...args),
     removeFriend: (...args: unknown[]) => removeFriendMock(...args),
     unblockUser: (...args: unknown[]) => unblockUserMock(...args),
-    listBlockedUsers: (...args: unknown[]) => listBlockedUsersMock(...args),
     reportUser: (...args: unknown[]) => reportUserMock(...args),
   };
 });
 
-import { GET as getProfile, PATCH as patchProfile } from "@/app/api/profile/route";
+import { PATCH as patchProfile } from "@/app/api/profile/route";
 import {
   GET as getFriendRequests,
   POST as postFriendRequest,
@@ -137,12 +134,13 @@ describe("social API routes", () => {
     setProfileUsernameMock.mockResolvedValue({ username: "alice" });
     sendFriendRequestMock.mockResolvedValue({ ok: true, requestId });
     listFriendRequestsMock.mockResolvedValue({ requests: [] });
+    listSocialRequestsMock.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
+    listSocialBlocksMock.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
     respondFriendRequestMock.mockResolvedValue({ ok: true });
     cancelFriendRequestMock.mockResolvedValue({ ok: true });
     blockUserMock.mockResolvedValue({ ok: true });
     removeFriendMock.mockResolvedValue({ ok: true });
     unblockUserMock.mockResolvedValue({ ok: true });
-    listBlockedUsersMock.mockResolvedValue({ blocks: [] });
     listSocialFriendsMock.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
     reportUserMock.mockResolvedValue({ ok: true });
     broadcastSocialEventMock.mockResolvedValue(true);
@@ -295,18 +293,11 @@ describe("social API routes", () => {
       expect(await response.json()).toEqual({ error: "rate_limited" });
     });
 
-    it("lists pending requests for the caller", async () => {
-      listFriendRequestsMock.mockResolvedValue({
-        requests: [
-          {
-            id: requestId,
-            direction: "incoming",
-            otherUserId,
-            otherUsername: "bob",
-            status: "pending",
-            createdAt: "2026-07-30T00:00:00.000Z",
-          },
-        ],
+    it("lists pending requests with bounded pagination", async () => {
+      listSocialRequestsMock.mockResolvedValue({
+        items: [{ requestId, otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }],
+        nextCursor: null,
+        hasMore: false,
       });
 
       const response = (await getFriendRequests(new Request("http://localhost/api/friends/requests?direction=incoming"))) as Response;
@@ -314,18 +305,12 @@ describe("social API routes", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         data: {
-          requests: [
-            {
-              id: requestId,
-              direction: "incoming",
-              otherUserId,
-              otherUsername: "bob",
-              status: "pending",
-              createdAt: "2026-07-30T00:00:00.000Z",
-            },
-          ],
+          items: [{ requestId, otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }],
+          nextCursor: null,
+          hasMore: false,
         },
       });
+      expect(listSocialRequestsMock).toHaveBeenCalledWith(supabase, 20, null, "incoming");
     });
 
     it("responds to incoming requests", async () => {
@@ -390,9 +375,11 @@ describe("social API routes", () => {
   });
 
   describe("blocks", () => {
-    it("lists blocked users for the caller", async () => {
-      listBlockedUsersMock.mockResolvedValue({
-        blocks: [{ userId: otherUserId, username: "bob", blockedAt: "2026-07-30T00:00:00.000Z" }],
+    it("lists blocked users with bounded pagination", async () => {
+      listSocialBlocksMock.mockResolvedValue({
+        items: [{ userId: otherUserId, username: "bob", blockedAt: "2026-07-30T00:00:00.000Z" }],
+        nextCursor: null,
+        hasMore: false,
       });
 
       const response = (await getBlocks(new Request("http://localhost/api/friends/blocks"))) as Response;
@@ -400,9 +387,12 @@ describe("social API routes", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         data: {
-          blocks: [{ userId: otherUserId, username: "bob", blockedAt: "2026-07-30T00:00:00.000Z" }],
+          items: [{ userId: otherUserId, username: "bob", blockedAt: "2026-07-30T00:00:00.000Z" }],
+          nextCursor: null,
+          hasMore: false,
         },
       });
+      expect(listSocialBlocksMock).toHaveBeenCalledWith(supabase, 20, null);
     });
 
     it("blocks and unblocks by user id", async () => {
@@ -421,41 +411,40 @@ describe("social API routes", () => {
   });
 
   describe("Plan 11 social contracts", () => {
-    it("returns isolated incoming-request and unread-message counts without marking either read", async () => {
-      const rpc = vi.fn()
-        .mockResolvedValueOnce({ data: { friends: [{ userId: otherUserId, username: "bob", isOnline: true, lastActiveAt: null, unreadCount: 2 }] }, error: null })
-        .mockResolvedValueOnce({ data: { count: 1, requests: [{ id: requestId, userId: otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }] }, error: null });
-      requireApiUserMock.mockResolvedValue({ supabase: { rpc }, user: { id: "user-1" } });
+    it("returns a bounded friend page without unread side effects", async () => {
+      listSocialFriendsMock.mockResolvedValue({
+        items: [{ userId: otherUserId, username: "bob", avatarUrl: null, presence: "online", lastActiveAt: null, presenceRank: 0 }],
+        nextCursor: null,
+        hasMore: false,
+      });
       const { GET } = await import("@/app/api/friends/route");
 
-      const response = (await GET(new Request("http://localhost/api/friends"))) as Response;
+      const response = (await GET(new Request("http://localhost/api/friends?presence=online"))) as Response;
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ data: { friends: [{ userId: otherUserId, username: "bob", avatarUrl: null, isOnline: true, presence: "online", lastActiveAt: null, unreadCount: 2 }], incoming: { count: 1, requests: [{ id: requestId, userId: otherUserId, username: "bob", createdAt: "2026-07-30T00:00:00.000Z" }] }, incomingRequestCount: 1, unreadMessageCount: 2 } });
-      expect(rpc).toHaveBeenCalledTimes(2);
-      expect(rpc).not.toHaveBeenCalledWith("mark_direct_conversation_read", expect.anything());
+      expect(await response.json()).toEqual({ data: { items: [{ userId: otherUserId, username: "bob", avatarUrl: null, presence: "online", lastActiveAt: null, presenceRank: 0 }], nextCursor: null, hasMore: false } });
+      expect(listSocialFriendsMock).toHaveBeenCalledWith(supabase, 20, null, "online");
     });
 
-    it("returns safe avatar URLs and bounded presence vocabulary without raw paths", async () => {
-      const rpc = vi.fn()
-        .mockResolvedValueOnce({ data: { friends: [
-          { userId: otherUserId, username: "bob", avatarPath: `${otherUserId}/profile/avatar.gif`, isOnline: true, lastActiveAt: null, unreadCount: 0 },
-          { userId: requestId, username: "ann", avatarPath: "wrong/path.gif", isOnline: false, lastActiveAt: "2026-07-30T00:00:00.000Z", unreadCount: 0 },
-        ] }, error: null })
-        .mockResolvedValueOnce({ data: { count: 0, requests: [] }, error: null });
-      const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: "https://signed.example/avatar.gif" }, error: null });
-      requireApiUserMock.mockResolvedValue({ supabase: { rpc, storage: { from: vi.fn().mockReturnValue({ createSignedUrl }) } }, user: { id: "user-1" } });
+    it("returns signed friend avatars without raw paths", async () => {
+      listSocialFriendsMock.mockResolvedValue({
+        items: [
+          { userId: otherUserId, username: "bob", avatarUrl: "https://signed.example/avatar.gif", presence: "online", lastActiveAt: null, presenceRank: 0 },
+          { userId: requestId, username: "ann", avatarUrl: null, presence: "offline", lastActiveAt: "2026-07-30T00:00:00.000Z", presenceRank: 2 },
+        ],
+        nextCursor: null,
+        hasMore: false,
+      });
       const { GET } = await import("@/app/api/friends/route");
 
       const response = (await GET(new Request("http://localhost/api/friends"))) as Response;
       const body = await response.json();
 
-      expect(body.data.friends).toEqual([
+      expect(body.data.items).toEqual([
         expect.objectContaining({ avatarUrl: "https://signed.example/avatar.gif", presence: "online" }),
-        expect.objectContaining({ avatarUrl: null, presence: "recently active" }),
+        expect.objectContaining({ avatarUrl: null, presence: "offline" }),
       ]);
       expect(JSON.stringify(body)).not.toContain("avatarPath");
-      expect(createSignedUrl).toHaveBeenCalledTimes(1);
     });
 
     it("keeps message success when invalidation delivery fails", async () => {
@@ -520,7 +509,21 @@ describe("social API routes", () => {
       expect(await response.json()).toEqual({ error: "social_unavailable" });
     });
 
-    it("returns safe profile fields only for an accepted friend", async () => {
+    it("resolves username profile URLs before public profile RPC", async () => {
+      const rpc = vi.fn()
+        .mockResolvedValueOnce({ data: { userId: otherUserId }, error: null })
+        .mockResolvedValueOnce({ data: { displayName: "Bob", username: "minhdoan", bio: "Studying", avatarPath: null }, error: null });
+      requireApiUserMock.mockResolvedValue({ supabase: { rpc }, user: { id: "user-1" } });
+      const { GET: getFriendProfile } = await import("@/app/api/friends/profile/[userId]/route");
+
+      const response = (await getFriendProfile(new Request("http://localhost/api/friends/profile/minhdoan"), { params: Promise.resolve({ userId: "minhdoan" }) })) as Response;
+
+      expect(response.status).toBe(200);
+      expect(rpc).toHaveBeenNthCalledWith(1, "resolve_profile_user", { p_username: "minhdoan" });
+      expect(rpc).toHaveBeenNthCalledWith(2, "get_public_profile", { p_user_id: otherUserId });
+    });
+
+    it("returns public identity fields without learning progress", async () => {
       const rpc = vi.fn().mockResolvedValue({
         data: { displayName: "Bob", username: "bob", bio: "Studying", avatarPath: null },
         error: null,
@@ -532,11 +535,11 @@ describe("social API routes", () => {
       const response = (await getFriendProfile(new Request(`http://localhost/api/friends/profile/${otherUserId}`), { params: Promise.resolve({ userId: otherUserId }) })) as Response;
 
       expect(response.status).toBe(200);
-      expect(rpc).toHaveBeenCalledWith("get_friend_profile", { p_other_user_id: otherUserId });
-      expect(await response.json()).toEqual({ data: { displayName: "Bob", username: "bob", bio: "Studying", avatarUrl: null, currentStreak: 0, quizzes: [] } });
+      expect(rpc).toHaveBeenCalledWith("get_public_profile", { p_user_id: otherUserId });
+      expect(await response.json()).toEqual({ data: { displayName: "Bob", username: "bob", bio: "Studying", avatarUrl: null } });
     });
 
-    it("includes friend streak and shared quiz cards without storage paths", async () => {
+    it("keeps streaks and shared quizzes out of public profile responses", async () => {
       const rpc = vi.fn().mockResolvedValue({
         data: { displayName: "Bob", username: "bob", bio: "Studying", avatarPath: `${otherUserId}/profile/avatar.gif`, currentStreak: 4, quizzes: [{ id: requestId, title: "Math", type: "quiz", questionCount: 3, updatedAt: "2026-07-30T00:00:00.000Z" }] },
         error: null,
@@ -548,8 +551,22 @@ describe("social API routes", () => {
       const response = (await getFriendProfile(new Request(`http://localhost/api/friends/profile/${otherUserId}`), { params: Promise.resolve({ userId: otherUserId }) })) as Response;
 
       const body = await response.json();
-      expect(body).toEqual({ data: { displayName: "Bob", username: "bob", bio: "Studying", avatarUrl: "https://signed.example/avatar.gif", currentStreak: 4, quizzes: [{ id: requestId, title: "Math", type: "quiz", questionCount: 3, updatedAt: "2026-07-30T00:00:00.000Z" }] } });
+      expect(body).toEqual({ data: { displayName: "Bob", username: "bob", bio: "Studying", avatarUrl: "https://signed.example/avatar.gif" } });
+      expect(JSON.stringify(body)).not.toContain("currentStreak");
+      expect(JSON.stringify(body)).not.toContain("quizzes");
       expect(JSON.stringify(body)).not.toContain("avatarPath");
+    });
+
+    it("keeps public identity available when avatar signing fails", async () => {
+      const rpc = vi.fn().mockResolvedValue({ data: { displayName: "Bob", username: "bob", bio: "Studying", avatarPath: `${otherUserId}/profile/avatar.gif` }, error: null });
+      const createSignedUrl = vi.fn().mockRejectedValue(new Error("storage down"));
+      requireApiUserMock.mockResolvedValue({ supabase: { rpc, storage: { from: vi.fn().mockReturnValue({ createSignedUrl }) } }, user: { id: "user-1" } });
+      const { GET: getFriendProfile } = await import("@/app/api/friends/profile/[userId]/route");
+
+      const response = (await getFriendProfile(new Request(`http://localhost/api/friends/profile/${otherUserId}`), { params: Promise.resolve({ userId: otherUserId }) })) as Response;
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ data: { displayName: "Bob", username: "bob", bio: "Studying", avatarUrl: null } });
     });
 
     it("keeps raw avatar paths out of signed URL requests", async () => {

@@ -127,6 +127,8 @@ export type MessageCatalog = {
     refresh: string;
     playerEyebrow: string;
     friendEyebrow: string;
+    publicEyebrow: string;
+    publicProfileNote: string;
     identityUnset: string;
     currentlyLearning: string;
     defaultBio: string;
@@ -255,7 +257,7 @@ export type MessageCatalog = {
         reviewCount: (count: string) => string; questionProgress: (current: string, total: string) => string;
         questionsCount: (count: string) => string;
       };
-      flashcards: Record<"loadingSession" | "loadErrorTitle" | "emptyTitle" | "emptyDescription" | "backToPreview" | "sessionRegion" | "front" | "back" | "flipCard" | "navigate" | "previous" | "next" | "done" | "reviewLater" | "sessionComplete" | "resultsSaved" | "completionDescription" | "startFlashcards" | "library" | "canonicalPreview", string> & {
+      flashcards: Record<"loadingSession" | "loadErrorTitle" | "emptyTitle" | "emptyDescription" | "backToPreview" | "sessionRegion" | "front" | "back" | "flipCard" | "navigate" | "previous" | "next" | "done" | "reviewLater" | "reviewLaterUnavailable" | "sessionComplete" | "resultsSaved" | "completionDescription" | "startFlashcards" | "library" | "canonicalPreview", string> & {
         itemProgress: (current: string, total: string) => string; cardCount: (count: string, rawCount: number) => string;
       };
     };

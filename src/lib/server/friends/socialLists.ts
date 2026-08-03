@@ -1,3 +1,5 @@
+import { parseProfileAvatarPath } from "@/lib/profile/profileValidation";
+
 export type SocialDestination = "friends" | "requests" | "invites" | "messages" | "blocks";
 export type SocialPage<T> = Readonly<{ items: readonly T[]; nextCursor: string | null; hasMore: boolean; totalCount?: number }>;
 
@@ -44,13 +46,43 @@ async function list<T extends Record<string, unknown>>(
   };
 }
 
-export type SocialFriend = Record<string, unknown> & { userId: string; username: string | null; presenceRank: number };
+type StorageClient = { from: (bucket: string) => { createSignedUrl: (path: string, expiresIn: number) => PromiseLike<{ data: { signedUrl: string } | null; error: unknown }> } };
+type SocialClient = RpcClient & { storage?: StorageClient };
+
+export type SocialFriend = Record<string, unknown> & { userId: string; username: string | null; presenceRank: number; avatarUrl: string | null };
 export type SocialRequest = Record<string, unknown> & { requestId: string; createdAt: string };
 export type SocialInvite = Record<string, unknown> & { sessionId: string; createdAt: string };
 export type SocialConversation = Record<string, unknown> & { conversationId: string; lastMessageAt: string | null };
 export type SocialBlock = Record<string, unknown> & { userId: string; blockedAt: string };
 
-export const listSocialFriends = (c: RpcClient, l: number, cursor: string | null, presence: PresenceBucket) => list<SocialFriend>(c,"friends","list_social_friends",l,cursor,r=>[r.presenceRank,r.username??"",r.userId],{p_presence: presence},presence);
+export async function listSocialFriends(c: SocialClient, l: number, cursor: string | null, presence: PresenceBucket): Promise<SocialPage<SocialFriend>> {
+  const page = await list<SocialFriend>(c, "friends", "list_social_friends", l, cursor, r => [r.presenceRank, r.username ?? "", r.userId], { p_presence: presence }, presence);
+  const storage = c.storage;
+  if (!storage) return {
+    ...page,
+    items: page.items.map((friend) => {
+      const safeFriend = { ...friend };
+      delete safeFriend.avatarPath;
+      return { ...safeFriend, avatarUrl: null };
+    }),
+  };
+
+  const items = await Promise.all(page.items.map(async ({ avatarPath, ...friend }) => {
+    let avatarUrl: string | null = null;
+    const parsedAvatar = parseProfileAvatarPath(avatarPath);
+    const safeAvatarPath = typeof avatarPath === "string" && parsedAvatar?.userId === friend.userId ? avatarPath : null;
+    if (safeAvatarPath) {
+      try {
+        const signed = await storage.from("doc2quiz").createSignedUrl(safeAvatarPath, 60 * 60);
+        if (!signed.error) avatarUrl = signed.data?.signedUrl ?? null;
+      } catch {
+        avatarUrl = null;
+      }
+    }
+    return { ...friend, avatarUrl };
+  }));
+  return { ...page, items };
+}
 export const listSocialRequests = (c: RpcClient, l: number, cursor: string | null, direction: "incoming"|"outgoing") => list<SocialRequest>(c,"requests","list_social_friend_requests",l,cursor,r=>[r.createdAt,r.requestId],{p_direction:direction});
 export const listSocialInvites = (c: RpcClient, l: number, cursor: string | null) => list<SocialInvite>(c,"invites","list_social_invites",l,cursor,r=>[r.createdAt,r.sessionId]);
 export const listSocialConversations = (c: RpcClient, l: number, cursor: string | null) => list<SocialConversation>(c,"messages","list_social_conversations",l,cursor,r=>[r.lastMessageAt,r.conversationId]);

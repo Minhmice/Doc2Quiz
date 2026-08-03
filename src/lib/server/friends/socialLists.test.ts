@@ -17,6 +17,34 @@ describe("bounded social list authority", () => {
     expect(() => decodeSocialCursor("friends", legacyCursor, "online")).toThrow("social_unavailable");
   });
 
+  it("signs valid friend avatar paths and removes raw paths", async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: "https://signed.example/avatar.gif" }, error: null });
+    const rpc = vi.fn().mockResolvedValue({ data: { items: [
+      { userId: "00000000-0000-4000-8000-000000000001", username: "a", avatarPath: "00000000-0000-4000-8000-000000000001/profile/avatar.gif", presenceRank: 0, presence: "online" },
+      { userId: "00000000-0000-4000-8000-000000000002", username: "b", avatarPath: "wrong/path.gif", presenceRank: 0, presence: "online" },
+    ] }, error: null });
+
+    const page = await listSocialFriends({ rpc, storage: { from: vi.fn().mockReturnValue({ createSignedUrl }) } }, 20, null, "online");
+
+    expect(page.items).toEqual([
+      expect.objectContaining({ userId: "00000000-0000-4000-8000-000000000001", avatarUrl: "https://signed.example/avatar.gif" }),
+      expect.objectContaining({ userId: "00000000-0000-4000-8000-000000000002", avatarUrl: null }),
+    ]);
+    expect(JSON.stringify(page)).not.toContain("avatarPath");
+    expect(createSignedUrl).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001/profile/avatar.gif", 60 * 60);
+  });
+
+  it("keeps friend rows available when avatar signing fails", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { items: [
+      { userId: "00000000-0000-0000-0000-000000000001", username: "a", avatarPath: "00000000-0000-0000-0000-000000000001/profile/avatar.gif", presenceRank: 0, presence: "online" },
+    ] }, error: null });
+    const storage = { from: vi.fn().mockReturnValue({ createSignedUrl: vi.fn().mockRejectedValue(new Error("storage down")) }) };
+
+    const page = await listSocialFriends({ rpc, storage }, 20, null, "online");
+
+    expect(page.items).toEqual([expect.objectContaining({ userId: "00000000-0000-0000-0000-000000000001", avatarUrl: null })]);
+  });
+
   it("requests online bucket limit plus one and returns final stable tuple", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { items: [
       { userId: "1", username: "a", presenceRank: 0, presence: "online" },

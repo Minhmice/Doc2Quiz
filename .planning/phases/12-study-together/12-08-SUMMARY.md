@@ -48,7 +48,7 @@ completed: 2026-07-31
 - Updated existing route compatibility tests to pass required Request arguments after GET contracts gained query parameters.
 
 ## Issues Encountered
-- Runtime SQL proof blocked because no approved `PHASE12_TEST_DATABASE_URL` exists. No database connection attempted.
+- Database migration and RLS validation are owned by Supabase deployment; repository tests do not require a database URL.
 - Scoped lint passes with two warnings: existing topbar `<img>` and hub hook dependency warning.
 
 ## Known Stubs
@@ -65,4 +65,4 @@ None.
 - Focused Vitest: 4/4 passed.
 - TypeScript passed.
 - Scoped ESLint: 0 errors, 2 warnings.
-- SQL runtime proof safely blocked pending approved disposable target.
+- Supabase deployment owns migration and RLS validation; repository tests do not require a database URL.

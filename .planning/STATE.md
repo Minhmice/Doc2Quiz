@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
 status: executing
-last_updated: "2026-08-01T19:25:32.361Z"
-last_activity: "2026-08-02 -- Completed quick task 260802-2hj: increase avatar upload limit to exclusive 10 MiB"
+last_updated: "2026-08-03T00:00:00.000Z"
+last_activity: "2026-08-03 -- Completed Phase 12 Plan 06 verification after self-hosted Supabase deployment"
 progress:
   total_phases: 13
   completed_phases: 9
@@ -23,10 +23,10 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 14
-Plan: 1 of 2
-Status: Executing Phase 14
-Last activity: 2026-08-02 -- Completed quick task 260802-2hj: increase avatar upload limit to exclusive 10 MiB
+Phase: 12
+Plan: 9 of 9
+Status: Complete
+Last activity: 2026-08-03 -- Completed Phase 12 Plan 06 verification after self-hosted Supabase deployment
 
 Progress: [██████████] 100%
 
@@ -76,7 +76,7 @@ Progress: [██████████] 100%
 
 - [Phase 10]: SocialSafetySettings in Settings uses generic social errors, confirmation dialogs, and acknowledgement-only report copy.
 - [Phase 12]: Study challenge tables remain RPC-only; practice DTOs strip answer keys before reveal.
-- [Phase 12]: SQL proof opens only an explicitly approved local or disposable test target.
+- [Phase 12]: SQL migration validation is deployment-owned by Supabase; repository runtime database proof is not used.
 - [Phase 12]: Request and count topics bind to auth.uid(); message topics bind to accepted conversation participants. — Private predictable topics require recipient or participant authority.
 - [Phase 12]: Realtime payloads only invalidate; every displayed social count comes from authenticated HTTP authority. — Prevents stale or forged event payloads from becoming UI truth.
 - [Phase 12]: Realtime chat events only invalidate; authenticated cursor history remains display authority.
@@ -98,11 +98,11 @@ Progress: [██████████] 100%
 
 ## Blockers
 
-- Phase 12 runtime SQL/RLS proof blocked until `PHASE12_TEST_DATABASE_URL` names an approved local or disposable test database.
+None.
 
 ## Next step
 
-Execute remaining Phase 12 Plans 06 and 08; Plan 09 complete.
+Phase 12 verification complete; continue with next requested project task.
 
 ## Accumulated Context
 

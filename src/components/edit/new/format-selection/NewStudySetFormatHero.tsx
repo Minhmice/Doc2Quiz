@@ -13,7 +13,7 @@ export function NewStudySetFormatHero({
 }: NewStudySetFormatHeroProps) {
   return (
     <section className="mb-5 max-w-5xl border-b border-border pb-5">
-      <h1 className="mb-2 font-heading text-5xl leading-[1.02] font-extrabold tracking-[-0.03em] text-accent-foreground md:text-6xl">
+      <h1 className="mb-2 font-heading text-3xl leading-[1.08] font-extrabold tracking-[-0.03em] text-accent-foreground sm:text-5xl md:text-6xl">
         {title}
       </h1>
       <p className="max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>

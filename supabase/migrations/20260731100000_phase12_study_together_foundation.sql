@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgcrypto;
 
-create table public.study_together_sessions (
+create table if not exists public.study_together_sessions (
   id uuid primary key default gen_random_uuid(),
   type text not null default 'asynchronous_challenge' check (type in ('asynchronous_challenge','live_session')),
   source_type text not null default 'owned_quiz' check (source_type in ('owned_quiz','friend_shared_quiz')),
@@ -20,14 +20,14 @@ create table public.study_together_sessions (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(), completed_at timestamptz null,
   check (creator_id <> recipient_id), check (type = 'asynchronous_challenge'), check (source_type = 'owned_quiz')
 );
-create table public.study_together_participants (
+create table if not exists public.study_together_participants (
   id uuid primary key default gen_random_uuid(), session_id uuid not null references public.study_together_sessions(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete restrict, role text not null check (role in ('creator','recipient')),
   status text not null check (status in ('invited','not_started','in_progress','completed','declined')),
   score integer null, accuracy numeric(5,2) null, duration_seconds integer null check (duration_seconds is null or duration_seconds >= 0), completed_at timestamptz null,
   unique(session_id,user_id), unique(session_id,role)
 );
-create table public.study_together_attempts (
+create table if not exists public.study_together_attempts (
   id uuid primary key default gen_random_uuid(), session_id uuid not null references public.study_together_sessions(id) on delete cascade,
   participant_id uuid not null references public.study_together_participants(id) on delete cascade,
   attempt_number integer not null default 1 check (attempt_number = 1), status text not null default 'in_progress' check (status in ('in_progress','completed')),
@@ -36,21 +36,21 @@ create table public.study_together_attempts (
   started_at timestamptz not null default now(), updated_at timestamptz not null default now(), completed_at timestamptz null,
   unique(session_id,participant_id,attempt_number)
 );
-create table public.social_notifications (
+create table if not exists public.social_notifications (
   id uuid primary key default gen_random_uuid(), recipient_id uuid not null references auth.users(id) on delete cascade, actor_id uuid null references auth.users(id) on delete set null,
   type text not null check (type in ('study_challenge_received','study_challenge_accepted','study_challenge_declined','study_challenge_completed','study_challenge_result_ready','study_challenge_expiring')),
   entity_type text not null default 'study_session' check (entity_type = 'study_session'), entity_id uuid not null, payload jsonb not null default '{}'::jsonb,
   dedupe_key text not null, created_at timestamptz not null default now(), read_at timestamptz null, archived_at timestamptz null,
   unique(recipient_id,dedupe_key)
 );
-create table public.social_reactions (
+create table if not exists public.social_reactions (
   id uuid primary key default gen_random_uuid(), sender_id uuid not null references auth.users(id) on delete cascade, recipient_id uuid not null references auth.users(id) on delete cascade,
   reaction_id text not null check (char_length(reaction_id) between 1 and 40), entity_type text not null, entity_id uuid not null, dedupe_key text not null, created_at timestamptz not null default now(),
   check(sender_id <> recipient_id), unique(sender_id,dedupe_key)
 );
-create index study_together_sessions_recipient_status_idx on public.study_together_sessions(recipient_id,status,created_at desc);
-create index study_together_sessions_creator_status_idx on public.study_together_sessions(creator_id,status,created_at desc);
-create index social_notifications_unread_idx on public.social_notifications(recipient_id,created_at desc) where read_at is null and archived_at is null;
+create index if not exists study_together_sessions_recipient_status_idx on public.study_together_sessions(recipient_id,status,created_at desc);
+create index if not exists study_together_sessions_creator_status_idx on public.study_together_sessions(creator_id,status,created_at desc);
+create index if not exists social_notifications_unread_idx on public.social_notifications(recipient_id,created_at desc) where read_at is null and archived_at is null;
 
 alter table public.study_together_sessions enable row level security;
 alter table public.study_together_participants enable row level security;
@@ -140,8 +140,10 @@ create or replace function public.sweep_study_challenge_reminders() returns inte
  insert into public.social_notifications(recipient_id,actor_id,type,entity_id,dedupe_key) select recipient_id,creator_id,'study_challenge_expiring',id,'challenge:'||id||':expiring' from public.study_together_sessions where status in ('pending','active') and deadline_at>now() and deadline_at<=now()+interval '24 hours' on conflict(recipient_id,dedupe_key) do nothing; get diagnostics v_count=row_count; return v_count; end $$;
 
 create or replace function public.broadcast_social_notification() returns trigger language plpgsql security definer set search_path=public as $$ begin perform realtime.send(jsonb_build_object('notificationId',new.id),'notification','social-notifications:'||new.recipient_id::text,true); return new; exception when others then return new; end $$;
+drop trigger if exists social_notifications_broadcast on public.social_notifications;
 create trigger social_notifications_broadcast after insert on public.social_notifications for each row execute function public.broadcast_social_notification();
 
+drop policy if exists "social notification recipient broadcasts" on realtime.messages;
 create policy "social notification recipient broadcasts" on realtime.messages for select to authenticated using(extension='broadcast' and realtime.topic()='social-notifications:'||auth.uid()::text);
 
 -- Existing social actions gain distinct challenge effects while preserving their prior behavior.

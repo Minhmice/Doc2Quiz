@@ -247,7 +247,7 @@ Source: [Tailwind overflow-wrap documentation](https://tailwindcss.com/docs/over
 | npm | Test commands | Yes | `11.6.2` | — [VERIFIED: local shell] |
 | Vitest | Focused tests | Yes, project dev dependency | `3.2.4` | — [VERIFIED: package.json] |
 | Tailwind CSS | CSS utility compile | Yes, project dependency | `4.x` | Arbitrary `[overflow-wrap:anywhere]` already used elsewhere if utility unavailable. [VERIFIED: package.json] |
-| Approved disposable Supabase SQL target | Runtime RPC proof | Not confirmed | — | Static/unit contract tests; SQL execution waits for approved `PHASE12_TEST_DATABASE_URL`. [VERIFIED: `.planning/STATE.md`] |
+| Supabase deployment target | Runtime RPC/RLS proof | Deployment-owned | — | Static/unit contract tests cover repository behavior; deployed Supabase validates runtime SQL/RLS. |
 
 **Missing dependencies with no fallback:** None for implementation; live SQL behavior still needs approved disposable test target. [VERIFIED: `.planning/STATE.md`]
 
@@ -291,7 +291,7 @@ Source: [Tailwind overflow-wrap documentation](https://tailwindcss.com/docs/over
 - [ ] Extend `FriendsHub.test.tsx`; current file only tests five destination constants. [VERIFIED: codebase grep]
 - [ ] Add/extend row-presence rendering test for `FriendActionMenu`. [VERIFIED: codebase grep]
 - [ ] Extend `ConversationView.test.tsx` with DOM rendering/layout-class assertions; it currently tests controller/class shell only. [VERIFIED: codebase grep]
-- [ ] Add SQL proof for bucket behavior only when `PHASE12_TEST_DATABASE_URL` is explicitly approved. [VERIFIED: `.planning/STATE.md`]
+- [ ] Validate bucket behavior after migration deployment through Supabase runtime data. [VERIFIED: `.planning/STATE.md`]
 
 ## Security Domain
 

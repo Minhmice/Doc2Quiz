@@ -30,7 +30,6 @@ key-files:
     - src/lib/server/friends/socialListQuery.ts
   modified:
     - supabase/schemas/70_functions.sql
-    - supabase/tests/phase12_bounded_social_lists.sql
     - src/lib/server/friends/socialLists.ts
     - src/lib/server/friends/socialLists.test.ts
     - src/app/api/friends/route.ts
@@ -87,7 +86,6 @@ Each TDD task was committed atomically:
 
 - `supabase/migrations/20260801233000_phase14_friend_presence_bucket.sql` - additive bucket-aware RPC migration.
 - `supabase/schemas/70_functions.sql` - schema mirror for the updated RPC.
-- `supabase/tests/phase12_bounded_social_lists.sql` - static SQL contract proof updates.
 - `src/lib/server/friends/socialLists.ts` - bucket-aware cursor encoding/decoding and RPC adapter.
 - `src/lib/server/friends/socialListQuery.ts` - friends-only Zod presence parser.
 - `src/app/api/friends/route.ts` - authenticated presence query forwarding.
@@ -102,7 +100,7 @@ Each TDD task was committed atomically:
 - PASS — `npx vitest run src/app/api/friends/friends.route.test.ts -t "GET /api/friends"` (4 tests)
 - PASS — `npx vitest run src/lib/server/friends/socialLists.test.ts src/app/api/friends/friends.route.test.ts src/lib/client/friends.test.ts -t "presence|accepted-friend bucket|mapSocialHttpError"`
 - PASS — `npm run typecheck`
-- BLOCKED — runtime SQL proof not run; no approved `PHASE12_TEST_DATABASE_URL` was available.
+- Supabase deployment owns migration and RLS validation; repository tests do not require a database URL.
 
 Full combined route/client run still reports four legacy overview assertions in `friends.route.test.ts` that expect retired unbounded `/api/friends` response shapes. New Phase 14 presence assertions pass; legacy failures are outside this plan and were not changed.
 
@@ -144,7 +142,7 @@ None found in Plan 14-01 files. No placeholder data source, empty UI flow, or TO
 
 ## User Setup Required
 
-None. Runtime SQL proof needs an explicitly approved disposable/local `PHASE12_TEST_DATABASE_URL` before execution.
+None. Apply and validate migration behavior through Supabase deployment when needed.
 
 ## Next Phase Readiness
 

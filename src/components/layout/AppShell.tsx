@@ -20,10 +20,15 @@ function FocusSearchListener() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("doc2quiz_sidebar_collapsed") === "true");
   }, []);
+
+  useEffect(() => {
+    setMobileNavigationOpen(false);
+  }, [pathname]);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -52,7 +57,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [toggleCollapsed]);
 
   const focusMode = /^\/(quiz|flashcard)\/[^/]+\/(play|drill-mistake)$/.test(pathname);
-  const topLevel = ["/dashboard", "/create", "/settings", "/help", "/profile"].includes(pathname);
+  const showMobileBottomNav = ["/dashboard", "/create", "/settings"].includes(pathname);
+
+  useEffect(() => {
+    if (!mobileNavigationOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavigationOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavigationOpen]);
 
   return (
     <LibrarySearchProvider>
@@ -62,19 +76,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           collapsed={collapsed}
           onToggle={toggleCollapsed}
           hidden={focusMode}
+          mobileOpen={mobileNavigationOpen}
+          onMobileOpenChange={setMobileNavigationOpen}
         />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <AppTopBar hidden={focusMode} />
+          <AppTopBar hidden={focusMode} onOpenNavigation={() => setMobileNavigationOpen(true)} />
           <main
             className={
               focusMode
-                ? "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background d2q-technical-grid px-3 py-4 sm:px-6 sm:py-5"
-                : "relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-background d2q-technical-grid px-3 py-4 pb-24 sm:px-6 sm:py-5"
+                ? "relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-background d2q-technical-grid px-3 py-3 sm:px-6 sm:py-5"
+                : showMobileBottomNav
+                ? "relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-background d2q-technical-grid px-3 py-4 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-5 md:pb-5"
+                : "relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-background d2q-technical-grid px-3 py-4 pb-4 sm:px-6 sm:py-5 md:pb-5"
             }
           >
             {children}
           </main>
-          {topLevel && !focusMode && <DashboardMobileBottomNav />}
+          {showMobileBottomNav && !focusMode && <DashboardMobileBottomNav />}
         </div>
       </div>
     </LibrarySearchProvider>

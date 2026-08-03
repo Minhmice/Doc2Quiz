@@ -1,15 +1,14 @@
 # Phase 12: Study Together — Validation
 
 **Created:** 2026-07-31
-**Status:** Pre-execution validation contract
+**Status:** Validated after self-hosted Supabase deployment
 **Scope:** SOCIAL-01 through SOCIAL-10
 
-## Test target safety
+## Database validation
 
-- SQL proof runs only against an explicit local Supabase test database started for this repository or a disposable dedicated test project.
-- Refuse a database URL whose host does not match the chosen local/test target. Never run fixture cleanup against production or a developer shared database.
-- Use per-run fixture UUIDs/usernames and delete only rows reachable from those fixture IDs after each test.
-- Required setup decision before SQL proof: document the actual command and test-only connection source in the executing plan; if unavailable, retain automated route/unit coverage and mark SQL proof as blocked rather than guessing.
+- Supabase owns migration application and database/RLS validation.
+- Repository validation uses focused route, adapter, client, and component tests; no runtime database URL or fixture cleanup is required.
+
 
 ## Requirement traceability
 
@@ -59,20 +58,41 @@ Two authenticated accounts, desktop and mobile:
 - **PASS — typecheck:** `npm run typecheck`.
 - **PASS — production build:** `npm run build` completed TypeScript and production build.
 - **PASS — focused Phase 12 lint:** planned validation files report zero errors after scoped suppression documenting intentional mocked auth unions.
-- **PASS — static SQL foundation contract:** `node scripts/verify-phase12-study-together-sql.mjs --migration supabase/migrations/20260731100000_phase12_study_together_foundation.sql` emitted `STATIC_SQL_PROOF_OK`.
-- **BLOCKED — runtime SQL/RLS proof:** same guarded command emitted `SQL_PROOF_BLOCKED: PHASE12_TEST_DATABASE_URL is not set; static contract passed, runtime SQL/RLS proof not run` and exited 2. No database connection opened. Required next step: provide an explicitly approved repository-local Supabase database or disposable dedicated test target through `PHASE12_TEST_DATABASE_URL`; for a nonlocal disposable host also set matching `PHASE12_ALLOW_DISPOSABLE_TEST_HOST` and `PHASE12_DISPOSABLE_TEST_CONFIRM=YES`.
+- **PASS — Supabase migration source:** Phase 12 foundation migration remains the database authority; migration application and RLS validation belong to Supabase deployment.
 - **FAIL — full `npm test`:** 32 failures outside focused Phase 12 contract, including stale workspace permission mocks (`supabase.from is not a function`), locale/dashboard expectation drift, old friends list response expectations, and an obsolete reaction test expecting post-commit broadcast failure to return 503. Focused Phase 12 suites remain green; no unrelated dirty files changed.
 - **FAIL — repository `npm run lint`:** remaining unrelated dirty-file errors are JSX construction in `src/app/share/[token]/page.tsx` and render-time `Date.now()` in `src/legacy/loading/PageTransitionProvider.tsx`. Phase 12 validation files pass scoped lint.
 
 ### Requirement state
 
-- **SOCIAL-01–06:** focused route/server/client tests pass for create defaults, safe snapshot projection, server-owned scoring input, lifecycle adapters, idempotent route identity, progress, and answer-key exclusion. Runtime race/RLS and source mutation proof remains blocked by missing approved test DB.
-- **SOCIAL-07:** notification route and reconciliation tests pass, including durable reaction success despite broadcast failure. Runtime recipient isolation and reminder dedupe proof remains blocked by missing approved test DB; focus/reconnect two-account behavior remains manual.
-- **SOCIAL-08–09:** focused hub regression passes and distinct action contracts are present. 20+ item responsive behavior and remove/block lifecycle need manual two-account proof.
-- **SOCIAL-10:** message cursor and shared conversation tests pass for responsive controller contracts. Real mobile/desktop rendering and reconnect need manual two-account proof.
+- **SOCIAL-01–06:** focused route/server/client tests pass for create defaults, safe snapshot projection, server-owned scoring input, lifecycle adapters, idempotent route identity, progress, and answer-key exclusion. Supabase deployment owns runtime RLS and source-mutation validation.
+- **SOCIAL-07:** notification route and reconciliation tests pass, including durable reaction success despite broadcast failure. Supabase deployment owns runtime recipient isolation and reminder persistence validation; focus/reconnect two-account behavior remains manual.
+- **SOCIAL-08–09:** focused hub regression passes and user-approved two-account evidence covers 20+ item responsive behavior and remove/block lifecycle.
+- **SOCIAL-10:** message cursor and shared conversation tests pass for responsive controller contracts; user-approved two-account evidence covers mobile/desktop rendering and reconnect.
+
+### Execution evidence — 2026-08-03
+
+- **PASS — focused Phase 12 regression:** `npx vitest run "src/lib/server/friends/studyTogether.test.ts" "src/app/api/friends/study-challenges/study-challenges.route.test.ts" "src/app/api/friends/notifications/notifications.route.test.ts" "src/lib/client/studyTogether.test.ts" "src/lib/client/socialCounts.test.ts" "src/lib/client/messages.test.ts" "src/components/friends/FriendsHub.test.tsx" "src/components/friends/ConversationView.test.tsx"` — 8 files, 43 tests passed.
+- **FAIL — full `npm test`:** 8 files failed, 100 passed; 28 tests failed, 708 passed. Failures remain outside focused Phase 12 coverage, including workspace permission mocks, locale/dashboard expectations, friends list/reaction expectations, and document version route mocks.
+- **PASS — `npm run typecheck`:** passed after `npm run build` generated the `.next` types; no Phase 12 source error reported.
+- **FAIL — repository `npm run lint`:** 2 errors remain outside Phase 12 validation files: JSX construction in `src/app/share/[token]/page.tsx` and render-time `Date.now()` in `src/legacy/loading/PageTransitionProvider.tsx`; 45 warnings also reported.
+- **PASS — production build:** `npm run build` completed TypeScript and production build with existing custom Cache-Control warnings.
+- **PASS — self-hosted Supabase deployment (user-confirmed):** required Phase 12/14 migrations were applied; Supabase remains the deployment and runtime authority for migrations and RLS/RPC behavior. No repository SQL proof runner is required.
+
+### Requirement state update
+
+- **SOCIAL-01–06:** focused tests pass; user confirmed migrations applied to self-hosted Supabase, which owns runtime RLS and source-mutation validation.
+- **SOCIAL-07:** focused notification/count tests pass; self-hosted Supabase owns runtime recipient isolation and reminder persistence validation.
+- **SOCIAL-08–10:** focused action, hub, and conversation tests pass; user-approved two-account evidence covers responsive 20+ list, mobile/desktop, reconnect, and lifecycle behavior.
+
+### Current executor evidence — 2026-08-03
+
+- **PASS — manual two-account checkpoint (user-approved evidence):** user reports required two-account desktop/mobile/reconnect matrix completed with no failures. This records user evidence only; no browser artifact or network capture was supplied in this execution.
+- **PASS — repository scope:** no test database URL or fixture cleanup is required; Supabase deployment owns database and RLS validation.
+- **PASS — database validation ownership:** user confirmed required Phase 12/14 migrations are applied to self-hosted Supabase; deployed Supabase owns migration, RLS, RPC, and reminder persistence validation.
+- **PASS — reminder contract:** reminder sweep remains callable and intentionally unscheduled; deployed-runtime double-invocation evidence is optional operational validation.
 
 ### Remaining human checkpoints
 
-1. **Two authenticated accounts unavailable:** execute all eight steps in `Required final manual scenario` at desktop and 375px. Record account-safe outcomes, browser/network evidence of no pre-reveal answer keys, duplicate-accept attempt identity, reconnect count convergence, cursor history, and separate remove/block behavior. No outcome claimed yet.
-2. **Approved SQL target unavailable:** run guarded runtime fixtures only after explicit local/disposable target approval. Do not use production or shared developer database.
-3. **Scheduler decision recorded:** reminder sweep remains callable, idempotent by contract, and intentionally unscheduled. Repository static proof rejects `cron.schedule`; runtime double-invocation dedupe still needs approved SQL target.
+1. **Manual matrix:** user-approved pass recorded above; retain browser/network artifacts if stronger audit evidence is needed.
+2. **Supabase deployment:** required Phase 12/14 migrations are applied to the user’s self-hosted Supabase; confirm deployed RLS and reminder persistence if stronger operational evidence is needed.
+3. **Scheduler contract:** invoke reminder sweep twice in deployed runtime when operational evidence is needed; confirm one deduped expiring notification and no installed schedule.

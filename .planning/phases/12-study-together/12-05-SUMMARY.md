@@ -84,7 +84,7 @@ completed: 2026-07-31
 ## Issues Encountered
 - Repository-wide `npm run lint` remains blocked by four pre-existing unrelated errors: two `@ts-nocheck` test files, JSX construction inside `try/catch` in public share page, and render-time `Date.now()` in legacy loading provider.
 - Scoped Plan 12-05 lint passes with warnings only.
-- Runtime SQL/RLS proof remains blocked because `PHASE12_TEST_DATABASE_URL` is unset; no database connection attempted.
+- Database migration and RLS validation are owned by Supabase deployment; repository tests do not require a database URL.
 
 ## Known Stubs
 None.
@@ -100,7 +100,7 @@ None.
 ## Next Phase Readiness
 - Plan 12-08 can consume distinct remove/block actions and safe overview status.
 - `/friends` hub must consume `studyWith` recipient selection when its challenge composer is wired.
-- Existing disposable database blocker remains for runtime SQL/RLS proof.
+- Supabase deployment remains the authority for runtime RLS behavior.
 
 ## Self-Check: PASSED
 - All planned implementation files exist.

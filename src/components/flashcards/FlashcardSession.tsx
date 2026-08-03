@@ -11,6 +11,7 @@ import { flashcardResults, flashcardReview } from "@/lib/routes/studySetPaths";
 import type { FlashcardVisionItem } from "@/types/flashcard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { MathText } from "@/components/math/MathText";
 import { FlashcardActions } from "@/components/flashcards/FlashcardActions";
@@ -140,7 +141,7 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
       if (loading || loadError || cards.length === 0) {
         return;
       }
-      if (e.key === " " || e.code === "Space") {
+      if (e.key === "Enter" || e.key === " " || e.code === "Space") {
         e.preventDefault();
         toggleFlip();
         return;
@@ -161,12 +162,22 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
 
   if (loading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <p className="font-label text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
-            {copy.loadingSession}
-            <LocalizedSlangLine context="loading" eventKey={`flashcards-loading:${studySetId}`} className="mt-2 text-center text-xs normal-case tracking-normal text-muted-foreground" />
-          </p>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6" aria-busy="true" role="status">
+        <div className="flex items-center justify-between gap-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-6 w-20" />
+        </div>
+        <Skeleton className="h-2 w-full" />
+        <div className="flex min-h-80 items-center justify-center rounded-2xl border border-border bg-card p-8">
+          <div className="w-full max-w-xl space-y-4">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-4/5" />
+          </div>
+        </div>
+        <div className="flex justify-center gap-3">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24" />
         </div>
       </div>
     );
@@ -213,6 +224,8 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
       tabIndex={0}
       role="region"
       aria-label={copy.sessionRegion}
+      aria-describedby="flashcard-session-shortcuts"
+      aria-keyshortcuts="Enter Space ArrowLeft ArrowRight"
       onPointerDownCapture={(e) => {
         if (shouldSkipSessionRefocus(e.target)) {
           return;
@@ -221,15 +234,18 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
         queueMicrotask(() => sessionRootRef.current?.focus());
       }}
       onKeyDown={onKeyDown}
-      className="relative flex min-h-[calc(100vh-16rem)] w-full flex-col items-center sm:py-10 lg:py-16 outline-none"
+      className="relative flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center overflow-x-hidden px-1 pb-4 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--qp-primary)] sm:min-h-[calc(100dvh-10rem)] sm:py-10 lg:min-h-[calc(100dvh-12rem)] lg:py-16"
       data-quiz-play-theme="stitch"
     >
+      <span id="flashcard-session-shortcuts" className="sr-only">
+        {copy.flipCard}: Enter / Space. {copy.navigate}: ArrowLeft / ArrowRight.
+      </span>
       <span className="sr-only" aria-live="polite">
         {flipAnnouncement}
       </span>
 
       {/* Progress Section */}
-      <section className="mb-8 sm:mb-12 lg:mb-16 w-full max-w-[900px] xl:max-w-[1100px] px-4">
+      <section className="mb-5 w-full max-w-[900px] px-2 sm:mb-12 sm:px-4 lg:mb-16 xl:max-w-[1100px]">
         <div className="mb-3 flex items-baseline justify-between">
           <span className="font-label text-xs sm:text-sm lg:text-base font-bold tracking-tight text-[color:var(--qp-tertiary)]">
             {copy.itemProgress(formatNumber(index + 1), formatNumber(total))}
@@ -247,16 +263,16 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
       </section>
 
       {/* Card Canvas */}
-      <div className="card-perspective h-[340px] sm:h-[480px] lg:h-[560px] xl:h-[640px] w-full max-w-[900px] xl:max-w-[1100px] px-4">
+      <div className="card-perspective h-[clamp(12rem,calc(100dvh-18rem),640px)] min-h-[12rem] w-full max-w-[900px] px-2 sm:h-[480px] sm:min-h-0 sm:px-4 lg:h-[560px] xl:max-w-[1100px]">
         <div
           className={cn(
-            "card-inner shadow-[0_0_34px_-10px_color-mix(in_srgb,var(--qp-secondary)_42%,transparent)] dark:shadow-[0_0_42px_-10px_color-mix(in_srgb,var(--qp-secondary)_55%,transparent)] transition-all",
+            "card-inner shadow-[0_0_34px_-10px_color-mix(in_srgb,var(--qp-secondary)_42%,transparent)] transition-all dark:shadow-[0_0_42px_-10px_color-mix(in_srgb,var(--qp-secondary)_55%,transparent)]",
             flipped && "is-flipped"
           )}
           onClick={toggleFlip}
         >
           {/* FRONT */}
-          <div className="card-front cursor-pointer border border-[color:var(--qp-secondary)]/20 bg-[color:var(--qp-surface-container-lowest)] p-6 sm:p-12 lg:p-16 overflow-y-auto rounded-xl">
+          <div className="card-front cursor-pointer border border-[color:var(--qp-secondary)]/20 bg-[color:var(--qp-surface-container-lowest)] p-4 sm:p-12 lg:p-16 overflow-y-auto rounded-xl">
             <div className="absolute top-4 sm:top-6 lg:top-8 left-1/2 -translate-x-1/2">
               <span className="font-label text-[8px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-[0.25em] text-[color:var(--qp-secondary)]/60">
                 {copy.front}
@@ -273,7 +289,7 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
           </div>
 
           {/* BACK */}
-          <div className="card-back cursor-pointer border border-[color:var(--qp-secondary)]/20 bg-[color:var(--qp-surface-container-lowest)] p-6 sm:p-12 lg:p-16 overflow-y-auto rounded-xl">
+          <div className="card-back cursor-pointer border border-[color:var(--qp-secondary)]/20 bg-[color:var(--qp-surface-container-lowest)] p-4 sm:p-12 lg:p-16 overflow-y-auto rounded-xl">
             <div className="absolute top-4 sm:top-6 lg:top-8 left-1/2 -translate-x-1/2">
               <span className="font-label text-[8px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-[0.25em] text-[color:var(--qp-secondary)]/60">
                 {copy.back}

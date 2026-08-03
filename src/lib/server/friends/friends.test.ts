@@ -8,9 +8,36 @@ import {
   reportUser,
   UsernameTakenError,
   setProfileUsername,
+  resolveFriendUserId,
+  resolveProfileUserId,
 } from "./friends";
 
 describe("friends service", () => {
+  it("resolves usernames through protected friend RPC and keeps UUIDs local", async () => {
+    const userId = "00000000-0000-4000-8000-000000000011";
+    const rpc = vi.fn().mockResolvedValue({ data: { userId }, error: null });
+
+    await expect(resolveFriendUserId({ rpc }, " MinhDoan ")).resolves.toBe(userId);
+    expect(rpc).toHaveBeenCalledWith("resolve_friend_user", { p_username: "minhdoan" });
+    await expect(resolveFriendUserId({ rpc }, userId)).resolves.toBe(userId);
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves public profile usernames without friend membership", async () => {
+    const userId = "00000000-0000-4000-8000-000000000012";
+    const rpc = vi.fn().mockResolvedValue({ data: { userId }, error: null });
+
+    await expect(resolveProfileUserId({ rpc }, "public_user")).resolves.toBe(userId);
+    expect(rpc).toHaveBeenCalledWith("resolve_profile_user", { p_username: "public_user" });
+  });
+
+  it("rejects malformed profile identifiers before RPC", async () => {
+    const rpc = vi.fn();
+
+    await expect(resolveFriendUserId({ rpc }, "bad-name")).rejects.toThrow("social_unavailable");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it("maps generic recipient failures without account disclosure", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: null,

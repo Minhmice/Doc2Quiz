@@ -6,6 +6,20 @@ const source = readFileSync(
   resolve(process.cwd(), "src/components/profile/ProfilePageClient.tsx"),
   "utf8",
 );
+const publicProfileSource = readFileSync(
+  resolve(process.cwd(), "src/components/profile/FriendProfilePageClient.tsx"),
+  "utf8",
+);
+
+describe("public profile privacy", () => {
+  it("renders identity only and omits learning progress UI", () => {
+    expect(publicProfileSource).toContain("publicEyebrow");
+    expect(publicProfileSource).toContain("publicProfileNote");
+    expect(publicProfileSource).not.toContain("currentStreak");
+    expect(publicProfileSource).not.toContain("sharedQuizzes");
+    expect(publicProfileSource).not.toContain("dayStreak");
+  });
+});
 
 describe("ProfilePageClient avatar flow", () => {
   it("posts only the file to authenticated profile endpoint", () => {

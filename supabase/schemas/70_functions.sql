@@ -2852,6 +2852,26 @@ begin
 end;
 $$;
 
+create or replace function public.resolve_profile_user(p_username text)
+returns jsonb language sql security definer set search_path = public as $$
+  select jsonb_build_object('userId', p.id)
+  from public.profiles p
+  where p.username_normalized = private.normalize_username(p_username)
+$$;
+
+create or replace function public.resolve_friend_user(p_username text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_other_user_id uuid;
+begin
+  if v_user_id is null then raise exception 'authentication_required'; end if;
+  select p.id into v_other_user_id from public.profiles p where p.username_normalized = private.normalize_username(p_username);
+  if not private.social_are_accepted_friends(v_user_id, v_other_user_id) then raise exception 'social_unavailable'; end if;
+  return jsonb_build_object('userId', v_other_user_id);
+end;
+$$;
+
 create or replace function public.list_accepted_friends()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_user_id uuid := auth.uid(); v_friends jsonb;
@@ -3127,26 +3147,21 @@ begin
     'displayName', coalesce(v_profile.display_name, v_profile.username, 'Student'),
     'username', v_profile.username,
     'bio', coalesce(v_profile.bio, ''),
-    'avatarPath', v_profile.avatar_path,
-    'currentStreak', coalesce((select ls.current_streak from public.learning_streaks ls where ls.user_id = p_other_user_id), 0),
-    'quizzes', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', lo.id,
-        'title', lo.title,
-        'type', 'quiz',
-        'questionCount', (select count(*) from public.approved_questions aq where aq.output_id = lo.id),
-        'updatedAt', lo.updated_at
-      ) order by lo.updated_at desc)
-      from public.learning_output_friend_shares fs
-      join public.learning_outputs lo on lo.id = fs.output_id
-      where fs.owner_id = p_other_user_id
-        and lo.created_by = p_other_user_id
-        and lo.kind = 'quiz'
-        and lo.status = 'ready'
-        and lo.deleted_at is null
-    ), '[]'::jsonb)
+    'avatarPath', v_profile.avatar_path
   );
 end;
+$$;
+
+create or replace function public.get_public_profile(p_user_id uuid)
+returns jsonb language sql security definer set search_path = public as $$
+  select jsonb_build_object(
+    'displayName', coalesce(p.display_name, p.username, 'Student'),
+    'username', p.username,
+    'bio', coalesce(p.bio, ''),
+    'avatarPath', p.avatar_path
+  )
+  from public.profiles p
+  where p.id = p_user_id
 $$;
 
 create or replace function public.set_quiz_friend_share(p_output_id uuid, p_shared boolean)
@@ -3348,7 +3363,7 @@ end $$;
 create or replace function private.cancel_study_sessions_for_block(p_user_a uuid,p_user_b uuid) returns void language sql security definer set search_path=public as $$ update public.study_together_sessions set status='cancelled',updated_at=now() where status in ('pending','active') and ((creator_id=p_user_a and recipient_id=p_user_b) or (creator_id=p_user_b and recipient_id=p_user_a)) $$;
 
 create or replace function public.list_social_friends(p_limit integer,p_cursor jsonb default null,p_presence text default 'offline') returns jsonb language sql security definer set search_path=public as $$
-with owned as (select case when fr.sender_id=auth.uid() then fr.recipient_id else fr.sender_id end user_id from public.friend_requests fr where auth.uid() is not null and fr.status='accepted' and auth.uid() in(fr.sender_id,fr.recipient_id)), rows as (select o.user_id,p.username,case when a.last_active_at>=now()-interval '5 minutes' then 0 when a.last_active_at is not null then 1 else 2 end presence_rank,a.last_active_at from owned o join public.profiles p on p.id=o.user_id left join private.social_activity a on a.user_id=o.user_id where not private.social_users_blocked(auth.uid(),o.user_id) and p_presence in('online','offline') and ((p_presence='online' and case when a.last_active_at>=now()-interval '5 minutes' then 0 when a.last_active_at is not null then 1 else 2 end=0) or (p_presence='offline' and case when a.last_active_at>=now()-interval '5 minutes' then 0 when a.last_active_at is not null then 1 else 2 end in(1,2)))), page as(select * from rows where p_cursor is null or (presence_rank,coalesce(username,''),user_id::text)>((p_cursor->>0)::int,p_cursor->>1,p_cursor->>2) order by presence_rank,coalesce(username,''),user_id limit least(greatest(p_limit,1),51)) select jsonb_build_object('items',coalesce(jsonb_agg(jsonb_build_object('userId',user_id,'username',username,'presenceRank',presence_rank,'presence',case presence_rank when 0 then 'online' when 1 then 'recently_active' else 'offline' end,'lastActiveAt',last_active_at) order by presence_rank,coalesce(username,''),user_id),'[]'),'totalCount',(select count(*) from rows)) from page $$;
+with owned as (select case when fr.sender_id=auth.uid() then fr.recipient_id else fr.sender_id end user_id from public.friend_requests fr where auth.uid() is not null and fr.status='accepted' and auth.uid() in(fr.sender_id,fr.recipient_id)), rows as (select o.user_id,p.username,p.avatar_path,case when a.last_active_at>=now()-interval '5 minutes' then 0 when a.last_active_at is not null then 1 else 2 end presence_rank,a.last_active_at from owned o join public.profiles p on p.id=o.user_id left join private.social_activity a on a.user_id=o.user_id where not private.social_users_blocked(auth.uid(),o.user_id) and p_presence in('online','offline') and ((p_presence='online' and case when a.last_active_at>=now()-interval '5 minutes' then 0 when a.last_active_at is not null then 1 else 2 end=0) or (p_presence='offline' and case when a.last_active_at>=now()-interval '5 minutes' then 0 when a.last_active_at is not null then 1 else 2 end in(1,2)))), page as(select * from rows where p_cursor is null or (presence_rank,coalesce(username,''),user_id::text)>((p_cursor->>0)::int,p_cursor->>1,p_cursor->>2) order by presence_rank,coalesce(username,''),user_id limit least(greatest(p_limit,1),51)) select jsonb_build_object('items',coalesce(jsonb_agg(jsonb_build_object('userId',user_id,'username',username,'avatarPath',avatar_path,'presenceRank',presence_rank,'presence',case presence_rank when 0 then 'online' when 1 then 'recently_active' else 'offline' end,'lastActiveAt',last_active_at) order by presence_rank,coalesce(username,''),user_id),'[]'),'totalCount',(select count(*) from rows)) from page $$;
 
 create or replace function public.list_social_friend_requests(p_limit integer,p_cursor jsonb default null,p_direction text default 'incoming') returns jsonb language sql security definer set search_path=public as $$ with rows as (select fr.id request_id,case when p_direction='incoming' then fr.sender_id else fr.recipient_id end other_user_id,p.username,fr.created_at from public.friend_requests fr join public.profiles p on p.id=case when p_direction='incoming' then fr.sender_id else fr.recipient_id end where auth.uid() is not null and p_direction in('incoming','outgoing') and fr.status='pending' and ((p_direction='incoming' and fr.recipient_id=auth.uid()) or (p_direction='outgoing' and fr.sender_id=auth.uid()))),page as(select * from rows where p_cursor is null or (created_at,request_id)<((p_cursor->>0)::timestamptz,(p_cursor->>1)::uuid) order by created_at desc,request_id desc limit least(greatest(p_limit,1),51)) select jsonb_build_object('items',coalesce(jsonb_agg(jsonb_build_object('requestId',request_id,'otherUserId',other_user_id,'username',username,'createdAt',created_at) order by created_at desc,request_id desc),'[]'),'totalCount',(select count(*) from rows)) from page $$;
 
@@ -3697,6 +3712,12 @@ revoke all on function private.cancel_study_sessions_for_block(uuid,uuid) from p
 revoke all on function public.create_study_challenge(uuid,uuid,text,timestamptz,text,text),public.start_study_challenge_attempt(uuid),public.accept_study_challenge(uuid),public.get_study_attempt_practice(uuid),public.complete_study_attempt(uuid,jsonb,integer),public.list_study_challenges(integer,timestamptz),public.get_study_challenge(uuid),public.decline_study_challenge(uuid),public.save_study_attempt_progress(uuid,jsonb,integer),public.list_social_notifications(integer,timestamptz),public.mark_social_notification_read(uuid),public.mark_all_social_notifications_read(),public.archive_study_challenge_notification(uuid),public.get_social_notification_unread_count(),public.sweep_study_challenge_reminders(),public.remove_friend(uuid) from public,anon;
 
 grant execute on function public.create_study_challenge(uuid,uuid,text,timestamptz,text,text),public.start_study_challenge_attempt(uuid),public.accept_study_challenge(uuid),public.get_study_attempt_practice(uuid),public.complete_study_attempt(uuid,jsonb,integer),public.list_study_challenges(integer,timestamptz),public.get_study_challenge(uuid),public.decline_study_challenge(uuid),public.save_study_attempt_progress(uuid,jsonb,integer),public.list_social_notifications(integer,timestamptz),public.mark_social_notification_read(uuid),public.mark_all_social_notifications_read(),public.archive_study_challenge_notification(uuid),public.get_social_notification_unread_count(),public.sweep_study_challenge_reminders(),public.remove_friend(uuid) to authenticated;
+
+revoke all on function public.resolve_profile_user(text),public.resolve_friend_user(text) from public,anon;
+
+grant execute on function public.resolve_profile_user(text),public.resolve_friend_user(text) to authenticated;
+
+grant execute on function public.get_public_profile(uuid) to authenticated;
 
 revoke all on function public.list_social_friends(integer,jsonb,text),public.list_social_friend_requests(integer,jsonb,text),public.list_social_invites(integer,jsonb),public.list_social_conversations(integer,jsonb),public.list_social_blocks(integer,jsonb) from public,anon;
 

@@ -25,7 +25,7 @@ Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder s
 - [x] **Phase 3: Canonical Knowledge** — Builder service, sections/metadata, Supabase persistence (completed 2026-07-25)
 - [x] **Phase 4: Quiz Pipeline** — Concept detection, MCQ generation, save, review, practice wire-up (completed 2026-07-25)
 - [x] **Phase 5: Flashcards & E2E** — Flashcard wizard, generation, learning, dashboard integration (completed 2026-07-25)
-- [ ] **Phase 12: Study Together** — Durable friend lifecycle, asynchronous quiz challenges, immutable quiz snapshots, in-app notifications, scalable friends hub, and responsive messaging. Depends on existing quiz practice and Phase 11 social primitives. Requirements: SOCIAL-01–10. Success: a user can challenge an accepted friend with an owned quiz; recipient accepts and starts a snapshot-based attempt; both see result comparison under configured reveal policy; missed realtime events reconcile from durable notifications.
+- [x] **Phase 12: Study Together** — Durable friend lifecycle, asynchronous quiz challenges, immutable quiz snapshots, in-app notifications, scalable friends hub, and responsive messaging. Depends on existing quiz practice and Phase 11 social primitives. Requirements: SOCIAL-01–10. Success: a user can challenge an accepted friend with an owned quiz; recipient accepts and starts a snapshot-based attempt; both see result comparison under configured reveal policy; missed realtime events reconcile from durable notifications. (completed 2026-08-03)
 - [x] **Phase 14: Friend presence and chat layout repair** — Correct online/offline tabs and presence indicators in friend lists; wrap long chat messages inside their bubbles. Depends on Phase 12 social UI. (completed 2026-08-01)
 - [x] **Phase 15: Social presence scaling** — Validate and implement Redis-backed ephemeral presence, conversation-scoped typing indicators, durable activity batching, rate limits, accepted-friend privacy, and last-known/unknown Redis failure behavior for 100–1,000 concurrent users. Depends on Phase 14 and Spike 001. Requirements: SCALE-01–10. Success: heartbeat load produces no per-heartbeat Postgres writes; presence and typing TTLs expire correctly; authorized snapshots remain bounded; Redis outage preserves chat and reports unknown after grace; batched activity retries idempotently. (completed 2026-08-01)
 
@@ -42,7 +42,7 @@ Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder s
 4. Recipient and challenger view results only under configured reveal policy, defaulting to after both finish; no answer leakage occurs before permitted reveal.
 5. Responsive `/friends` hub provides scalable Friends, Requests, Invites, Messages, and Blocked areas while topbar menu stays a compact launcher with server-derived unread badge.
 
-**Plans:** 8/9 plans executed
+**Plans:** 9/9 plans complete
 
 Plans:
 **Wave 1**
@@ -66,7 +66,7 @@ Plans:
 - [x] 12-09-PLAN.md — Shared responsive chat, mobile full-screen route, and history/reconnect proof
 
 **Wave 7** *(blocked on all implementation plans)*
-- [ ] 12-06-PLAN.md — Validation-contract proof and two-account responsive verification
+- [x] 12-06-PLAN.md — Validation-contract proof and two-account responsive verification
 
 
 ### Phase 15: Social presence scaling

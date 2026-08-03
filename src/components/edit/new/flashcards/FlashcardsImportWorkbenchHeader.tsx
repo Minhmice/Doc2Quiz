@@ -62,7 +62,7 @@ export function FlashcardsImportWorkbenchHeader({
         </div>
       </div>
       <div className="border-t border-border/30 px-4 py-2 sm:px-6">
-        <ImportStepTabStrip className="max-w-xs" />
+        <ImportStepTabStrip className="max-w-full sm:max-w-xs" />
       </div>
     </header>
   );

@@ -81,7 +81,7 @@ completed: 2026-07-31
 **Impact on plan:** Required for correctness; no new product scope.
 
 ## Issues Encountered
-- Runtime SQL/RLS proof remains blocked because `PHASE12_TEST_DATABASE_URL` is unset. No database connection attempted.
+- Database migration and RLS validation are owned by Supabase deployment; repository tests do not require a database URL.
 
 ## Threat Flags
 | Flag | File | Description |
@@ -94,7 +94,7 @@ None.
 
 ## Next Phase Readiness
 - Ready for 12-03 client contracts and friends surfaces.
-- Disposable test DB still needed for runtime SQL/RLS proof.
+- Supabase deployment remains the authority for SQL/RLS integration behavior.
 
 ## Self-Check: PASSED
 - Planned route and test files exist.

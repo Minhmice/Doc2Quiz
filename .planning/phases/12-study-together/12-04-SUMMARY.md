@@ -80,7 +80,7 @@ completed: 2026-07-31
 
 ## Issues Encountered
 - Repository-wide lint remains blocked by pre-existing errors in unrelated dirty files (`@ts-nocheck`, share-page JSX-in-try, legacy loading purity). Scoped Plan 12-04 lint passes.
-- Runtime SQL/RLS proof remains blocked because `PHASE12_TEST_DATABASE_URL` is unset; no database connection attempted.
+- Database migration and RLS validation are owned by Supabase deployment; repository tests do not require a database URL.
 
 ## Known Stubs
 None.
@@ -93,7 +93,7 @@ None.
 
 ## Next Phase Readiness
 - Challenge client and play UI ready for friends-hub integration.
-- Disposable test database still required for runtime SQL/RLS proof.
+- Supabase deployment remains the authority for SQL/RLS integration behavior.
 
 ## Self-Check: PASSED
 - All planned files exist.

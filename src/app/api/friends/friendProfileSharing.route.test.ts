@@ -40,6 +40,20 @@ describe("friend quiz sharing routes", () => {
     expect(await response.json()).toEqual({ error: "social_unavailable" });
   });
 
+  it("resolves username URLs before read-only practice RPC", async () => {
+    rpc
+      .mockResolvedValueOnce({ data: { userId }, error: null })
+      .mockResolvedValueOnce({ data: { id: quizId, title: "Math", type: "quiz", questions: [] }, error: null });
+    const response = (await GET(
+      new Request(`http://localhost/api/friends/profile/minhdoan/quizzes/${quizId}`),
+      { params: Promise.resolve({ userId: "minhdoan", quizId }) },
+    )) as Response;
+
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenNthCalledWith(1, "resolve_friend_user", { p_username: "minhdoan" });
+    expect(rpc).toHaveBeenNthCalledWith(2, "get_friend_shared_quiz", { p_other_user_id: userId, p_output_id: quizId });
+  });
+
   it("returns read-only practice payload from protected RPC", async () => {
     rpc.mockResolvedValue({ data: { id: quizId, title: "Math", type: "quiz", questions: [] }, error: null });
     const response = (await GET(

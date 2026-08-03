@@ -104,7 +104,7 @@ Each TDD task was committed atomically:
 - PASS — target-file ESLint run; 0 errors, 4 existing warnings for image elements and hook dependency
 - BLOCKED/OUT OF SCOPE — full requested focused command including `src/lib/client/friends.test.ts` has one pre-existing legacy fixture failure: `listFriendRequests` receives a non-page response and throws `incoming.items is not iterable`. No Plan 14-02 file was changed to alter that unrelated contract.
 - BLOCKED/OUT OF SCOPE — repository-wide `npm run lint` retains pre-existing errors in `src/app/share/[token]/page.tsx` and `src/legacy/loading/PageTransitionProvider.tsx`, plus unrelated warnings.
-- NOT RUN — runtime SQL proof; no approved `PHASE12_TEST_DATABASE_URL` exists.
+- Supabase deployment owns migration and RLS validation; repository tests do not require a database URL.
 
 ## Decisions Made
 
