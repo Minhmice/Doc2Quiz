@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { recoveryAvailable, streakTier } from "./streak";
+import { isStreakFlameBright, recoveryAvailable, streakTier } from "./streak";
 
 describe("streak helpers", () => {
   it("assigns milestone tiers", () => {
     expect([0, 29, 30, 90, 180, 365].map(streakTier)).toEqual(["base", "base", "30", "90", "180", "365"]);
+  });
+
+  it.each([
+    [{ currentStreak: 0, lostStreak: 0 }, true],
+    [{ currentStreak: 0, lostStreak: 12 }, true],
+    [{ currentStreak: 30, lostStreak: 12 }, true],
+    [{ currentStreak: 30, lostStreak: 0 }, false],
+  ] as const)("marks streak=%j bright=%s", (streak, expected) => {
+    expect(isStreakFlameBright(streak)).toBe(expected);
   });
 
   it("allows recovery only inside 48-hour window and monthly limit", () => {

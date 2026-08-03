@@ -12,7 +12,7 @@ revoke all on table public.user_blocks from anon, authenticated;
 
 revoke all on table public.user_reports from anon, authenticated;
 
-revoke all on table public.direct_conversations, public.direct_messages, public.reaction_preferences from anon, authenticated;
+revoke all on table public.direct_conversations, public.direct_messages, public.direct_message_attachments, public.reaction_preferences from public, anon, authenticated;
 
 revoke all on table private.social_activity from public, anon, authenticated;
 

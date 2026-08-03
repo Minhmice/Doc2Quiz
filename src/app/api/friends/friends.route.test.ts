@@ -493,7 +493,7 @@ describe("social API routes", () => {
 
       expect(messageResponse.status).toBe(200);
       expect(reactionResponse.status).toBe(200);
-      expect(broadcastSocialEventMock).toHaveBeenNthCalledWith(1, `social-messages:${requestId}`, "message", { message });
+      expect(broadcastSocialEventMock).toHaveBeenNthCalledWith(1, `social-messages:${requestId}`, "message", { source: "message" });
       expect(broadcastSocialEventMock).toHaveBeenNthCalledWith(2, `social-reactions:${otherUserId}`, "reaction", { reactionId: "xin_chao" });
     });
 

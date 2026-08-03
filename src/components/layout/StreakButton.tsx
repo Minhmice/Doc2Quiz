@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ACTIVITY_STATS_CHANGED_EVENT } from "@/lib/appEvents";
-import { recoveryAvailable, streakTier, type LearningStreak } from "@/lib/streak";
+import { isStreakFlameBright, recoveryAvailable, streakTier, type LearningStreak } from "@/lib/streak";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/components/locale/LocaleProvider";
 
@@ -18,6 +18,11 @@ const tierClass = {
   "180": "scale-125 text-red-500",
   "365": "scale-150 text-fuchsia-500",
 };
+const brightFlameClass = "text-amber-600 dark:text-amber-400";
+
+export function getStreakFlameClass(streak: Pick<LearningStreak, "currentStreak" | "lostStreak">): string {
+  return isStreakFlameBright(streak) ? brightFlameClass : tierClass[streakTier(streak.currentStreak)];
+}
 
 export function StreakButton() {
   const { messages } = useLocale();
@@ -49,7 +54,7 @@ export function StreakButton() {
   };
 
   const canRecover = recoveryAvailable(streak);
-  const tier = streakTier(streak.currentStreak);
+  const flameClass = getStreakFlameClass(streak);
   if (!mounted) return <span className="block h-10 w-12" aria-hidden="true" />;
   return <DropdownMenu>
     <DropdownMenuTrigger
@@ -59,7 +64,7 @@ export function StreakButton() {
         "h-10 gap-1.5 px-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
-      <Flame className={`size-4 transition-transform ${tierClass[tier]}`} />
+      <Flame className={`size-4 transition-transform ${flameClass}`} />
       <span className="font-label text-xs font-bold tabular-nums">{streak.currentStreak}</span>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-64">
