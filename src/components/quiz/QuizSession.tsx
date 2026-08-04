@@ -601,7 +601,7 @@ export function PlaySession({
           </CardTitle>
           <div
             className={cn(
-              "flex flex-wrap items-baseline gap-x-2 gap-y-1 font-bold tabular-nums tracking-tight text-[32px] leading-[1.1]",
+              "flex flex-wrap items-baseline gap-x-2 gap-y-1 font-bold tabular-nums tracking-tight text-3xl leading-[1.1]",
               stitch && "font-heading",
             )}
             aria-live="polite"
@@ -858,7 +858,7 @@ export function PlaySession({
         <div className="space-y-4">
           <MathText
             source={current.question}
-            className="font-heading text-lg font-bold leading-tight tracking-tight text-(--qp-tertiary) sm:text-xl md:text-2xl lg:text-[28px]"
+            className="font-heading text-lg font-bold leading-tight tracking-tight text-(--qp-tertiary) sm:text-xl md:text-2xl lg:text-2xl"
           />
           {current.questionImageId ? (
             <div className="overflow-hidden rounded-sm border border-[color-mix(in_srgb,var(--qp-outline-variant)_14%,transparent)] bg-[color-mix(in_srgb,var(--qp-surface-container-low)_28%,white)] p-3">

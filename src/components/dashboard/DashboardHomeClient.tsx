@@ -40,7 +40,7 @@ function RecentOutputCard({ output }: { output: DashboardOutputCardModel }) {
           >
             {isFlashcard ? "Flashcards" : "Quiz"}
           </Badge>
-          <time dateTime={output.updatedAt} className="text-[11px] tabular-nums text-muted-foreground">
+          <time dateTime={output.updatedAt} className="text-xs tabular-nums text-muted-foreground">
             {formatRelativeShort(output.updatedAt)}
           </time>
         </div>
@@ -112,7 +112,7 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceCardModel }) {
               {workspace.role}
             </Badge>
           ) : null}
-          <time dateTime={workspace.updatedAt} className="ml-auto text-[11px] tabular-nums text-muted-foreground">
+          <time dateTime={workspace.updatedAt} className="ml-auto text-xs tabular-nums text-muted-foreground">
             {formatRelativeShort(workspace.updatedAt)}
           </time>
         </div>
@@ -142,7 +142,7 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceCardModel }) {
         </dl>
 
         {workspace.latestOutputTitle ? (
-          <p className="truncate rounded-md bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground" title={workspace.latestOutputTitle}>
+          <p className="truncate rounded-md bg-muted/50 px-2 py-1 text-xs font-medium text-muted-foreground" title={workspace.latestOutputTitle}>
             Latest: <span className="font-semibold text-foreground">{workspace.latestOutputTitle}</span>
           </p>
         ) : null}

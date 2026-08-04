@@ -21,7 +21,7 @@ function FlashcardReviewSkeleton() {
           <Skeleton className="h-4 w-80 max-w-full" />
           <Skeleton className="h-4 w-full max-w-2xl" />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-6 border-l-4 border-muted bg-muted/40 px-6 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-6 border border-border/60 bg-muted/40 px-6 py-5">
           <div className="flex flex-wrap gap-8">
             {Array.from({ length: 4 }, (_, index) => (
               <div key={index} className="space-y-2">

@@ -244,9 +244,9 @@ html[data-theme="high-contrast"] {
   min-height: 3.5rem;
   padding: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   color: var(--muted-foreground);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   animation: d2q-results-stat-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(240ms + var(--i, 0) * 90ms);
@@ -281,32 +281,20 @@ html[data-theme="high-contrast"] {
 /** Technical line grid — workbench / processing panels */
 @utility d2q-technical-grid {
   background-size: 40px 40px;
-  background-image:
-    linear-gradient(
-      to right,
-      color-mix(in srgb, var(--muted-foreground) 12%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--muted-foreground) 12%, transparent) 1px,
-      transparent 1px
-    );
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--muted-foreground) 16%, transparent) 0.6px,
+    transparent 0.7px
+  );
 }
 
 /** Blueprint line grid — format picker / canvases */
 @utility d2q-blueprint-grid {
-  background-image:
-    linear-gradient(
-      to right,
-      color-mix(in srgb, var(--border) 10%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--border) 10%, transparent) 1px,
-      transparent 1px
-    );
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--border) 18%, transparent) 0.6px,
+    transparent 0.7px
+  );
   background-size: 80px 80px;
 }
 
@@ -571,7 +559,7 @@ html[data-theme="high-contrast"] {
   inset-inline: 0.35rem;
   bottom: -6px;
   height: 2px;
-  border-radius: 999px;
+  border-radius: 50%;
   transform: scaleX(0);
   transform-origin: left;
   background-color: color-mix(in srgb, var(--primary) 55%, transparent);
@@ -688,9 +676,11 @@ html[data-theme="high-contrast"] {
 }
 
 .d2q-prose :where(blockquote) {
-  border-left: 3px solid var(--border);
-  padding-left: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
   color: var(--muted-foreground);
+  background-color: var(--muted);
 }
 
 .d2q-prose :where(hr) {
@@ -730,16 +720,16 @@ html[data-theme="high-contrast"] {
 }
 
 [data-rich-colors="true"].cn-toast[data-sonner-toast][data-styled="true"][data-type="success"] {
-  background-color: color-mix(in srgb, var(--card) 22%, hsl(143deg 72% 92%)) !important;
+  background-color: color-mix(in srgb, var(--card) 22%, var(--accent)) !important;
   color: var(--foreground) !important;
-  border-color: color-mix(in srgb, hsl(143deg 45% 42%) 55%, var(--border)) !important;
+  border-color: color-mix(in srgb, var(--chart-2) 55%, var(--border)) !important;
   backdrop-filter: none;
 }
 
 .dark [data-rich-colors="true"].cn-toast[data-sonner-toast][data-styled="true"][data-type="success"] {
-  background-color: color-mix(in srgb, var(--card) 35%, hsl(150deg 86% 12%)) !important;
+  background-color: color-mix(in srgb, var(--card) 35%, var(--accent)) !important;
   color: var(--foreground) !important;
-  border-color: color-mix(in srgb, hsl(150deg 60% 38%) 45%, var(--border)) !important;
+  border-color: color-mix(in srgb, var(--chart-2) 45%, var(--border)) !important;
 }
 
 /**

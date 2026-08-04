@@ -178,7 +178,7 @@ export function ApiStatusIndicator() {
         <span
           key={labelKey}
           className={cn(
-            "d2q-status-pill-label min-w-0 truncate text-left text-[11px] font-semibold leading-tight tracking-tight",
+            "d2q-status-pill-label min-w-0 truncate text-left text-xs font-semibold leading-tight tracking-tight",
             !userEngaged && "text-muted-foreground",
             userEngaged && status === "ok" && "text-chart-2 dark:text-chart-2",
             userEngaged && status !== "ok" && "text-muted-foreground",

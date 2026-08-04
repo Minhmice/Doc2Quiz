@@ -14,6 +14,10 @@ colors:
   border-sage: "#c0c9c3"
   muted-ink: "#404945"
   destructive: "#ba1a1a"
+  vscode-blue: "#569cd6"
+  vscode-light-blue: "#0070c1"
+  monokai-lime: "#a6e22e"
+  high-contrast-yellow: "#ffff00"
 typography:
   display:
     fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"

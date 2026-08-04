@@ -102,7 +102,7 @@ export function LoginClient() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="d2q-auth-input rounded-sm border-0 border-b-2 border-transparent bg-input shadow-none ring-0 focus-visible:outline-none focus-visible:ring-3 focus-visible:border-primary focus-visible:ring-ring/40"
+            className="d2q-auth-input rounded-sm border border-border bg-input shadow-none ring-0 focus-visible:outline-none focus-visible:ring-3 focus-visible:border-primary focus-visible:ring-ring/40"
           />
         </div>
         <div className="space-y-2">
@@ -117,7 +117,7 @@ export function LoginClient() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="d2q-auth-input rounded-sm border-0 border-b-2 border-transparent bg-input shadow-none ring-0 focus-visible:outline-none focus-visible:ring-3 focus-visible:border-primary focus-visible:ring-ring/40"
+            className="d2q-auth-input rounded-sm border border-border bg-input shadow-none ring-0 focus-visible:outline-none focus-visible:ring-3 focus-visible:border-primary focus-visible:ring-ring/40"
           />
         </div>
 

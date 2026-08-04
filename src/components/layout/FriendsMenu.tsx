@@ -80,7 +80,7 @@ export function FriendsMenu() {
         {aggregateCount ? <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-destructive px-1 text-[10px] font-bold leading-4 text-destructive-foreground">{aggregateCount}</span> : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
-        <div className="grid grid-cols-2 gap-1 px-2 py-2 text-center text-[11px] text-muted-foreground">
+        <div className="grid grid-cols-2 gap-1 px-2 py-2 text-center text-xs text-muted-foreground">
           <button type="button" className="min-h-11 cursor-pointer rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push("/friends?destination=requests")}>{messages.friends.requests} <strong className="block text-sm text-foreground">{counts.incomingRequestCount}</strong></button>
           <button type="button" className="min-h-11 cursor-pointer rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push("/friends?destination=invites")}>{messages.friends.studyInvites} <strong className="block text-sm text-foreground">{counts.notificationUnreadCount}</strong></button>
           <button type="button" className="min-h-11 cursor-pointer rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push("/friends?destination=friends")}>{messages.friends.activeFriends} <strong className="block text-sm text-foreground">{friends.filter(friend=>friend.presence === "online").length}</strong></button>

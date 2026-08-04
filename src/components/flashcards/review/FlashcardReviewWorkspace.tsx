@@ -192,7 +192,7 @@ export function FlashcardReviewWorkspace({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-6 border-l-4 border-primary bg-muted/40 px-6 py-5 shadow-sm ring-1 ring-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-6 border border-border/60 bg-muted/40 px-6 py-5 shadow-sm ring-1 ring-border/60">
           <div className="flex flex-wrap gap-8">
             <div className="flex flex-col gap-0.5">
               <span className="font-label text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -303,7 +303,7 @@ export function FlashcardReviewWorkspace({
           </div>
 
           {activeCard?.id ? (
-            <article className="space-y-6 border-l-4 border-primary bg-card p-6 shadow-sm ring-1 ring-border/50 sm:p-8">
+            <article className="space-y-6 border border-border/60 bg-card p-6 shadow-sm ring-1 ring-border/50 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="font-label text-xs text-muted-foreground">
@@ -380,7 +380,7 @@ export function FlashcardReviewWorkspace({
                       onFrontChange(activeCard.id, e.target.value)
                     }
                     rows={listMode === "compact" ? 4 : 5}
-                    className="min-h-[120px] resize-none border-0 bg-muted/50 font-heading text-base leading-relaxed focus-visible:border-b-2 focus-visible:border-primary"
+                    className="min-h-[120px] resize-none border-0 bg-muted/50 font-heading text-base leading-relaxed focus-visible:border focus-visible:border-primary"
                   />
                   {frontTooLong ? (
                     <p className="flex items-center gap-2 text-primary">
@@ -402,7 +402,7 @@ export function FlashcardReviewWorkspace({
                       onBackChange(activeCard.id, e.target.value)
                     }
                     rows={listMode === "compact" ? 4 : 5}
-                    className="min-h-[120px] resize-none border-0 bg-muted/50 text-sm leading-relaxed focus-visible:border-b-2 focus-visible:border-primary"
+                    className="min-h-[120px] resize-none border-0 bg-muted/50 text-sm leading-relaxed focus-visible:border focus-visible:border-primary"
                   />
                   {backTooLong ? (
                     <p className="flex items-center gap-2 text-primary">

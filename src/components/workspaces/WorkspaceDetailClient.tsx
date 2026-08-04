@@ -358,7 +358,7 @@ export function WorkspaceDetailClient({
               <h1 className="font-heading text-xl font-bold sm:text-2xl text-foreground truncate">
                 {detail.title}
               </h1>
-              <Badge variant="outline" className="text-[11px] font-semibold capitalize shrink-0">
+              <Badge variant="outline" className="text-[10px] font-semibold capitalize shrink-0">
                 {detail.role}
               </Badge>
             </div>
@@ -633,12 +633,12 @@ export function WorkspaceDetailClient({
                                           </span>
                                           <Badge
                                             variant={isReady ? "default" : "secondary"}
-                                            className="font-label text-[9px] uppercase"
+                                            className="font-label text-[10px] uppercase"
                                           >
                                             {canonical.status}
                                           </Badge>
                                         </div>
-                                        <p className="text-[11px] text-muted-foreground truncate">
+                                        <p className="text-[10px] text-muted-foreground truncate">
                                           {canonical.provenanceLabel}
                                         </p>
                                       </div>
@@ -697,7 +697,7 @@ export function WorkspaceDetailClient({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-[11px] text-muted-foreground hover:text-foreground p-0"
+                    className="h-6 text-[10px] text-muted-foreground hover:text-foreground p-0"
                     onClick={() => setSelectedVersionIds([])}
                   >
                     Clear selection
@@ -711,7 +711,7 @@ export function WorkspaceDetailClient({
                     <AlertCircle className="size-3.5 shrink-0" />
                     No ready sources available
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground">
                     Process or retry a source on the left to enable output generation.
                   </p>
                 </div>
@@ -801,14 +801,14 @@ export function WorkspaceDetailClient({
                           >
                             {isFlashcards ? "Flashcards" : "Quiz"}
                           </Badge>
-                          <span className="text-[11px] text-muted-foreground capitalize font-medium">
+                          <span className="text-[10px] text-muted-foreground capitalize font-medium">
                             {output.status}
                           </span>
                         </div>
                         <p className="font-heading font-bold text-sm text-foreground truncate">
                           {output.title}
                         </p>
-                        <p className="text-[11px] text-muted-foreground tabular-nums">
+                        <p className="text-[10px] text-muted-foreground tabular-nums">
                           Updated {formatDate(output.updatedAt)}
                         </p>
                       </div>

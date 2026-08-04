@@ -250,7 +250,7 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
           <span className="font-label text-xs sm:text-sm lg:text-base font-bold tracking-tight text-[color:var(--qp-tertiary)]">
             {copy.itemProgress(formatNumber(index + 1), formatNumber(total))}
           </span>
-          <span className="font-label text-[9px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-widest text-[color:var(--qp-secondary)]/60">
+          <span className="font-label text-[10px] sm:text-xs lg:text-xs font-bold uppercase tracking-widest text-[color:var(--qp-secondary)]/60">
             {common.completePercent(formatNumber(progressPct))}
           </span>
         </div>
@@ -274,7 +274,7 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
           {/* FRONT */}
           <div className="card-front cursor-pointer border border-[color:var(--qp-secondary)]/20 bg-[color:var(--qp-surface-container-lowest)] p-4 sm:p-12 lg:p-16 overflow-y-auto rounded-xl">
             <div className="absolute top-4 sm:top-6 lg:top-8 left-1/2 -translate-x-1/2">
-              <span className="font-label text-[8px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-[0.25em] text-[color:var(--qp-secondary)]/60">
+              <span className="font-label text-[10px] sm:text-xs lg:text-xs font-bold uppercase tracking-[0.25em] text-[color:var(--qp-secondary)]/60">
                 {copy.front}
               </span>
             </div>
@@ -291,7 +291,7 @@ export function FlashcardSession({ studySetId, practice = "standard" }: Flashcar
           {/* BACK */}
           <div className="card-back cursor-pointer border border-[color:var(--qp-secondary)]/20 bg-[color:var(--qp-surface-container-lowest)] p-4 sm:p-12 lg:p-16 overflow-y-auto rounded-xl">
             <div className="absolute top-4 sm:top-6 lg:top-8 left-1/2 -translate-x-1/2">
-              <span className="font-label text-[8px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-[0.25em] text-[color:var(--qp-secondary)]/60">
+              <span className="font-label text-[10px] sm:text-xs lg:text-xs font-bold uppercase tracking-[0.25em] text-[color:var(--qp-secondary)]/60">
                 {copy.back}
               </span>
             </div>

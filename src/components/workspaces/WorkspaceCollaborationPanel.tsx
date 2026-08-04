@@ -296,7 +296,7 @@ export function WorkspaceCollaborationPanel({
       {/* Card Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-label text-[11px] font-bold text-primary tracking-widest flex items-center gap-1.5">
+          <p className="font-label text-[10px] font-bold text-primary tracking-widest flex items-center gap-1.5">
             <Shield className="size-3.5" />
             Access & Sharing
           </p>
@@ -342,7 +342,7 @@ export function WorkspaceCollaborationPanel({
 
           {/* Quick Invite & Share Action Bar */}
           <div className="space-y-3 rounded-lg border border-border/50 bg-background/60 p-3">
-            <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+            <p className="text-[10px] font-semibold text-foreground flex items-center gap-1.5">
               <UserPlus className="size-3.5 text-primary" />
               Quick Member Invite
             </p>
@@ -383,7 +383,7 @@ export function WorkspaceCollaborationPanel({
             </div>
 
             {inviteError ? (
-              <p className="text-[11px] font-medium text-destructive">{inviteError}</p>
+              <p className="text-[10px] font-medium text-destructive">{inviteError}</p>
             ) : null}
 
             {/* Quick Share Link Trigger */}
@@ -404,11 +404,11 @@ export function WorkspaceCollaborationPanel({
               {pendingShareUrl ? (
                 <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 flex items-center justify-between gap-2 transition-all">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-primary flex items-center gap-1">
+                    <p className="text-[10px] font-semibold text-primary flex items-center gap-1">
                       <Sparkles className="size-3" />
                       Share Link Ready
                     </p>
-                    <p className="text-[11px] text-muted-foreground truncate max-w-45">
+                    <p className="text-[10px] text-muted-foreground truncate max-w-45">
                       {pendingShareUrl}
                     </p>
                   </div>
@@ -517,7 +517,7 @@ export function WorkspaceCollaborationPanel({
                           <p className="text-xs font-semibold text-foreground wrap-anywhere">
                             {panel.memberUserId(invitation.recipientUserId)}
                           </p>
-                          <p className="text-[11px] text-muted-foreground font-medium">
+                          <p className="text-[10px] text-muted-foreground font-medium">
                             {roleLabels[invitation.role]} ·{" "}
                             {invitationStatusLabel(invitation, invitationLabels)}
                           </p>
@@ -563,7 +563,7 @@ export function WorkspaceCollaborationPanel({
                           <p className="text-xs font-semibold text-foreground wrap-anywhere">
                             {panel.shareTarget(share.targetKind)}
                           </p>
-                          <p className="text-[11px] text-muted-foreground font-medium">
+                          <p className="text-[10px] text-muted-foreground font-medium">
                             {share.permission}
                             {share.revokedAt ? ` · ${invitationLabels.revoked}` : ""}
                           </p>

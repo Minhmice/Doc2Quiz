@@ -76,7 +76,7 @@ export function QuestionReviewNavigator({
   );
 
   const legend = (
-    <p className="mt-3 font-label text-[9px] uppercase tracking-wider text-muted-foreground">
+    <p className="mt-3 font-label text-[10px] uppercase tracking-wider text-muted-foreground">
       Amber = incomplete · focus = current
     </p>
   );

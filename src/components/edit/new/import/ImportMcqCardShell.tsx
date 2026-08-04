@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /** Shared shell for import-stream preview + skeleton (matches review `QuestionCard` layout + import accent). */
 export const importMcqCardChrome =
-  "scroll-mt-24 overflow-hidden rounded-xl border border-border/80 border-l-4 border-l-d2q-accent bg-card shadow-md ring-1 ring-foreground/10";
+  "scroll-mt-24 overflow-hidden rounded-xl border border-border/80 bg-card shadow-md ring-1 ring-foreground/10";
 
 export type ImportMcqCardShellProps = Readonly<{
   headerLeft: ReactNode;

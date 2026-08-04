@@ -87,7 +87,7 @@ export function ImportStepTabStrip({ className }: { className?: string }) {
         aria-label="Import progress"
       >
         <div
-          className="grid w-full grid-cols-3 text-center font-label text-[10px] font-bold uppercase tracking-widest sm:text-[11px]"
+          className="grid w-full grid-cols-3 text-center font-label text-[10px] font-bold uppercase tracking-widest sm:text-xs"
           role="list"
         >
           {(["upload", "read", "generate"] as const).map((key, i) => {
