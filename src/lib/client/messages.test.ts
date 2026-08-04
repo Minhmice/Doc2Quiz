@@ -23,6 +23,7 @@ describe("messages client", () => {
     await openDirectConversation(USER_ID);
     await listDirectMessages(CONVERSATION_ID, "2026-07-31T10:00:00.000Z");
     await sendDirectMessage(CONVERSATION_ID, "hello");
+    await sendDirectMessage(CONVERSATION_ID, "", [{ id: "00000000-0000-4000-8000-000000000013", name: "photo.png", mimeType: "image/png", sizeBytes: 8 }]);
     await markDirectConversationRead(CONVERSATION_ID);
     await updateReactionPreferences({ enabled: false, blockedSenderIds: [USER_ID] });
     await sendPresetReaction(USER_ID, "xin_chao");
@@ -38,6 +39,10 @@ describe("messages client", () => {
     expect(mockFetch).toHaveBeenCalledWith(
       `/api/friends/messages/${CONVERSATION_ID}`,
       expect.objectContaining({ body: JSON.stringify({ body: "hello" }) }),
+    );
+    expect(mockFetch).toHaveBeenCalledWith(
+      `/api/friends/messages/${CONVERSATION_ID}`,
+      expect.objectContaining({ body: JSON.stringify({ body: null, attachments: ["00000000-0000-4000-8000-000000000013"] }) }),
     );
     expect(mockFetch).toHaveBeenCalledWith(
       `/api/friends/messages/${CONVERSATION_ID}/read`,

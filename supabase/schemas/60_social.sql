@@ -52,12 +52,55 @@ create table if not exists public.direct_conversations (
   unique (user_low_id, user_high_id)
 );
 
+create or replace function private.direct_message_attachments_valid(p_attachments jsonb)
+returns boolean
+language plpgsql
+immutable
+set search_path = public, private
+as $$
+declare
+  v_item jsonb;
+  v_size bigint;
+begin
+  if p_attachments is null or jsonb_typeof(p_attachments) <> 'array' or jsonb_array_length(p_attachments) > 5 then
+    return false;
+  end if;
+  for v_item in select value from jsonb_array_elements(p_attachments) loop
+    if jsonb_typeof(v_item) <> 'object'
+      or not (v_item ?& array['id', 'name', 'mimeType', 'sizeBytes', 'path'])
+      or jsonb_typeof(v_item->'id') <> 'string'
+      or jsonb_typeof(v_item->'name') <> 'string'
+      or jsonb_typeof(v_item->'mimeType') <> 'string'
+      or jsonb_typeof(v_item->'sizeBytes') <> 'number'
+      or jsonb_typeof(v_item->'path') <> 'string'
+      or (v_item->>'id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      or (v_item->>'name') !~ '^[A-Za-z0-9][A-Za-z0-9._ -]{0,119}$'
+      or (v_item->>'mimeType') not in ('image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime')
+      or (v_item->>'path') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/messages/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif|mp4|webm|mov)$' then
+      return false;
+    end if;
+    v_size := trunc((v_item->>'sizeBytes')::numeric)::bigint;
+    if (v_item->>'sizeBytes')::numeric <> v_size or v_size < 0 or v_size > 20971520 then
+      return false;
+    end if;
+  end loop;
+  return true;
+end;
+$$;
+revoke all on function private.direct_message_attachments_valid(jsonb) from public, anon, authenticated;
+
 create table if not exists public.direct_messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references public.direct_conversations(id) on delete cascade,
   sender_id uuid not null references auth.users(id) on delete cascade,
-  body text not null check (char_length(body) between 1 and 2000 and body = btrim(body)),
-  created_at timestamptz not null default now()
+  body text null,
+  attachments jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  constraint direct_messages_content_check check (
+    (body is not null and char_length(body) between 1 and 2000 and body = btrim(body))
+    or (body is null and jsonb_typeof(attachments) = 'array' and jsonb_array_length(attachments) > 0)
+  ),
+  constraint direct_messages_attachments_check check (private.direct_message_attachments_valid(attachments))
 );
 
 create table if not exists private.social_activity (
@@ -172,6 +215,31 @@ create unique index if not exists friend_requests_pending_pair_unique
     greatest(sender_id, recipient_id)
   )
   where status = 'pending';
+
+create table if not exists public.direct_message_attachments (
+  id uuid primary key,
+  uploader_id uuid not null references auth.users(id) on delete cascade,
+  conversation_id uuid not null references public.direct_conversations(id) on delete cascade,
+  path text not null unique,
+  name text not null,
+  mime_type text not null,
+  size_bytes bigint not null,
+  extension text not null,
+  status text not null default 'uploaded',
+  created_at timestamptz not null default now(),
+  consumed_at timestamptz null,
+  constraint direct_message_attachments_id_format_check check (id is not null),
+  constraint direct_message_attachments_path_check check (path ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/messages/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif|mp4|webm|mov)$'),
+  constraint direct_message_attachments_name_check check (name ~ '^[A-Za-z0-9][A-Za-z0-9._ -]{0,119}$'),
+  constraint direct_message_attachments_mime_check check (mime_type in ('image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime')),
+  constraint direct_message_attachments_size_check check (size_bytes between 0 and 20971520),
+  constraint direct_message_attachments_extension_check check (extension in ('jpg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov')),
+  constraint direct_message_attachments_status_check check (status in ('uploaded', 'consumed')),
+  constraint direct_message_attachments_consumed_check check ((status = 'uploaded' and consumed_at is null) or (status = 'consumed' and consumed_at is not null))
+);
+
+alter table public.direct_message_attachments enable row level security;
+revoke all on table public.direct_message_attachments from public, anon, authenticated;
 
 create index if not exists direct_messages_conversation_created_idx
   on public.direct_messages (conversation_id, created_at desc);
