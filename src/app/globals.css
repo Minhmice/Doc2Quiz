@@ -107,7 +107,8 @@
   --d2q-blue: #5eead4;
 }
 
-html[data-theme="vscode-dark"] {
+html[data-theme="vscode-dark"],
+html[data-theme="vscode-dark"] [data-quiz-play-theme="stitch"] {
   color-scheme: dark;
   --background: #1e1e1e; --foreground: #d4d4d4; --card: #252526; --card-foreground: #d4d4d4; --popover: #252526; --popover-foreground: #d4d4d4;
   --primary: #569cd6; --primary-foreground: #ffffff; --secondary: #333333; --secondary-foreground: #d4d4d4; --muted: #2d2d30; --muted-foreground: #9d9d9d; --accent: #094771; --accent-foreground: #ffffff; --destructive: #f14c4c; --destructive-foreground: #ffffff; --border: #454545; --input: #3c3c3c; --ring: #75beff;
@@ -117,7 +118,8 @@ html[data-theme="vscode-dark"] {
   --qp-bg: var(--background); --qp-on-bg: var(--foreground); --qp-muted: var(--muted-foreground); --qp-surface-container: var(--secondary); --qp-surface-container-low: var(--card); --qp-surface-container-lowest: #181818; --qp-tertiary: #4ec9b0; --qp-secondary: #569cd6; --qp-primary: #569cd6; --qp-primary-foreground: #ffffff; --qp-primary-container: #094771; --qp-on-primary-container: #ffffff; --qp-outline-variant: var(--border); --qp-secondary-container: #333333; --qp-on-secondary-container: var(--foreground); --qp-card-shadow: 0 40px 100px rgb(0 0 0 / 0.35);
 }
 
-html[data-theme="vscode-light"] {
+html[data-theme="vscode-light"],
+html[data-theme="vscode-light"] [data-quiz-play-theme="stitch"] {
   color-scheme: light;
   --background: #ffffff; --foreground: #1e1e1e; --card: #ffffff; --card-foreground: #1e1e1e; --popover: #ffffff; --popover-foreground: #1e1e1e;
   --primary: #0070c1; --primary-foreground: #ffffff; --secondary: #f3f3f3; --secondary-foreground: #1e1e1e; --muted: #f3f3f3; --muted-foreground: #616161; --accent: #cce8ff; --accent-foreground: #003b70; --destructive: #c72e0f; --destructive-foreground: #ffffff; --border: #c8c8c8; --input: #ffffff; --ring: #007fd4;
@@ -127,7 +129,8 @@ html[data-theme="vscode-light"] {
   --qp-bg: var(--background); --qp-on-bg: var(--foreground); --qp-muted: var(--muted-foreground); --qp-surface-container: var(--secondary); --qp-surface-container-low: #fafafa; --qp-surface-container-lowest: var(--card); --qp-tertiary: #008000; --qp-secondary: #0070c1; --qp-primary: #0070c1; --qp-primary-foreground: #ffffff; --qp-primary-container: #cce8ff; --qp-on-primary-container: #003b70; --qp-outline-variant: var(--border); --qp-secondary-container: #dceeff; --qp-on-secondary-container: #003b70; --qp-card-shadow: 0 40px 100px rgb(0 0 0 / 0.12);
 }
 
-html[data-theme="monokai"] {
+html[data-theme="monokai"],
+html[data-theme="monokai"] [data-quiz-play-theme="stitch"] {
   color-scheme: dark;
   --background: #272822; --foreground: #f8f8f2; --card: #3e3d32; --card-foreground: #f8f8f2; --popover: #3e3d32; --popover-foreground: #f8f8f2;
   --primary: #a6e22e; --primary-foreground: #272822; --secondary: #49483e; --secondary-foreground: #f8f8f2; --muted: #49483e; --muted-foreground: #cfcfc2; --accent: #5b5a4d; --accent-foreground: #f8f8f2; --destructive: #f92672; --destructive-foreground: #ffffff; --border: #75715e; --input: #49483e; --ring: #fd971f;
@@ -137,7 +140,8 @@ html[data-theme="monokai"] {
   --qp-bg: var(--background); --qp-on-bg: var(--foreground); --qp-muted: var(--muted-foreground); --qp-surface-container: var(--secondary); --qp-surface-container-low: var(--card); --qp-surface-container-lowest: #1f201c; --qp-tertiary: #66d9ef; --qp-secondary: #a6e22e; --qp-primary: #a6e22e; --qp-primary-foreground: #272822; --qp-primary-container: #5b5a4d; --qp-on-primary-container: #f8f8f2; --qp-outline-variant: var(--border); --qp-secondary-container: #49483e; --qp-on-secondary-container: #f8f8f2; --qp-card-shadow: 0 40px 100px rgb(0 0 0 / 0.4);
 }
 
-html[data-theme="high-contrast"] {
+html[data-theme="high-contrast"],
+html[data-theme="high-contrast"] [data-quiz-play-theme="stitch"] {
   color-scheme: dark;
   --background: #000000; --foreground: #ffffff; --card: #000000; --card-foreground: #ffffff; --popover: #000000; --popover-foreground: #ffffff;
   --primary: #ffff00; --primary-foreground: #000000; --secondary: #000000; --secondary-foreground: #ffffff; --muted: #000000; --muted-foreground: #ffffff; --accent: #0000ff; --accent-foreground: #ffffff; --destructive: #ff5555; --destructive-foreground: #000000; --border: #ffffff; --input: #000000; --ring: #ffff00;
