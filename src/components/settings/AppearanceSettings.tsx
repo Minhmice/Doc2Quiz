@@ -49,11 +49,12 @@ export function AppearanceSettings() {
               type="button"
               role="radio"
               aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
               onClick={() => void selectTheme(option.value)}
               onKeyDown={(event) => {
-                if (!['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'].includes(event.key)) return;
+                if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) return;
                 event.preventDefault();
-                const direction = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : -1;
+                const direction = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1;
                 const next = OPTIONS[(OPTIONS.indexOf(option) + direction + OPTIONS.length) % OPTIONS.length];
                 document.getElementById(`theme-${next.value}`)?.focus();
                 void selectTheme(next.value);
