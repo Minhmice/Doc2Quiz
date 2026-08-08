@@ -35,11 +35,22 @@ export function useThemePreference() {
 export function ThemePreferenceProvider({ children, initialPreference }: { children: ReactNode; initialPreference?: ThemePreference }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [themePreference, setPreference] = useState(initialPreference ?? DEFAULT_THEME_PREFERENCE);
+  const [ready, setReady] = useState(initialPreference !== undefined);
 
   useEffect(() => {
+    if (initialPreference === undefined) {
+      const storedPreference = window.localStorage.getItem(STORAGE_KEY);
+      if (isThemePreference(storedPreference)) setPreference(storedPreference);
+    }
+    setReady(true);
+  }, [initialPreference]);
+
+  useEffect(() => {
+    if (!ready) return;
     setTheme(themePreference === "system" ? "system" : themePreference === "vscode-light" ? "light" : "dark");
     applyThemePreference(themePreference, resolvedTheme);
-  }, [resolvedTheme, setTheme, themePreference]);
+    window.localStorage.setItem(STORAGE_KEY, themePreference);
+  }, [ready, resolvedTheme, setTheme, themePreference]);
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
@@ -55,12 +66,14 @@ export function ThemePreferenceProvider({ children, initialPreference }: { child
     setPreference(next);
     window.localStorage.setItem(STORAGE_KEY, next);
     applyThemePreference(next, resolvedTheme);
-    const response = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ themePreference: next }),
-    });
-    if (!response.ok) {
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ themePreference: next }),
+      });
+      if (!response.ok) throw new Error("Could not save theme preference");
+    } catch {
       setPreference(previous);
       window.localStorage.setItem(STORAGE_KEY, previous);
       applyThemePreference(previous, resolvedTheme);
