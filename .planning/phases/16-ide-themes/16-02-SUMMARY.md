@@ -1,12 +1,12 @@
 ---
-phase: 12-ide-themes
+phase: 16-ide-themes
 plan: 02
 subsystem: ui
 status: complete
 tags: [nextjs, react, css, themes, accessibility]
 
 requires:
-  - phase: 12-ide-themes-01
+  - phase: 16-ide-themes-01
     provides: account-backed theme preference and SSR-safe application controller
 provides:
   - four named IDE-inspired semantic palettes across shell, quiz, and flashcard surfaces
@@ -76,7 +76,7 @@ duration: 10min
 completed: 2026-08-08
 ---
 
-# Phase 12 Plan 02: IDE palette tokens and accessible appearance selector Summary
+# Phase 16 Plan 02: IDE palette tokens and accessible appearance selector Summary
 
 **Four account-backed IDE palettes now reach core shell and study surfaces through one accessible, localized Settings selector.**
 
@@ -115,8 +115,8 @@ Existing `src/app/(app)/settings/SettingsPageClient.tsx`, `src/components/layout
 
 - PASS — `npm run test -- src/components/settings --run` (2 files, 5 tests).
 - PASS — `npm run typecheck`.
-- PASS — focused ESLint for Plan 12-02 TypeScript files with 0 errors.
-- WARNING — focused ESLint reports the pre-existing `@next/next/no-img-element` warning at `src/components/layout/AccountMenu.tsx:61`; Plan 12-02 did not modify that file.
+- PASS — focused ESLint for Plan 16-02 TypeScript files with 0 errors.
+- WARNING — focused ESLint reports the pre-existing `@next/next/no-img-element` warning at `src/components/layout/AccountMenu.tsx:61`; Plan 16-02 did not modify that file.
 - INCOMPATIBLE — `npm run lint -- src/app/globals.css` invokes ESLint, which ignores CSS because no matching CSS configuration exists; it returned 0 errors and one ignored-file warning, so it is not a CSS validator.
 - UNAVAILABLE — direct `npx tailwindcss` validation was not used because installed Tailwind v4 does not expose that CLI package and no stylelint/PostCSS validation script exists; no tooling was invented or added.
 - PASS — `git diff --check`.
@@ -131,7 +131,7 @@ Approved for desktop and mobile-width viewports across all four named presets an
 
 - Extended each named palette selector to nested `[data-quiz-play-theme="stitch"]` surfaces rather than removing or refactoring existing scoped defaults.
 - Added roving tabindex to the existing native button-based radio group instead of introducing a dependency or duplicate preference controller.
-- Retained existing EN/VI catalog entries, Settings section ordering, and quick Settings link because they already met Plan 12-02 requirements.
+- Retained existing EN/VI catalog entries, Settings section ordering, and quick Settings link because they already met Plan 16-02 requirements.
 
 ## Deviations from Plan
 
@@ -174,7 +174,7 @@ Approved for desktop and mobile-width viewports across all four named presets an
 ## Issues Encountered
 
 - CSS-specific lint tooling is absent; production build supplied applicable compilation validation.
-- Build generated an unrelated `next-env.d.ts` working-tree change; it was preserved and excluded from Plan 12-02 commits.
+- Build generated an unrelated `next-env.d.ts` working-tree change; it was preserved and excluded from Plan 16-02 commits.
 - `.planning/STATE.md` contains orchestrator/user changes and remained untouched. `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, and `.planning/phases/12-study-together` were not modified.
 
 ## Threat Flags
@@ -183,24 +183,24 @@ None. Plan changes are CSS and local presentation semantics; account persistence
 
 ## Known Stubs
 
-None found in Plan 12-02 files.
+None found in Plan 16-02 files.
 
 ## User Setup Required
 
-None for Plan 12-02. Plan 12-01's Supabase migration deployment remains the account-persistence prerequisite.
+None for Plan 16-02. Plan 16-01's Supabase migration deployment remains the account-persistence prerequisite.
 
 ## Next Phase Readiness
 
-Phase 12 IDE Themes implementation and human verification are complete. Four named palettes and System behavior are ready for normal release flow.
+Phase 16 IDE Themes implementation and human verification are complete. Four named palettes and System behavior are ready for normal release flow.
 
 ## Self-Check: PASSED
 
-- Required Plan 12-02 source, settings, layout, and test files exist.
+- Required Plan 16-02 source, settings, layout, and test files exist.
 - Task commits `88be20b` and `2597ecb` exist in repository history.
 - Focused tests, typecheck, focused TypeScript lint, diff check, production build, and human verification passed.
 - CSS-lint incompatibility, pre-existing warning, hardcoded exceptions, deviations, setup, threat flags, and stubs are documented.
 - Only this summary is staged for metadata commit; unrelated `.planning/STATE.md` and `next-env.d.ts` changes remain unstaged.
 
 ---
-*Phase: 12-ide-themes*
+*Phase: 16-ide-themes*
 *Completed: 2026-08-08*

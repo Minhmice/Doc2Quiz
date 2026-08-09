@@ -2,11 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireApiUserMock = vi.fn();
 const broadcastSocialEventMock = vi.fn();
+const broadcastSocialInvalidationMock = vi.fn();
 const createSupabaseAdminClientMock = vi.fn();
 const enqueueActivityMock = vi.fn();
 
 vi.mock("@/lib/api/requireApiUser", () => ({ requireApiUser: () => requireApiUserMock() }));
-vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({ broadcastSocialEvent: (...args: unknown[]) => broadcastSocialEventMock(...args) }));
+vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({
+  broadcastSocialEvent: (...args: unknown[]) => broadcastSocialEventMock(...args),
+  broadcastSocialInvalidation: (...args: unknown[]) => broadcastSocialInvalidationMock(...args),
+}));
 vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: () => createSupabaseAdminClientMock() }));
 vi.mock("@/lib/server/social/activityQueue", () => ({ enqueueActivity: (...args: unknown[]) => enqueueActivityMock(...args) }));
 
@@ -30,6 +34,7 @@ describe("direct message attachment contracts", () => {
     vi.clearAllMocks();
     requireApiUserMock.mockResolvedValue({ user: { id: "00000000-0000-4000-8000-000000000001" }, supabase: { rpc: vi.fn() } });
     broadcastSocialEventMock.mockResolvedValue(true);
+    broadcastSocialInvalidationMock.mockResolvedValue(true);
     enqueueActivityMock.mockResolvedValue(null);
   });
 
@@ -42,7 +47,7 @@ describe("direct message attachment contracts", () => {
     expect(rpc).toHaveBeenCalledWith("send_direct_message", { p_conversation_id: conversationId, p_body: "hello", p_attachment_ids: [] });
     expect(enqueueActivityMock).toHaveBeenCalledTimes(1);
     expect(enqueueActivityMock).toHaveBeenCalledWith({ userId: "00000000-0000-4000-8000-000000000001", activityKind: "message_sent", source: "message" });
-    expect(broadcastSocialEventMock).toHaveBeenCalledWith(`social-messages:${conversationId}`, "message", { source: "message" });
+    expect(broadcastSocialInvalidationMock).toHaveBeenCalledWith(`social-messages:${conversationId}`, conversationId);
     expect(JSON.stringify(await response.json())).not.toContain("path");
   });
 

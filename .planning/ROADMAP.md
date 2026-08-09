@@ -2,7 +2,7 @@
 
 ## Milestone: v2.1 — MVP Pipeline
 
-**Status:** Verifying  
+**Status:** Active — Phase 15 execution and Phase 16 gap closure remain  
 **Goal:** Multi-format input → MarkItDown → Canonical Knowledge (Supabase) → Quiz or Flashcards → practice.
 
 **Spec:** [docs/pipeline.md](../docs/pipeline.md)
@@ -14,7 +14,7 @@
 
 ## Overview
 
-Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder stored in Supabase. Wire existing frontend shell for mode selection, quiz review/practice, and flashcard learning. Five phases: foundation → ingest → canonicalize → quiz path → flashcard path + E2E.
+Rebuild backend around MarkItDown conversion and Canonical Knowledge in Supabase, then extend the learning shell with localization, stable navigation, quotas, workspaces, safe collaboration, social study, scalable presence, and account themes.
 
 ---
 
@@ -25,9 +25,30 @@ Rebuild backend around MarkItDown conversion and a Canonical Knowledge Builder s
 - [x] **Phase 3: Canonical Knowledge** — Builder service, sections/metadata, Supabase persistence (completed 2026-07-25)
 - [x] **Phase 4: Quiz Pipeline** — Concept detection, MCQ generation, save, review, practice wire-up (completed 2026-07-25)
 - [x] **Phase 5: Flashcards & E2E** — Flashcard wizard, generation, learning, dashboard integration (completed 2026-07-25)
+- [x] **Phase 11: Friends, Messaging & Playful Reactions** — Accepted-friend lists, private messaging, recent-activity presence, and preset recipient-controlled reactions. Implementation imported 2026-07-30; two-account human verification remains documented as debt.
 - [x] **Phase 12: Study Together** — Durable friend lifecycle, asynchronous quiz challenges, immutable quiz snapshots, in-app notifications, scalable friends hub, and responsive messaging. Depends on existing quiz practice and Phase 11 social primitives. Requirements: SOCIAL-01–10. Success: a user can challenge an accepted friend with an owned quiz; recipient accepts and starts a snapshot-based attempt; both see result comparison under configured reveal policy; missed realtime events reconcile from durable notifications. (completed 2026-08-03)
-- [x] **Phase 14: Friend presence and chat layout repair** — Correct online/offline tabs and presence indicators in friend lists; wrap long chat messages inside their bubbles. Depends on Phase 12 social UI. (completed 2026-08-01)
-- [x] **Phase 15: Social presence scaling** — Validate and implement Redis-backed ephemeral presence, conversation-scoped typing indicators, durable activity batching, rate limits, accepted-friend privacy, and last-known/unknown Redis failure behavior for 100–1,000 concurrent users. Depends on Phase 14 and Spike 001. Requirements: SCALE-01–10. Success: heartbeat load produces no per-heartbeat Postgres writes; presence and typing TTLs expire correctly; authorized snapshots remain bounded; Redis outage preserves chat and reports unknown after grace; batched activity retries idempotently. (completed 2026-08-01)
+- [x] **Phase 14: Friend presence and chat layout repair** — Correct online/offline tabs and presence indicators in friend lists; wrap long chat messages inside their bubbles. Depends on Phase 12 social UI. (completed 2026-08-01)
+- [ ] **Phase 15: Social presence scaling** — Redis-backed ephemeral presence, conversation-scoped typing indicators, durable activity batching, rate limits, accepted-friend privacy, and graceful Redis degradation for 100–1,000 concurrent users. Five plans remain unexecuted.
+- [ ] **Phase 16: IDE-Inspired Themes** — Account-persisted IDE palettes and accessible appearance controls. Plans 1–2 executed; Plan 3 gap closure remains.
+
+### Phase 11: Friends, Messaging & Playful Reactions
+
+**Goal:** Turn safe username-based friend requests into accepted-friend lists, private 1:1 messaging, recent-activity presence, and fixed recipient-controlled reactions.
+**Depends on:** Phase 10
+**Requirements:** FRIEND-01–05, MSG-01–03, SAFE-01–02, REACT-01–02
+**Success Criteria:**
+
+1. Accepted, non-blocked friends can list each other and open durable private conversations without exposing non-friends.
+2. Authenticated API routes validate bounded messages and fixed reaction IDs while preserving generic authorization failures.
+3. Navbar friend UI exposes requests, presence buckets, messaging, and motion-safe reactions with recipient opt-out controls.
+4. Two-account privacy, block, presence, messaging, reaction, responsive, keyboard, and reduced-motion behavior receives human verification.
+
+**Plans:** 3/3 implementation records present; final human verification remains debt
+
+Plans:
+- [x] 11-01-PLAN.md — Social database authority and typed client contracts
+- [x] 11-02-PLAN.md — Authenticated social API contracts
+- [x] 11-03-PLAN.md — Navbar, chat, reactions, and social safety UI; human checkpoint pending
 
 ### Phase 12: Study Together
 
@@ -83,7 +104,34 @@ Plans:
 5. Redis outage preserves messaging, serves last-known state only during grace, then returns `unknown`; no high-frequency Postgres fallback occurs.
 6. Rate limits, privacy checks, observability, load evidence, and focused failure tests pass.
 
-**Plans:** Not planned
+**Plans:** 0/5 plans complete
+
+Plans:
+- [ ] 15-01-PLAN.md — Redis contracts, heartbeat, rate limiting, observability, and activity seam
+- [ ] 15-02-PLAN.md — Canonical presence snapshots, privacy, typing, and activity handoff
+- [ ] 15-03-PLAN.md — Bounded durable activity queue and worker integration
+- [ ] 15-04-PLAN.md — Client presence, typing, invalidation-only realtime, and load integration
+- [ ] 15-05-PLAN.md — Executable validation and external load evidence
+
+### Phase 16: IDE-Inspired Themes
+
+**Goal:** Signed-in users select and persist an IDE-inspired visual theme from Settings without wrong-theme first paint, account-boundary drift, mutation races, keyboard failures, or contrast failures.
+**Depends on:** Phase 15 for numbering only; implementation is otherwise independent
+**Requirements:** THEME-01–05
+**Success Criteria:**
+
+1. Validated account preference seeds first paint and System maps to VS Code Light or Dark.
+2. Rapid selections converge UI, DOM, optional storage, and authenticated profile persistence on the latest choice.
+3. Four named palettes preserve readable semantic shell, quiz, and flashcard surfaces.
+4. Appearance radios support complete wrapped arrow-key navigation and visible selection state.
+5. Focused tests, typecheck, lint, build, and credential-gated browser verification pass.
+
+**Plans:** 2/3 plans complete
+
+Plans:
+- [x] 16-01-PLAN.md — Theme persistence contract and SSR-safe controller
+- [x] 16-02-PLAN.md — IDE palette tokens and accessible appearance selector
+- [ ] 16-03-PLAN.md — Gap closure for account boundaries, races, keyboard behavior, and contrast
 
 ### Phase 14: Friend presence and chat layout repair
 

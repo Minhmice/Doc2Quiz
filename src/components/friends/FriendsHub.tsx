@@ -11,6 +11,7 @@ import { StudyChallengeDialog } from "@/components/friends/StudyChallengeDialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocale } from "@/components/locale/LocaleProvider";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { MessageCatalog } from "@/lib/locale/types";
 import { friendProfileHref } from "@/lib/profile/usernameValidation";
 
@@ -30,6 +31,15 @@ const PRESENCE_REFRESH_MS = 60_000;
 type PresenceRefreshTarget = { addEventListener: (type: string, listener: () => void) => void; removeEventListener: (type: string, listener: () => void) => void };
 type PresenceDocumentTarget = PresenceRefreshTarget & { visibilityState: string };
 type PresenceTimer = ReturnType<typeof setTimeout>;
+
+type InvalidationChannel = { on: (type: "broadcast", filter: { event: "invalidate" }, callback: () => void) => InvalidationChannel; subscribe: () => unknown };
+type InvalidationSupabase = { channel: (topic: string, options: { config: { private: true } }) => InvalidationChannel; removeChannel: (channel: InvalidationChannel) => PromiseLike<unknown> | unknown };
+
+export function createFriendsInvalidationController(supabase: InvalidationSupabase, userId: string, reconcile: () => void) {
+  const channel = supabase.channel(`social-counts:${userId}`, { config: { private: true } }).on("broadcast", { event: "invalidate" }, reconcile);
+  channel.subscribe();
+  return () => { void supabase.removeChannel(channel); };
+}
 
 type PresenceRefreshOptions = {
   onRefresh: () => void;
@@ -143,6 +153,17 @@ export function FriendsHub({ destination, studyWith = null }: { destination: Fri
     pageRef.current = page;
     refreshControllerRef.current?.reschedule();
   }, [page]);
+
+  useEffect(() => {
+    if (destination !== "friends") return;
+    const supabase = createSupabaseBrowserClient();
+    let active = true;
+    let cleanup: () => void = () => undefined;
+    void supabase.auth.getUser().then(({ data }) => {
+      if (active && data.user?.id) cleanup = createFriendsInvalidationController(supabase as unknown as InvalidationSupabase, data.user.id, () => { void load(); });
+    });
+    return () => { active = false; cleanup(); };
+  }, [destination, load]);
 
   useEffect(() => {
     requestSequenceRef.current += 1;

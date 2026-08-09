@@ -1,4 +1,4 @@
-# Phase 12 — IDE-Inspired Themes
+# Phase 16 — IDE-Inspired Themes
 
 ## Goal
 Signed-in users select and persist an IDE-inspired visual theme from Settings. Selection syncs across devices and avoids a wrong-theme flash on first paint.

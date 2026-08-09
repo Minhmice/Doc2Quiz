@@ -23,6 +23,23 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 | SOCIAL-09 | `/friends` provides scalable Friends, Requests, Invites, Messages, and Blocked users destinations; topbar menu remains a compact launcher. |
 | SOCIAL-10 | Chat works on mobile and desktop, can resume durable conversation history, and safely receives realtime updates. |
 
+## Friends, Messaging & Reactions (FRIEND / MSG / SAFE / REACT)
+
+| ID | Requirement |
+|----|-------------|
+| FRIEND-01 | Accepted friends can list each other through server-authorized contracts without exposing non-friends. |
+| FRIEND-02 | Friend presence exposes only coarse recent-activity status to accepted, non-blocked friends. |
+| FRIEND-03 | Authenticated friend routes preserve generic authorization failures and bounded safe DTOs. |
+| FRIEND-04 | Navbar friend UI exposes requests, accepted friends, presence ordering, profile actions, and messaging. |
+| FRIEND-05 | Friend controls remain keyboard accessible and responsive across supported layouts. |
+| MSG-01 | Only accepted, non-blocked friends can create, read, or write a durable private 1:1 conversation. |
+| MSG-02 | Message APIs validate bounded plain text, opaque conversation IDs, cursor pagination, and authenticated membership. |
+| MSG-03 | Chat UI loads durable history, sends safe plain text, reconciles realtime updates, and cleans up subscriptions. |
+| SAFE-01 | Blocks override friendship, messaging, presence, and reactions; direct social-table access remains denied. |
+| SAFE-02 | Social API errors do not reveal friendship, profile, preference, or username existence to unauthorized callers. |
+| REACT-01 | Reactions use a fixed server-validated allowlist with no arbitrary text, HTML, persistence, or offline replay. |
+| REACT-02 | Recipients can disable or mute reactions; animation is short-lived, recipient-only, and reduced-motion safe. |
+
 
 **v1.0 archive:** [`.planning/milestones/v1.0-REQUIREMENTS.md`](./milestones/v1.0-REQUIREMENTS.md)  
 **v2.0 archive:** Frontend shell strip + phase 1 purge (`.planning/milestones/v2.0-phases/`)
@@ -43,6 +60,18 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 | SCALE-08 | Redis failures do not block durable messaging; social UI keeps last-known presence briefly, then shows `unknown`, and never increases PostgreSQL write frequency as a fallback. |
 | SCALE-09 | Realtime events only invalidate or accelerate authenticated HTTP reconciliation; Redis event payloads never become direct client truth. |
 | SCALE-10 | Presence friend snapshots use bounded batched Redis reads and avoid unbounded key scans such as `KEYS` in request paths. |
+
+---
+
+## IDE-Inspired Themes (THEME)
+
+| ID | Requirement |
+|----|-------------|
+| THEME-01 | Account theme preference accepts only `system`, `vscode-dark`, `vscode-light`, `monokai`, or `high-contrast` and persists through authenticated profile authority. |
+| THEME-02 | Server-known preference applies before first paint; `system` resolves to VS Code Light or Dark from OS scheme without hydration mismatch. |
+| THEME-03 | Theme selection applies immediately and converges account state, document theme, optional storage, and server persistence on the latest choice across account and tab boundaries. |
+| THEME-04 | Four named IDE-inspired palettes provide coherent, WCAG AA-readable semantic shell, quiz, and flashcard surfaces. |
+| THEME-05 | Settings provides an accessible account-backed appearance selector with wrapped arrow-key navigation, visible state, and safe persistence feedback. |
 
 ---
 
@@ -269,8 +298,12 @@ Multi-format ingestion → MarkItDown → Canonical Knowledge (Supabase) → Qui
 | PLAN-01–10 | 8 |
 | WORK-01–09 | 9 |
 | COLLAB-01–07 | 10 |
+| FRIEND-01–05, MSG-01–03, SAFE-01–02, REACT-01–02 | 11 |
+| SOCIAL-01–10 | 12 |
+| SCALE-01–10 | 15 |
+| THEME-01–05 | 16 |
 | STREAK-01–07 | Unscheduled |
 
 ---
 
-*Last updated: 2026-07-30 — added STREAK-01–07 (daily quiz streak and recovery)*
+*Last updated: 2026-08-09 — reconciled Phase 11 social primitives, Phase 12 Study Together, Phase 15 scaling, and Phase 16 IDE Themes traceability*

@@ -10,7 +10,7 @@ import { openDirectConversation } from "@/lib/client/messages";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import type { FriendPresenceDto } from "@/lib/social/presenceTypes";
 
-export type DirectMessageFriend = FriendPresenceDto;
+export type DirectMessageFriend = Pick<FriendPresenceDto, "userId" | "username" | "avatarUrl" | "presence" | "lastActiveAt">;
 
 export function getDirectMessageHeaderStatus(friend: Pick<DirectMessageFriend, "presence">): "online" | "last-active" {
   return friend.presence === "online" ? "online" : "last-active";

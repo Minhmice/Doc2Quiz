@@ -1,5 +1,5 @@
 ---
-phase: 12-ide-themes
+phase: 16-ide-themes
 plan: 01
 subsystem: ui
 status: complete
@@ -13,7 +13,7 @@ provides:
   - server-authoritative theme selection before first paint
   - immediate client application with persistence, cross-tab sync, and rollback
   - safe system and malformed-value fallback
-  affects: [12-ide-themes-02, settings, root-layout]
+  affects: [16-ide-themes-02, settings, root-layout]
 
 actuals:
   tokens: 1848
@@ -82,7 +82,7 @@ duration: 14min
 completed: 2026-08-08
 ---
 
-# Phase 12 Plan 01: Theme preference persistence and SSR controller Summary
+# Phase 16 Plan 01: Theme preference persistence and SSR controller Summary
 
 **Validated account theme persistence now seeds an IDE palette before first paint and stays synchronized through one rollback-safe client controller.**
 
@@ -121,7 +121,7 @@ Existing `src/lib/profile/themePreference.ts`, `src/lib/profile/themePreference.
 - PASS — `npm run test -- src/lib/profile/themePreference.test.ts --run` (2 tests)
 - PASS — `npm run test -- src/app/api/profile/route.test.ts --run` (9 tests)
 - PASS — `npm run typecheck`
-- PASS — focused ESLint for all Plan 12-01 TypeScript files
+- PASS — focused ESLint for all Plan 16-01 TypeScript files
 - PRE-EXISTING FAILURE — repository-wide `npm run lint` retains 2 unrelated errors in `src/app/share/[token]/page.tsx` and `src/legacy/loading/PageTransitionProvider.tsx`, plus 45 unrelated warnings.
 
 ## Decisions Made
@@ -144,7 +144,7 @@ Existing `src/lib/profile/themePreference.ts`, `src/lib/profile/themePreference.
 
 **2. [Rule 3 - Blocking] Continued from pre-existing unscoped theme implementation**
 - **Found during:** Task 1
-- **Issue:** Theme utility, tests, API fields, provider, and root wiring already existed in broad commit `446922f` rather than atomic Plan 12-01 commits, so a new RED test passed before execution.
+- **Issue:** Theme utility, tests, API fields, provider, and root wiring already existed in broad commit `446922f` rather than atomic Plan 16-01 commits, so a new RED test passed before execution.
 - **Fix:** Preserved working baseline files, verified their contracts, and committed only corrections needed to satisfy remaining acceptance criteria.
 - **Files modified:** no extra files
 - **Verification:** all focused tests, typecheck, and focused lint pass.
@@ -166,7 +166,7 @@ Existing `src/lib/profile/themePreference.ts`, `src/lib/profile/themePreference.
 
 ## Known Stubs
 
-None found in Plan 12-01 files.
+None found in Plan 16-01 files.
 
 ## User Setup Required
 
@@ -174,15 +174,15 @@ Apply `supabase/migrations/20260731210000_profile_theme_preference.sql` through 
 
 ## Next Phase Readiness
 
-Theme persistence and first-paint controller are ready for Plan 12-02 palette tokens and Settings selector verification. Browser UAT should check OS scheme switching, two signed-in tabs, cross-device persistence, and simulated PATCH failure rollback.
+Theme persistence and first-paint controller are ready for Plan 16-02 palette tokens and Settings selector verification. Browser UAT should check OS scheme switching, two signed-in tabs, cross-device persistence, and simulated PATCH failure rollback.
 
 ## Self-Check: PASSED
 
 - Required migration, utility, tests, API route, layout, and provider files exist.
 - Task commits `e0cb6c4` and `c27a530` exist in repository history.
 - Focused tests, typecheck, and changed-file lint pass.
-- Only Plan 12-01 summary will enter metadata commit; unrelated planning state remains unstaged.
+- Only Plan 16-01 summary will enter metadata commit; unrelated planning state remains unstaged.
 
 ---
-*Phase: 12-ide-themes*
+*Phase: 16-ide-themes*
 *Completed: 2026-08-08*

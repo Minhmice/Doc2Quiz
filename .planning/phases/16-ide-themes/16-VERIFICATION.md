@@ -1,5 +1,5 @@
 ---
-phase: 12-ide-themes
+phase: 16-ide-themes
 verified: 2026-08-08T12:41:11Z
 status: gaps_found
 score: 3/6 must-haves verified
@@ -14,14 +14,14 @@ human_verification:
 requirements:
   satisfied: [THEME-01, THEME-02]
   gaps: [THEME-03, THEME-04, THEME-05]
-traceability_defect: "THEME-01 through THEME-05 are declared only by duplicate phase plans and summaries; central REQUIREMENTS.md contains no THEME requirements or IDE Themes traceability entry."
+traceability_defect: null
 ---
 
-# Phase 12: IDE Themes Verification Report
+# Phase 16: IDE Themes Verification Report
 
 **Phase Goal:** Signed-in users select and persist an IDE-inspired visual theme from Settings. Selection syncs across devices and avoids a wrong-theme flash on first paint.
 
-**Verification target:** `.planning/phases/12-ide-themes` only. ROADMAP Phase 12 Study Together and `.planning/phases/12-study-together` are unrelated and excluded.
+**Verification target:** `.planning/phases/16-ide-themes` only. Phase 12 Study Together remains unrelated and excluded.
 
 **Verdict:** GAPS FOUND. Persistence contract and server pre-paint application exist, but reproducible keyboard, mutation-ordering, account-boundary, and High Contrast defects prevent full goal achievement.
 
@@ -40,21 +40,21 @@ traceability_defect: "THEME-01 through THEME-05 are declared only by duplicate p
 
 ## Requirement Accounting
 
-Requirement meanings below come from plan/summary claims because central requirement definitions are missing.
+Requirement meanings below match central Phase 16 traceability.
 
 | Requirement | Declared by | Claim evaluated | Status | Evidence |
 |---|---|---|---|---|
-| THEME-01 | `12-01-PLAN.md` | Validated account theme preference contract | SATISFIED | Shared allowlist, migration constraint, authenticated GET/PATCH contract: `themePreference.ts:1-18`, migration lines 3-20, `route.ts:29-39,66-74,141-228`. |
-| THEME-02 | `12-01-PLAN.md` | Authenticated server preference seeds first paint; System resolves to VS Code light/dark | SATISFIED | `src/app/layout.tsx:37-65,79-88`; approved browser checkpoint. |
-| THEME-03 | `12-01-PLAN.md` | Immediate selection, durable persistence, synchronization, safe rollback | GAP | Basic path exists at `ThemePreferenceProvider.tsx:48-82`, but account-boundary adoption and overlapping mutations are unsafe; unguarded local storage can stop authenticated PATCH before it starts (`ThemePreferenceProvider.tsx:42,52,67-68`). |
-| THEME-04 | `12-02-PLAN.md` | Four coherent, contrast-safe core palettes | GAP | Palette declarations exist at `globals.css:110-152`, but High Contrast core flashcard actions are unreadable at `FlashcardActions.tsx:49,60`. |
-| THEME-05 | `12-02-PLAN.md` | Accessible account-backed Settings selector | GAP | Structure and localization exist at `AppearanceSettings.tsx:35-83` and `src/lib/locale/messages.ts:74-80,380-386`; arrow navigation fails at `AppearanceSettings.tsx:22,44,58-60`, and persistence concurrency remains unresolved. |
+| THEME-01 | `16-01-PLAN.md` | Validated account theme preference contract | SATISFIED | Shared allowlist, migration constraint, authenticated GET/PATCH contract: `themePreference.ts:1-18`, migration lines 3-20, `route.ts:29-39,66-74,141-228`. |
+| THEME-02 | `16-01-PLAN.md` | Authenticated server preference seeds first paint; System resolves to VS Code light/dark | SATISFIED | `src/app/layout.tsx:37-65,79-88`; approved browser checkpoint. |
+| THEME-03 | `16-01-PLAN.md` | Immediate selection, durable persistence, synchronization, safe rollback | GAP | Basic path exists at `ThemePreferenceProvider.tsx:48-82`, but account-boundary adoption and overlapping mutations are unsafe; unguarded local storage can stop authenticated PATCH before it starts (`ThemePreferenceProvider.tsx:42,52,67-68`). |
+| THEME-04 | `16-02-PLAN.md` | Four coherent, contrast-safe core palettes | GAP | Palette declarations exist at `globals.css:110-152`, but High Contrast core flashcard actions are unreadable at `FlashcardActions.tsx:49,60`. |
+| THEME-05 | `16-02-PLAN.md` | Accessible account-backed Settings selector | GAP | Structure and localization exist at `AppearanceSettings.tsx:35-83` and `src/lib/locale/messages.ts:74-80,380-386`; arrow navigation fails at `AppearanceSettings.tsx:22,44,58-60`, and persistence concurrency remains unresolved. |
 
 **Requirement score:** 2/5 satisfied, 3/5 gaps.
 
-### Traceability Defect
+### Traceability
 
-`THEME-01` through `THEME-05` appear in `.planning/phases/12-ide-themes/12-01-PLAN.md:14` and `12-02-PLAN.md:13`, plus their summaries, but are absent from `.planning/REQUIREMENTS.md`. Central traceability at `.planning/REQUIREMENTS.md:257-272` has no IDE Themes entry. This is duplicate-phase metadata inconsistency; SOCIAL/Study Together requirements are not attributable to this verification target.
+`THEME-01` through `THEME-05` are centrally defined and mapped to Phase 16. SOCIAL requirements remain mapped to Phase 12 Study Together.
 
 ## Key Wiring and Data Flow
 
@@ -77,13 +77,13 @@ Requirement meanings below come from plan/summary claims because central require
 | Focused ESLint across phase implementation/test files and flashcard consumer | PASS — 0 errors; one existing `@next/next/no-img-element` warning at `src/components/layout/AccountMenu.tsx:61` |
 | Targeted navigation probe reproducing cloned-option `indexOf` logic | FAIL AS EXPECTED — index `-1`; Right resolves `system`, Left resolves `monokai` |
 | Targeted WCAG luminance probe | FAIL — white/yellow 1.07:1; white/white 1.00:1 |
-| Production build | Previously PASS at unchanged implementation state per `12-02-SUMMARY.md:114-124`; not rerun to avoid modifying preserved `next-env.d.ts` |
+| Production build | Previously PASS at unchanged implementation state per `16-02-SUMMARY.md:114-124`; not rerun to avoid modifying preserved `next-env.d.ts` |
 
 Test limitations: `AppearanceSettings.test.tsx:26-42` verifies source text rather than interactions. Current `src/app/api/profile/route.test.ts:24-189` contains avatar tests only and does not exercise theme GET/PATCH behavior despite summary attribution.
 
 ## Human Verification Status
 
-Plan 12-02 checkpoint was approved on 2026-08-08 for desktop/mobile palettes, System under light/dark OS, reload, second tab, another browser/device, first paint, keyboard focus, contrast, and non-color-only meaning (`12-02-SUMMARY.md:126-128`). Approval remains useful evidence for runtime first paint and normal persistence paths, but cannot override deterministic contradictions:
+Plan 16-02 checkpoint was approved on 2026-08-08 for desktop/mobile palettes, System under light/dark OS, reload, second tab, another browser/device, first paint, keyboard focus, contrast, and non-color-only meaning (`16-02-SUMMARY.md:126-128`). Approval remains useful evidence for runtime first paint and normal persistence paths, but cannot override deterministic contradictions:
 
 - Keyboard traversal claim is disproved by referentially impossible `OPTIONS.indexOf(option)` and reproduced probe.
 - High Contrast readability claim is disproved by exact CSS foreground/background pairs and measured ratios.
@@ -109,7 +109,7 @@ No review finding was disproved.
 4. **Fix High Contrast action foregrounds.** Add semantic action-foreground tokens and remove hardcoded `text-white` where backgrounds vary. High Contrast needs black on yellow and a contrasting Next foreground/background pair. Add automated WCAG contrast checks for action token pairs.
 5. **Make local storage optional.** Wrap reads/writes so storage denial or quota errors do not block DOM application or authenticated API persistence.
 6. **Repair automated coverage.** Replace source-string selector assertions with interaction tests; add profile route tests for all valid values, malformed PATCH rejection, GET fallback, auth boundary, and persisted field mapping.
-7. **Repair central traceability.** Define THEME-01 through THEME-05 and map this duplicate IDE Themes phase explicitly, without assigning SOCIAL requirements or changing Study Together metadata.
+7. **Preserve central traceability.** Keep THEME-01 through THEME-05 mapped to Phase 16 without assigning SOCIAL requirements or changing Study Together metadata.
 
 ## Next Action
 

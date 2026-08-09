@@ -129,7 +129,7 @@ function browserTransport(): ConversationTransport {
     typing: getTypingSnapshot,
     connect: (conversationId, onInvalidate, onSubscribed) => {
       const channel = supabase.channel(`social-messages:${conversationId}`, { config: { private: true } })
-        .on("broadcast", { event: "message" }, onInvalidate)
+        .on("broadcast", { event: "invalidate" }, () => onInvalidate())
         .subscribe((status) => { if (status === "SUBSCRIBED") onSubscribed(); });
       return () => { void supabase.removeChannel(channel); };
     },

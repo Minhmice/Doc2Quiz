@@ -1,5 +1,5 @@
 ---
-phase: 12-ide-themes
+phase: 16-ide-themes
 status: issues_found
 review_depth: standard
 files_reviewed: 12
@@ -10,11 +10,11 @@ findings:
   total: 5
 ---
 
-# Phase 12: IDE Themes Code Review
+# Phase 16: IDE Themes Code Review
 
 ## Scope
 
-Reviewed all 12 requested implementation files in `.planning/phases/12-ide-themes`. `.planning/phases/12-study-together` was excluded.
+Reviewed all 12 requested implementation files in `.planning/phases/16-ide-themes`. `.planning/phases/12-study-together` was excluded.
 
 ## Findings
 

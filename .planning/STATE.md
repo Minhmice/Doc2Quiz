@@ -2,15 +2,18 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: MVP Pipeline
+current_phase: 15
+current_phase_name: Social presence scaling
 status: executing
-last_updated: "2026-08-03T00:00:00.000Z"
-last_activity: "2026-08-03 -- Completed Phase 12 Plan 06 verification after self-hosted Supabase deployment"
+last_updated: "2026-08-09"
+last_activity: 2026-08-09
+last_activity_desc: Planning registry reconciled; Phase 15 execution initialized with no production work yet
 progress:
-  total_phases: 13
-  completed_phases: 9
-  total_plans: 58
-  completed_plans: 67
-  percent: 69
+  total_phases: 15
+  completed_phases: 13
+  total_plans: 67
+  completed_plans: 61
+  percent: 91
 ---
 
 # Doc2Quiz — State
@@ -23,12 +26,12 @@ See: `.planning/PROJECT.md` · Spec: `docs/pipeline.md`
 
 ## Current Position
 
-Phase: 12
-Plan: 9 of 9
-Status: Complete
-Last activity: 2026-08-03 -- Completed Phase 12 Plan 06 verification after self-hosted Supabase deployment
+Phase: 15 (Social presence scaling) — EXECUTING
+Plan: 2 of 5
+Status: Executing Phase 15
+Last activity: 2026-08-09 — Completed Plan 15-02 canonical presence snapshots, typing, and activity handoff
 
-Progress: [██████████] 100%
+Progress: [█████████░] 91%
 
 ## Decisions
 
@@ -103,7 +106,7 @@ None.
 
 ## Next step
 
-Phase 12 verification complete; continue with next requested project task.
+Execute Phase 15 Plan 15-01, or explicitly switch to Phase 16 Plan 16-03 gap closure before starting work.
 
 ## Accumulated Context
 

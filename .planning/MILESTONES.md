@@ -2,11 +2,13 @@
 
 ## v2.1 — MVP Pipeline
 
-**Status:** Planning  
+**Status:** Active — executing and closing verification gaps  
 **Started:** 2026-07-25  
-**Phases:** 1–5 (see `.planning/ROADMAP.md`)
+**Phases:** 1–16 registered in `.planning/ROADMAP.md` (Phase 13 retired as superseded)
 
 **Goal:** Multi-format input → MarkItDown → Canonical Knowledge (Supabase) → Quiz or Flashcards → practice.
+
+**Current work:** Phase 15 social presence scaling is unexecuted; Phase 16 IDE Themes has one gap-closure plan remaining.
 
 **Spec:** [docs/pipeline.md](../docs/pipeline.md)
 
