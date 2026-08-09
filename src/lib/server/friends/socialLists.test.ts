@@ -64,8 +64,8 @@ describe("bounded social list authority", () => {
 
   it("passes offline bucket to RPC and keeps server-normalized non-online rows", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { items: [
-      { userId: "2", username: "b", presenceRank: 1, presence: "recently_active" },
-      { userId: "3", username: "c", presenceRank: 2, presence: "offline" },
+      { userId: "2", username: "b", presenceRank: 1, presence: "active_15m" },
+      { userId: "3", username: "c", presenceRank: 3, presence: "offline" },
     ] }, error: null });
     const page = await listSocialFriends({ rpc }, 20, null, "offline");
     expect(rpc).toHaveBeenCalledWith("list_social_friends", {
@@ -73,7 +73,7 @@ describe("bounded social list authority", () => {
       p_cursor: null,
       p_presence: "offline",
     });
-    expect(page.items.map((item) => item.presenceRank)).toEqual([1, 2]);
+    expect(page.items.map((item) => item.presenceRank)).toEqual([1, 3]);
     expect(page.nextCursor).toBeNull();
   });
 });

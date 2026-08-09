@@ -7,7 +7,6 @@ export const SOCIAL_UNKNOWN_GRACE_MS = 15_000;
 
 type SnapshotFriend = SocialFriend & { presence: PresenceBucket; source: PresenceSource; activity: PresenceActivity | null };
 type CacheEntry = { items: SnapshotFriend[]; savedAt: number };
-const lastKnown = new Map<string, CacheEntry>();
 
 function ageBucket(lastActiveAt: string | null, now: number): PresenceBucket {
   const timestamp = lastActiveAt ? Date.parse(lastActiveAt) : Number.NaN;
@@ -20,7 +19,7 @@ function rank(presence: PresenceBucket) {
   return presence === "online" ? 0 : presence === "active_15m" ? 1 : presence === "active_today" ? 2 : presence === "offline" ? 3 : 4;
 }
 
-export function createPresenceSnapshotService(redis: SocialRedis | null, now = Date.now, cache = lastKnown) {
+export function getPresenceSnapshot(redis: SocialRedis | null, now = Date.now, cache = new Map<string, CacheEntry>()) {
   const presence = createPresenceService(redis, now);
 
   return {

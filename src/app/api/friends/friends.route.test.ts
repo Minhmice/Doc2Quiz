@@ -24,7 +24,7 @@ const broadcastSocialEventMock = vi.fn();
 const getRedisMock = vi.fn();
 const touchPresenceMock = vi.fn();
 const checkRateLimitMock = vi.fn();
-const createPresenceSnapshotServiceMock = vi.fn();
+const getPresenceSnapshotMock = vi.fn();
 const enqueueMeaningfulActivityMock = vi.fn();
 
 vi.mock("@/lib/api/requireApiUser", () => ({
@@ -37,7 +37,7 @@ vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({
 
 vi.mock("@/lib/server/redis/client", () => ({ getRedis: () => getRedisMock() }));
 vi.mock("@/lib/server/social/presence", () => ({ touchPresence: (...args: unknown[]) => touchPresenceMock(...args) }));
-vi.mock("@/lib/server/social/presenceSnapshot", () => ({ createPresenceSnapshotService: (...args: unknown[]) => createPresenceSnapshotServiceMock(...args) }));
+vi.mock("@/lib/server/social/presenceSnapshot", () => ({ getPresenceSnapshot: (...args: unknown[]) => getPresenceSnapshotMock(...args) }));
 vi.mock("@/lib/server/social/rateLimit", () => ({ checkRateLimit: (...args: unknown[]) => checkRateLimitMock(...args) }));
 vi.mock("@/lib/server/social/activityProducer", () => ({ enqueueMeaningfulActivity: (...args: unknown[]) => enqueueMeaningfulActivityMock(...args) }));
 
@@ -158,7 +158,7 @@ describe("social API routes", () => {
     getRedisMock.mockResolvedValue({ state: "ready", redis: { tag: "redis" } });
     touchPresenceMock.mockResolvedValue({ state: "ready" });
     checkRateLimitMock.mockResolvedValue({ allowed: true });
-    createPresenceSnapshotServiceMock.mockReturnValue({ snapshot: vi.fn().mockImplementation((page) => page) });
+    getPresenceSnapshotMock.mockReturnValue({ snapshot: vi.fn().mockImplementation((page) => page) });
     enqueueMeaningfulActivityMock.mockResolvedValue({});
   });
 

@@ -10,7 +10,7 @@ const unavailable = () => new Error("social_unavailable");
 
 export function encodeSocialCursor(destination: SocialDestination, keys: unknown[], presence?: FriendDestination): string {
   const payload = destination === "friends"
-    ? { v: 2, d: destination, k: keys, p: presence } satisfies PresenceCursor
+    ? { v: 2, d: destination, k: keys as [number, string, string], p: presence as FriendDestination } satisfies PresenceCursor
     : { v: 1, d: destination, k: keys };
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
 }

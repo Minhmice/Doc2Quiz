@@ -3,7 +3,7 @@ import { requireApiUser } from "@/lib/api/requireApiUser";
 import { parseFriendsListQuery } from "@/lib/server/friends/socialListQuery";
 import { listSocialFriends } from "@/lib/server/friends/socialLists";
 import { getRedis } from "@/lib/server/redis/client";
-import { createPresenceSnapshotService } from "@/lib/server/social/presenceSnapshot";
+import { getPresenceSnapshot } from "@/lib/server/social/presenceSnapshot";
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const { limit, cursor, presence } = parseFriendsListQuery(new URL(request.url).searchParams);
     const page = await listSocialFriends(auth.supabase, limit, cursor, presence);
     const connection = await getRedis();
-    const snapshot = await createPresenceSnapshotService(connection.redis).snapshot(page, presence, `${auth.user.id}:${presence}:${cursor ?? ""}`);
+    const snapshot = await getPresenceSnapshot(connection.redis).snapshot(page, presence, `${auth.user.id}:${presence}:${cursor ?? ""}`);
     return NextResponse.json({ data: snapshot });
   } catch (error) {
     const invalid = error instanceof Error && (error.name === "ZodError" || error.message === "social_unavailable");
