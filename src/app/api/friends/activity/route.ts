@@ -4,6 +4,7 @@ import { requireApiUser } from "@/lib/api/requireApiUser";
 import { getRedis } from "@/lib/server/redis/client";
 import { touchPresence } from "@/lib/server/social/presence";
 import { checkRateLimit } from "@/lib/server/social/rateLimit";
+import { enqueueMeaningfulActivity } from "@/lib/server/social/activityProducer";
 
 function degraded() {
   return NextResponse.json({ error: "social_degraded", state: "unknown" }, { status: 503 });
@@ -32,7 +33,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const result = await touchPresence(auth.user.id, `compat_${auth.user.id}`, "idle", connection.redis);
-  return result.state === "ready" ? new NextResponse(null, { status: 204 }) : degraded();
+  if (result.state !== "ready") return degraded();
+  await enqueueMeaningfulActivity(connection.redis, { userId: auth.user.id, activityKind: "presence_transition", source: "heartbeat" });
+  return new NextResponse(null, { status: 204 });
 }
 
 export const runtime = "nodejs";

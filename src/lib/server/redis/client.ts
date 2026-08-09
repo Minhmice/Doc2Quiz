@@ -14,6 +14,7 @@ export type SocialRedis = {
   mGet(keys: string[]): Promise<(string | null)[]>;
   incr(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<unknown>;
+  xAdd(key: string, id: string, message: Record<string, string>, options: { TRIM?: { strategy: "MAXLEN"; strategyModifier: "~"; threshold: number } }): Promise<unknown>;
 };
 
 export type RedisConnection = { state: RedisHealth; redis: SocialRedis | null };
@@ -64,6 +65,7 @@ async function connectRedis() {
     mGet: (keys: string[]) => boundedTimeout(client.mGet(keys), commandTimeoutMs),
     incr: (key: string) => boundedTimeout(client.incr(key), commandTimeoutMs),
     expire: (key: string, seconds: number) => boundedTimeout(client.expire(key, seconds), commandTimeoutMs),
+    xAdd: (key: string, id: string, message: Record<string, string>, options: { TRIM?: { strategy: "MAXLEN"; strategyModifier: "~"; threshold: number } }) => boundedTimeout(client.xAdd(key, id, message, options), commandTimeoutMs),
   };
 }
 

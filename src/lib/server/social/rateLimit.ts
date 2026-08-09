@@ -32,7 +32,8 @@ export function createInMemoryRateLimitRedis(): SocialRedis & {
   sets: { key: string; value: string; ttlSeconds: number }[];
   increments: { key: string; windowSeconds: number }[];
   zsets: Map<string, Map<string, number>>;
-  mgetKeys: string[];
+   mgetKeys: string[];
+   streamEntries: { key: string; id: string; message: Record<string, string> }[];
 } {
   const values = new Map<string, string>();
   const counters = new Map<string, number>();
@@ -40,12 +41,14 @@ export function createInMemoryRateLimitRedis(): SocialRedis & {
   const expires = new Map<string, number>();
   const sets: { key: string; value: string; ttlSeconds: number }[] = [];
   const increments: { key: string; windowSeconds: number }[] = [];
+  const streamEntries: { key: string; id: string; message: Record<string, string> }[] = [];
   const valid = (key: string) => (expires.get(key) ?? Infinity) > Date.now();
   return {
     sets,
     increments,
     zsets,
     mgetKeys: [],
+    streamEntries,
     async set(key, value, { EX, NX }) {
       if (NX && valid(key) && values.has(key)) return null;
       values.set(key, value);
@@ -92,6 +95,10 @@ export function createInMemoryRateLimitRedis(): SocialRedis & {
     async expire(key, seconds) {
       expires.set(key, Date.now() + seconds * 1000);
       increments.push({ key, windowSeconds: seconds });
+    },
+    async xAdd(key, id, message) {
+      streamEntries.push({ key, id, message });
+      return id;
     },
   };
 }

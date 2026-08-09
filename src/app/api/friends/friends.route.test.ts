@@ -25,6 +25,7 @@ const getRedisMock = vi.fn();
 const touchPresenceMock = vi.fn();
 const checkRateLimitMock = vi.fn();
 const createPresenceSnapshotServiceMock = vi.fn();
+const enqueueMeaningfulActivityMock = vi.fn();
 
 vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
@@ -38,6 +39,7 @@ vi.mock("@/lib/server/redis/client", () => ({ getRedis: () => getRedisMock() }))
 vi.mock("@/lib/server/social/presence", () => ({ touchPresence: (...args: unknown[]) => touchPresenceMock(...args) }));
 vi.mock("@/lib/server/social/presenceSnapshot", () => ({ createPresenceSnapshotService: (...args: unknown[]) => createPresenceSnapshotServiceMock(...args) }));
 vi.mock("@/lib/server/social/rateLimit", () => ({ checkRateLimit: (...args: unknown[]) => checkRateLimitMock(...args) }));
+vi.mock("@/lib/server/social/activityProducer", () => ({ enqueueMeaningfulActivity: (...args: unknown[]) => enqueueMeaningfulActivityMock(...args) }));
 
 vi.mock("@/lib/server/friends/socialLists", () => ({
   listSocialFriends: (...args: unknown[]) => listSocialFriendsMock(...args),
@@ -157,6 +159,7 @@ describe("social API routes", () => {
     touchPresenceMock.mockResolvedValue({ state: "ready" });
     checkRateLimitMock.mockResolvedValue({ allowed: true });
     createPresenceSnapshotServiceMock.mockReturnValue({ snapshot: vi.fn().mockImplementation((page) => page) });
+    enqueueMeaningfulActivityMock.mockResolvedValue({});
   });
 
   describe("PATCH /api/profile", () => {
@@ -604,13 +607,14 @@ describe("social API routes", () => {
       expect(await response.json()).toEqual({ error: "social_unavailable" });
     });
 
-    it("keeps activity as Redis-only presence compatibility seam", async () => {
+    it("enqueues one meaningful presence transition after Redis activity touch", async () => {
       const rpc = vi.fn();
       requireApiUserMock.mockResolvedValue({ supabase: { rpc }, user: { id: "user-1" } });
       const { POST: touchActivity } = await import("@/app/api/friends/activity/route");
 
       expect((await touchActivity(new Request("http://localhost/api/friends/activity", { method: "POST" }))).status).toBe(204);
       expect(touchPresenceMock).toHaveBeenCalledWith("user-1", "compat_user-1", "idle", { tag: "redis" });
+      expect(enqueueMeaningfulActivityMock).toHaveBeenCalledWith({ tag: "redis" }, { userId: "user-1", activityKind: "presence_transition", source: "heartbeat" });
       expect(rpc).not.toHaveBeenCalled();
     });
 
