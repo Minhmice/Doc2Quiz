@@ -9,13 +9,18 @@ function degraded() {
   return NextResponse.json({ error: "social_degraded", state: "unknown" }, { status: 503 });
 }
 
+function clientIp(request: Request) {
+  const candidate = request.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() ?? "unknown";
+  return /^[0-9a-f:.]{1,45}$/i.test(candidate) ? candidate : "unknown";
+}
+
 export async function POST(request: Request): Promise<Response> {
   const auth = await requireApiUser();
   if ("error" in auth) return auth.error as Response;
   const connection = await getRedis();
   if (!connection.redis) return degraded();
 
-  for (const [subjectType, subject] of [["user", auth.user.id], ["ip", request.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() || "unknown"]] as const) {
+  for (const [subjectType, subject] of [["user", auth.user.id], ["ip", clientIp(request)]] as const) {
     const limit = await checkRateLimit(connection.redis, "heartbeat", subjectType, subject);
     if ("unavailable" in limit) return degraded();
     if (!limit.allowed) {

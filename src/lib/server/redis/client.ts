@@ -24,10 +24,13 @@ const reconnectMaxMs = Number(process.env.REDIS_RECONNECT_MAX_MS ?? 5000);
 let clientPromise: Promise<SocialRedis> | null = null;
 
 function boundedTimeout<T>(promise: Promise<T>, milliseconds: number) {
-  return Promise.race<T>([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("redis timeout")), milliseconds)),
-  ]);
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("redis timeout")), milliseconds);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error: unknown) => { clearTimeout(timer); reject(error); },
+    );
+  });
 }
 
 function createRedisClient() {
