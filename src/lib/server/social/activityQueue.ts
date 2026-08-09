@@ -56,7 +56,7 @@ export function parseActivityEvent(value: unknown): ActivityEvent {
   if (!occurredAt || Number.isNaN(occurredAt.getTime()) || occurredAt.toISOString() !== event.occurredAt) throw new Error("invalid activity event");
   if (typeof event.activityKind !== "string" || !activityKinds.includes(event.activityKind as ActivityKind)) throw new Error("invalid activity event");
   if (typeof event.source !== "string" || !activitySources.includes(event.source as ActivitySource)) throw new Error("invalid activity event");
-  if (typeof event.dedupeKey !== "string" || event.dedupeKey.length === 0 || event.dedupeKey.length > MAX_FIELD_LENGTH) throw new Error("invalid activity event");
+  if (typeof event.dedupeKey !== "string" || event.dedupeKey !== `${event.userId}:${event.activityKind}:${Math.floor(occurredAt.getTime() / 60_000)}` || event.dedupeKey.length > MAX_FIELD_LENGTH) throw new Error("invalid activity event");
   return event as ActivityEvent;
 }
 

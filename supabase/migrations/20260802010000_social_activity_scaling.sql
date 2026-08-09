@@ -52,10 +52,14 @@ begin
       source text,
       "dedupeKey" text
     )
+  ), deduped_input as (
+    select distinct on ("dedupeKey") *
+    from input
+    order by "dedupeKey", "occurredAt" desc
   ), inserted as (
     insert into private.social_activity_events (event_id, dedupe_key, user_id, activity_kind, occurred_at)
     select "eventId", "dedupeKey", "userId", "activityKind", "occurredAt"
-    from input
+    from deduped_input
     on conflict do nothing
     returning user_id, activity_kind, occurred_at
   ), newest as (

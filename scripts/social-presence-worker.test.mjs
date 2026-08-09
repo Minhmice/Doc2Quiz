@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { parseStreamEvent, processEntries, runOnce, workerConfig } from "./social-presence-worker.mjs";
+import { parseStreamEvent, processEntries, runOnce, serve, workerConfig } from "./social-presence-worker.mjs";
 
 const env = {
   REDIS_URL: "redis://localhost:6379",
@@ -21,6 +21,7 @@ const event = {
 function redis() {
   return {
     xGroupCreate: vi.fn().mockResolvedValue("OK"),
+    xTrim: vi.fn().mockResolvedValue(0),
     xAutoClaim: vi.fn().mockResolvedValue({ messages: [] }),
     xReadGroup: vi.fn().mockResolvedValue([{ messages: [{ id: "1-0", message: event }] }]),
     xAck: vi.fn().mockResolvedValue(1),
@@ -47,11 +48,22 @@ describe("social presence worker", () => {
     const rpc = vi.fn().mockResolvedValue({ error: null });
     await runOnce({ redis: client, supabase: { rpc }, config: workerConfig(env) });
 
+    expect(client.xTrim).toHaveBeenCalledWith("d2q:activity", "MINID", expect.stringMatching(/-0$/), { strategyModifier: "~", LIMIT: 100 });
     expect(client.xAutoClaim).toHaveBeenCalledWith("d2q:activity", "social-workers", "worker-1", 30_000, "0-0", { COUNT: 100 });
     expect(client.xReadGroup).toHaveBeenCalledWith("social-workers", "worker-1", { key: "d2q:activity", id: ">" }, { COUNT: 100, BLOCK: 10_000 });
     expect(rpc).toHaveBeenCalledWith("apply_social_activity_batch", { p_events: [event] });
     expect(client.xAck).toHaveBeenCalledWith("d2q:activity", "social-workers", ["1-0"]);
     expect(rpc.mock.invocationCallOrder[0]).toBeLessThan(client.xAck.mock.invocationCallOrder[0]);
+  });
+
+  it("stops cleanly on SIGTERM without request-handler timers", async () => {
+    const client = redis();
+    const config = workerConfig(env);
+    const run = serve({ redis: client, supabase: { rpc: vi.fn().mockResolvedValue({ error: null }) }, config });
+    process.emit("SIGTERM");
+    await run;
+
+    expect(client.quit).toHaveBeenCalledOnce();
   });
 
   it("leaves retryable work pending, claims stale entries, and dead-letters fifth failure", async () => {

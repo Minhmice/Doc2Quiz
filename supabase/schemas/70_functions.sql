@@ -3846,9 +3846,12 @@ begin
   ) then raise exception 'invalid_activity_batch'; end if;
   with input as (
     select * from jsonb_to_recordset(p_events) as event("eventId" uuid, "userId" uuid, "occurredAt" timestamptz, "activityKind" text, source text, "dedupeKey" text)
+  ), deduped_input as (
+    select distinct on ("dedupeKey") * from input order by "dedupeKey", "occurredAt" desc
   ), inserted as (
     insert into private.social_activity_events (event_id, dedupe_key, user_id, activity_kind, occurred_at)
-    select "eventId", "dedupeKey", "userId", "activityKind", "occurredAt" from input on conflict do nothing
+    select "eventId", "dedupeKey", "userId", "activityKind", "occurredAt" from deduped_input
+    on conflict do nothing
     returning user_id, activity_kind, occurred_at
   ), newest as (
     select distinct on (user_id, activity_kind, date_trunc('minute', occurred_at)) user_id, occurred_at

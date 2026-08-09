@@ -116,6 +116,7 @@ export async function runOnce({ redis, supabase, config }) {
   } catch (error) {
     if (!String(error).includes("BUSYGROUP")) throw error;
   }
+  await redis.xTrim(STREAM, "MINID", `${Date.now() - 24 * 60 * 60 * 1000}-0`, { strategyModifier: "~", LIMIT: config.batchSize });
   const claimed = await redis.xAutoClaim(STREAM, config.group, config.consumer, config.leaseMs, "0-0", { COUNT: config.batchSize });
   const reclaimed = (claimed.messages ?? []).map((message) => ({ id: message.id, message: message.message, group: config.group }));
   const claimResult = await processEntries({ redis, supabase, config, entries: reclaimed });
