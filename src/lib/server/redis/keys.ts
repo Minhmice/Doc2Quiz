@@ -16,5 +16,5 @@ export function presenceSessionIndexKey(userId: string) {
 
 export function socialRateLimitKey(scope: string, subjectType: "user" | "ip", subject: string, window: number) {
   if (!/^[a-z-]{1,32}$/.test(scope) || !/^[A-Za-z0-9._:-]{1,128}$/.test(subject)) throw new Error("invalid rate limit subject");
-  return `d2q:rate:${scope}:${subjectType}:${window}`;
+  return `d2q:rate:${scope}:${subjectType}:${subject}:${window}`;
 }

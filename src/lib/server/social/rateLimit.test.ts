@@ -12,6 +12,6 @@ describe("rate limits", () => {
   it("uses bounded Redis counters", async () => {
     const redis = createInMemoryRateLimitRedis();
     await checkRateLimit(redis, "heartbeat", "user", "user-1");
-    expect(redis.increments).toEqual([{ key: expect.stringContaining("d2q:rate:heartbeat:user:"), windowSeconds: 60 }]);
+    expect(redis.increments).toEqual([{ key: expect.stringContaining("d2q:rate:heartbeat:user:user-1:"), windowSeconds: 60 }]);
   });
 });
