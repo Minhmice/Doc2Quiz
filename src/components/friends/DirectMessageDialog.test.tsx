@@ -18,7 +18,7 @@ describe("DirectMessageDialog presence contract", () => {
     expect(getDirectMessageHeaderStatus(friend("online"))).toBe("online");
   });
 
-  it.each(["recently_active", "offline"] as const)(
+  it.each(["active_15m", "active_today", "offline", "unknown"] as const)(
     "keeps %s on existing last-active fallback",
     (presence) => {
       expect(getDirectMessageHeaderStatus(friend(presence))).toBe("last-active");

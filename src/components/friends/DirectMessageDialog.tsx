@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { ConversationView } from "@/components/friends/ConversationView";
 import { openDirectConversation } from "@/lib/client/messages";
 import { useLocale } from "@/components/locale/LocaleProvider";
+import type { FriendPresenceDto } from "@/lib/social/presenceTypes";
 
-export type DirectMessageFriend = { userId: string; username: string | null; avatarUrl: string | null; presence: "online" | "recently_active" | "offline"; lastActiveAt: string | null };
+export type DirectMessageFriend = FriendPresenceDto;
 
 export function getDirectMessageHeaderStatus(friend: Pick<DirectMessageFriend, "presence">): "online" | "last-active" {
   return friend.presence === "online" ? "online" : "last-active";

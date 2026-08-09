@@ -1,4 +1,5 @@
 import { parseApiError } from "@/lib/client/apiResponse";
+import type { FriendPresenceDto, PresencePage } from "@/lib/social/presenceTypes";
 
 export type FriendRequestSummary = {
   id: string;
@@ -24,14 +25,9 @@ export type BlockedUserSummary = {
 
 export type ReportAcknowledgement = { ok: true };
 
-export type AcceptedFriendSummary = {
-  userId: string;
-  username: string | null;
-  avatarUrl: string | null;
-  presence: "online" | "recently_active" | "offline";
-  lastActiveAt: string | null;
-  unreadCount: number;
-};
+export type AcceptedFriendSummary = FriendPresenceDto;
+export type FriendPresencePage = PresencePage;
+
 
 export type IncomingFriendRequestSummary = {
   id: string;
@@ -148,9 +144,9 @@ export async function updateProfileUsername(username: string): Promise<{ usernam
 export async function listAcceptedFriendPage(
   presence: "online" | "offline",
   cursor?: string,
-): Promise<Page<AcceptedFriendSummary>> {
+): Promise<FriendPresencePage> {
   const params = new URLSearchParams({ limit: "20", presence, ...(cursor ? { cursor } : {}) });
-  return socialRequest<Page<AcceptedFriendSummary>>(`/api/friends?${params}`);
+  return socialRequest<FriendPresencePage>(`/api/friends?${params}`);
 }
 
 export async function listAcceptedFriends(): Promise<AcceptedFriendSummary[]> {

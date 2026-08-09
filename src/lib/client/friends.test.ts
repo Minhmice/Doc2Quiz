@@ -109,20 +109,29 @@ describe("social safety client", () => {
     });
   });
 
-  it("requests each accepted-friend bucket with server cursor and enum DTO", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: { items: [{ userId: USER_ID, username: "bob", presence: "recently_active" }], nextCursor: "next", hasMore: true } }),
+    it("requests server buckets with an opaque cursor and canonical DTO", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { items: [{ userId: USER_ID, username: "bob", avatarUrl: null, presence: "unknown", source: "unknown", activity: null, lastActiveAt: null, presenceRank: 4 }], nextCursor: "next", hasMore: true } }),
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      const online = await listAcceptedFriendPage("online");
+      const offline = await listAcceptedFriendPage("offline", "cursor-offline");
+
+      expect(online.items[0]).toMatchObject({ presence: "unknown", source: "unknown" });
+      expect(mockFetch).toHaveBeenNthCalledWith(1, "/api/friends?limit=20&presence=online", undefined);
+      expect(mockFetch).toHaveBeenNthCalledWith(2, "/api/friends?limit=20&presence=offline&cursor=cursor-offline", undefined);
     });
-    vi.stubGlobal("fetch", mockFetch);
 
-    const online = await listAcceptedFriendPage("online");
-    const offline = await listAcceptedFriendPage("offline", "cursor-offline");
-
-    expect(online.items[0].presence).toBe("recently_active");
-    expect(mockFetch).toHaveBeenNthCalledWith(1, "/api/friends?limit=20&presence=online", undefined);
-    expect(mockFetch).toHaveBeenNthCalledWith(2, "/api/friends?limit=20&presence=offline&cursor=cursor-offline", undefined);
-  });
+    it("does not classify, filter, sort, or decode server presence pages", async () => {
+      const source = await import("node:fs").then(({ readFileSync }) =>
+        readFileSync(new URL("./friends.ts", import.meta.url), "utf8"),
+      );
+      expect(source).toContain('import type { FriendPresenceDto, PresencePage } from "@/lib/social/presenceTypes"');
+      expect(source).not.toContain("recently_active");
+      expect(source).not.toMatch(/\.sort\(|\.filter\(|JSON\.parse\(cursor/);
+    });
 
   it("lists friend requests and blocked users from protected APIs", async () => {
     const mockFetch = vi

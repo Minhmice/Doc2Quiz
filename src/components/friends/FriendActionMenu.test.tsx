@@ -10,7 +10,7 @@ describe("FriendActionMenu presence presentation", () => {
     });
   });
 
-  it.each(["recently_active", "offline"] as const)(
+  it.each(["active_15m", "active_today", "offline", "unknown"] as const)(
     "suppresses dot and status label for %s",
     (presence) => {
       expect(getFriendPresencePresentation(presence)).toEqual({

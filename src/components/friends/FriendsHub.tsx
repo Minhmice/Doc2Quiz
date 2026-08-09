@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listAcceptedFriends, listAcceptedFriendPage, listBlockedUserPage, listFriendRequestPage, type AcceptedFriendSummary, type Page } from "@/lib/client/friends";
+import type { PresenceBucket } from "@/lib/social/presenceTypes";
 import { listConversationPage } from "@/lib/client/messages";
 import { listStudyChallenges } from "@/lib/client/studyTogether";
 import { StudyChallengeDialog } from "@/components/friends/StudyChallengeDialog";
@@ -15,11 +16,10 @@ import { friendProfileHref } from "@/lib/profile/usernameValidation";
 
 export const FRIEND_DESTINATIONS = ["friends", "requests", "invites", "messages", "blocked"] as const;
 export type FriendDestination = typeof FRIEND_DESTINATIONS[number];
-export type PresenceBucket = "online" | "offline";
-export type FriendPresence = "online" | "recently_active" | "offline";
+export type FriendPresenceDestination = "online" | "offline";
 
 export const normalizeFriendDestination = (value: string | null): FriendDestination => FRIEND_DESTINATIONS.includes(value as FriendDestination) ? value as FriendDestination : "friends";
-export const normalizeFriendPresence = (value: string | null | undefined): PresenceBucket => value === "online" ? "online" : "offline";
+export const normalizeFriendPresenceDestination = (value: string | null | undefined): FriendPresenceDestination => value === "online" ? "online" : "offline";
 
 const emptyPage: Page<Record<string, unknown>> = { items: [], nextCursor: null, hasMore: false };
 const id = (d: FriendDestination, row: Record<string, unknown>) => String(row[d === "friends" || d === "blocked" ? "userId" : d === "requests" ? "requestId" : d === "invites" ? "sessionId" : "conversationId"]);
@@ -117,7 +117,7 @@ export function FriendsHub({ destination, studyWith = null }: { destination: Fri
   const { messages } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const presence = normalizeFriendPresence(destination === "friends" ? searchParams.get("presence") : null);
+  const presence = normalizeFriendPresenceDestination(destination === "friends" ? searchParams.get("presence") : null);
   const [page, setPage] = useState<Page<Record<string, unknown>>>(emptyPage);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [dialogOpen, setDialogOpen] = useState(Boolean(studyWith));
@@ -183,7 +183,7 @@ export function FriendsHub({ destination, studyWith = null }: { destination: Fri
       router.replace(`/friends?destination=${destination}`, { scroll: false });
     }
   };
-  const selectPresence = (next: PresenceBucket) => {
+  const selectPresence = (next: FriendPresenceDestination) => {
     if (next === presence) return;
     requestSequenceRef.current += 1;
     setPage(emptyPage);

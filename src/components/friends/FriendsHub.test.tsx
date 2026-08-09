@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { FRIEND_DESTINATIONS, normalizeFriendDestination, normalizeFriendPresence, createFriendsPresenceRefreshController } from "./FriendsHub";
+import { FRIEND_DESTINATIONS, normalizeFriendDestination, normalizeFriendPresenceDestination, createFriendsPresenceRefreshController } from "./FriendsHub";
 describe("FriendsHub",()=>{it("exposes five safe destinations",()=>{expect(FRIEND_DESTINATIONS).toHaveLength(5);expect(normalizeFriendDestination("messages")).toBe("messages");expect(normalizeFriendDestination("unsafe")).toBe("friends");});});
 describe("FriendsHub study handoff",()=>{it("passes studyWith and resolves accepted recipient before rendering dialog",()=>{const client=readFileSync(resolve(process.cwd(),"src/app/(app)/friends/FriendsHubClient.tsx"),"utf8");const hub=readFileSync(resolve(process.cwd(),"src/components/friends/FriendsHub.tsx"),"utf8");expect(client).toContain("params.get(\"studyWith\")");expect(client).toContain("studyWith={studyWith}");expect(hub).toContain("listAcceptedFriends");expect(hub).toContain("<StudyChallengeDialog");expect(hub).toContain("router.replace(`/friends?destination=${destination}`");});});
 
@@ -12,7 +12,7 @@ describe("FriendsHub presence buckets", () => {
     ["online", "online"],
     ["offline", "offline"],
   ] as const)("normalizes presence=%s to %s", (value, expected) => {
-    expect(normalizeFriendPresence(value)).toBe(expected);
+    expect(normalizeFriendPresenceDestination(value)).toBe(expected);
   });
 
   it("keeps bucket URL state and server paging separate", () => {
@@ -60,11 +60,10 @@ describe("FriendsHub presence buckets", () => {
     vi.useRealTimers();
   });
 
-  it("records tracer evidence that activity touch and social counts do not refresh hub membership", () => {
-    const overlay = readFileSync(resolve(process.cwd(), "src/components/friends/PlayfulReactionOverlay.tsx"), "utf8");
-    const counts = readFileSync(resolve(process.cwd(), "src/lib/client/socialCounts.ts"), "utf8");
-    expect(overlay).toContain("touchSocialActivity");
-    expect(counts).toContain("createSocialCountsController");
-    expect(counts).not.toContain("FriendsHub");
+  it("uses canonical server DTOs without client presence reclassification", () => {
+    const hub = readFileSync(resolve(process.cwd(), "src/components/friends/FriendsHub.tsx"), "utf8");
+    expect(hub).toContain('import type { PresenceBucket } from "@/lib/social/presenceTypes"');
+    expect(hub).not.toContain("recently_active");
+    expect(hub).not.toMatch(/\.sort\(|\.filter\(.*presence/);
   });
 });
