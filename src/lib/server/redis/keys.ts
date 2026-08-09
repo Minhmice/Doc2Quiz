@@ -14,6 +14,17 @@ export function presenceSessionIndexKey(userId: string) {
   return `d2q:presence-sessions:${safeSegment(userId, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i, "user id")}`;
 }
 
+export const TYPING_TTL_SECONDS = 5;
+export const TYPING_REFRESH_SECONDS = 2;
+
+export function typingKey(conversationId: string, userId: string) {
+  return `d2q:typing:${safeSegment(conversationId, /^[0-9a-f-]{36}$/i, "conversation id")}:${safeSegment(userId, /^[0-9a-f-]{36}$/i, "user id")}`;
+}
+
+export function typingThrottleKey(conversationId: string, userId: string) {
+  return `d2q:typing-throttle:${safeSegment(conversationId, /^[0-9a-f-]{36}$/i, "conversation id")}:${safeSegment(userId, /^[0-9a-f-]{36}$/i, "user id")}`;
+}
+
 export function socialRateLimitKey(scope: string, subjectType: "user" | "ip", subject: string, window: number) {
   if (!/^[a-z-]{1,32}$/.test(scope) || !/^[A-Za-z0-9._:-]{1,128}$/.test(subject)) throw new Error("invalid rate limit subject");
   return `d2q:rate:${scope}:${subjectType}:${subject}:${window}`;

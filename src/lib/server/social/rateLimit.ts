@@ -46,10 +46,17 @@ export function createInMemoryRateLimitRedis(): SocialRedis & {
     increments,
     zsets,
     mgetKeys: [],
-    async set(key, value, { EX }) {
+    async set(key, value, { EX, NX }) {
+      if (NX && valid(key) && values.has(key)) return null;
       values.set(key, value);
       expires.set(key, Date.now() + EX * 1000);
       sets.push({ key, value, ttlSeconds: EX });
+      return "OK";
+    },
+    async del(key) {
+      values.delete(key);
+      expires.delete(key);
+      return 1;
     },
     async zAdd(key, entries) {
       const index = zsets.get(key) ?? new Map<string, number>();

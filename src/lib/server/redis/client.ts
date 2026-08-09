@@ -5,7 +5,8 @@ import { socialObservability } from "@/lib/server/social/observability";
 export type RedisHealth = "ready" | "disabled" | "unavailable";
 
 export type SocialRedis = {
-  set(key: string, value: string, options: { EX: number }): Promise<unknown>;
+  set(key: string, value: string, options: { EX: number; NX?: true }): Promise<unknown>;
+  del(key: string): Promise<unknown>;
   zAdd(key: string, entries: { score: number; value: string }[]): Promise<unknown>;
   zRemRangeByScore(key: string, min: number, max: number): Promise<unknown>;
   zRemRangeByRank(key: string, start: number, stop: number): Promise<unknown>;
@@ -54,7 +55,8 @@ async function connectRedis() {
   await boundedTimeout(client.connect(), connectTimeoutMs);
   if (!client.isReady) throw new Error("redis unavailable");
   return {
-    set: (key: string, value: string, options: { EX: number }) => boundedTimeout(client.set(key, value, options), commandTimeoutMs),
+    set: (key: string, value: string, options: { EX: number; NX?: true }) => boundedTimeout(client.set(key, value, options), commandTimeoutMs),
+    del: (key: string) => boundedTimeout(client.del(key), commandTimeoutMs),
     zAdd: (key: string, entries: { score: number; value: string }[]) => boundedTimeout(client.zAdd(key, entries), commandTimeoutMs),
     zRemRangeByScore: (key: string, min: number, max: number) => boundedTimeout(client.zRemRangeByScore(key, min, max), commandTimeoutMs),
     zRemRangeByRank: (key: string, start: number, stop: number) => boundedTimeout(client.zRemRangeByRank(key, start, stop), commandTimeoutMs),
