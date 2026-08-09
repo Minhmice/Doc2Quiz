@@ -21,6 +21,9 @@ const listSocialFriendsMock = vi.fn();
 const listSocialRequestsMock = vi.fn();
 const listSocialBlocksMock = vi.fn();
 const broadcastSocialEventMock = vi.fn();
+const getRedisMock = vi.fn();
+const touchPresenceMock = vi.fn();
+const checkRateLimitMock = vi.fn();
 
 vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
@@ -29,6 +32,10 @@ vi.mock("@/lib/api/requireApiUser", () => ({
 vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({
   broadcastSocialEvent: (...args: unknown[]) => broadcastSocialEventMock(...args),
 }));
+
+vi.mock("@/lib/server/redis/client", () => ({ getRedis: () => getRedisMock() }));
+vi.mock("@/lib/server/social/presence", () => ({ touchPresence: (...args: unknown[]) => touchPresenceMock(...args) }));
+vi.mock("@/lib/server/social/rateLimit", () => ({ checkRateLimit: (...args: unknown[]) => checkRateLimitMock(...args) }));
 
 vi.mock("@/lib/server/friends/socialLists", () => ({
   listSocialFriends: (...args: unknown[]) => listSocialFriendsMock(...args),
@@ -144,6 +151,9 @@ describe("social API routes", () => {
     listSocialFriendsMock.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
     reportUserMock.mockResolvedValue({ ok: true });
     broadcastSocialEventMock.mockResolvedValue(true);
+    getRedisMock.mockResolvedValue({ state: "ready", redis: { tag: "redis" } });
+    touchPresenceMock.mockResolvedValue({ state: "ready" });
+    checkRateLimitMock.mockResolvedValue({ allowed: true });
   });
 
   describe("PATCH /api/profile", () => {
@@ -591,11 +601,33 @@ describe("social API routes", () => {
       expect(await response.json()).toEqual({ error: "social_unavailable" });
     });
 
+    it("keeps activity as Redis-only presence compatibility seam", async () => {
+      const rpc = vi.fn();
+      requireApiUserMock.mockResolvedValue({ supabase: { rpc }, user: { id: "user-1" } });
+      const { POST: touchActivity } = await import("@/app/api/friends/activity/route");
+
+      expect((await touchActivity(new Request("http://localhost/api/friends/activity", { method: "POST" }))).status).toBe(204);
+      expect(touchPresenceMock).toHaveBeenCalledWith("user-1", "compat_user-1", "idle", { tag: "redis" });
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("returns degraded activity response without durable RPC", async () => {
+      const rpc = vi.fn();
+      requireApiUserMock.mockResolvedValue({ supabase: { rpc }, user: { id: "user-1" } });
+      getRedisMock.mockResolvedValue({ state: "disabled", redis: null });
+      const { POST: touchActivity } = await import("@/app/api/friends/activity/route");
+
+      const response = await touchActivity(new Request("http://localhost/api/friends/activity", { method: "POST" }));
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: "social_degraded", state: "unknown" });
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
     it("returns 401 before social RPCs", async () => {
       requireApiUserMock.mockResolvedValue({ error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) });
       const { POST: touchActivity } = await import("@/app/api/friends/activity/route");
 
-      expect(((await touchActivity()) as Response).status).toBe(401);
+      expect((await touchActivity(new Request("http://localhost/api/friends/activity", { method: "POST" }))).status).toBe(401);
     });
   });
 
