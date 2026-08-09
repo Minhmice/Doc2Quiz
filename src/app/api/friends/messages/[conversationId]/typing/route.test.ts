@@ -19,10 +19,12 @@ import { GET, POST } from "./route";
 
 const conversationId = "00000000-0000-4000-8000-000000000002";
 const userId = "00000000-0000-4000-8000-000000000001";
-const call = (method: "GET" | "POST", body?: unknown) => (method === "GET" ? GET : POST)(
-  new Request(`http://localhost/api/friends/messages/${conversationId}/typing`, { method, headers: { "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }),
-  { params: Promise.resolve({ conversationId }) },
-);
+async function call(method: "GET" | "POST", body?: unknown): Promise<Response> {
+  return (await (method === "GET" ? GET : POST)(
+    new Request(`http://localhost/api/friends/messages/${conversationId}/typing`, { method, headers: { "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }),
+    { params: Promise.resolve({ conversationId }) },
+  )) as Response;
+}
 
 describe("canonical typing route", () => {
   beforeEach(() => {
@@ -58,10 +60,10 @@ describe("canonical typing route", () => {
 
   it("returns unknown typing snapshot when Redis is unavailable", async () => {
     getRedisMock.mockResolvedValue({ redis: null });
-    getTypingSnapshotMock.mockResolvedValue({ state: "unknown", users: [] });
     const response = await call("GET");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ data: { state: "unknown", users: [] } });
+    expect(getTypingSnapshotMock).not.toHaveBeenCalled();
   });
 
   it("preserves authentication response", async () => {

@@ -58,6 +58,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ conversatio
   const participantIds = await participants(auth.supabase as unknown as RpcClient, conversationId);
   if (!participantIds) return unavailable();
   const connection = await getRedis();
+  if (!connection.redis) return NextResponse.json({ data: { state: "unknown", users: [] } });
   const rateLimited = await limited(connection.redis, "typing-snapshot", auth.user.id, request);
   if (rateLimited) return rateLimited;
   return NextResponse.json({ data: await getTypingSnapshot(connection.redis, conversationId, participantIds) });
