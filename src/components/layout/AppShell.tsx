@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPresenceSessionController, sendPresenceHeartbeat } from "@/lib/client/presenceSession";
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppTopBar } from "@/components/layout/AppTopBar";
@@ -24,6 +25,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("doc2quiz_sidebar_collapsed") === "true");
+  }, []);
+
+  useEffect(() => {
+    const controller = createPresenceSessionController({ heartbeat: sendPresenceHeartbeat });
+    controller.start();
+    return () => controller.stop();
   }, []);
 
   useEffect(() => {

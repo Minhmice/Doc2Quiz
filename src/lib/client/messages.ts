@@ -101,18 +101,6 @@ export async function updateReactionPreferences(
   return { ok: true };
 }
 
-export async function touchSocialActivity(): Promise<{ ok: true }> {
-  try {
-    const response = await fetch("/api/friends/activity", { method: "POST" });
-    if (!response.ok) throw mapSocialHttpError(response.status, UNAVAILABLE);
-    return { ok: true };
-  } catch (error) {
-    if (error instanceof TypeError) throw new Error("Connection lost. Check your network and try again.");
-    if (error instanceof Error) throw error;
-    throw new Error(UNAVAILABLE);
-  }
-}
-
 export async function sendPresetReaction(
   recipientUserId: string,
   reactionId: PresetReactionId,

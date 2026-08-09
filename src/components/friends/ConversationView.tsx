@@ -19,8 +19,10 @@ import {
   type DirectMessage,
   type DirectMessageAttachmentInput,
 } from "@/lib/client/messages";
+import { TypingIndicator } from "@/components/friends/TypingIndicator";
+import { createTypingController, getTypingSnapshot, type TypingSnapshot } from "@/lib/client/typing";
 
-export type ConversationState = { messages: DirectMessage[]; loading: boolean; loadingOlder: boolean; sending: boolean; error: string; hasOlder: boolean; currentUserId: string | null };
+export type ConversationState = { messages: DirectMessage[]; typing: TypingSnapshot; loading: boolean; loadingOlder: boolean; sending: boolean; error: string; hasOlder: boolean; currentUserId: string | null };
 export type ConversationTransport = {
   list: typeof listDirectMessages;
   send: typeof sendDirectMessage;
@@ -28,6 +30,7 @@ export type ConversationTransport = {
   discard: typeof discardDirectMessageAttachments;
   read: typeof markDirectConversationRead;
   currentUser: () => Promise<string | null>;
+  typing?: typeof getTypingSnapshot;
   connect: (conversationId: string, onInvalidate: () => void, onSubscribed: () => void) => () => void;
 };
 
@@ -50,17 +53,20 @@ export function mergeDirectMessages(current: DirectMessage[], incoming: DirectMe
 }
 
 export function createConversationController(options: ControllerOptions) {
-  let state: ConversationState = { messages: [], loading: true, loadingOlder: false, sending: false, error: "", hasOlder: true, currentUserId: null };
+  let state: ConversationState = { messages: [], typing: { state: "unknown", users: [] }, loading: true, loadingOlder: false, sending: false, error: "", hasOlder: true, currentUserId: null };
   let cleanup: () => void = () => undefined;
   let pending = Promise.resolve();
   let stopped = false;
   const publish = (patch: Partial<ConversationState>) => { if (!stopped) { state = { ...state, ...patch }; options.onChange(state); } };
   const reconcile = async () => {
     try {
-      const incoming = await options.transport.list(options.conversationId);
+      const [incoming, typing] = await Promise.all([
+        options.transport.list(options.conversationId),
+        options.transport.typing?.(options.conversationId).catch(() => ({ state: "unknown" as const, users: [] })) ?? Promise.resolve({ state: "unknown" as const, users: [] }),
+      ]);
       const previousIds = new Set(state.messages.map(({ id }) => id));
       const messages = mergeDirectMessages(state.messages, incoming);
-      publish({ messages, loading: false, error: "" });
+      publish({ messages, typing, loading: false, error: "" });
       if (messages.some((item) => !previousIds.has(item.id) && item.senderId !== state.currentUserId)) options.onMessageReceived?.();
       await options.transport.read(options.conversationId);
       options.onConversationRead?.();
@@ -120,6 +126,7 @@ function browserTransport(): ConversationTransport {
     discard: discardDirectMessageAttachments,
     read: markDirectConversationRead,
     currentUser: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
+    typing: getTypingSnapshot,
     connect: (conversationId, onInvalidate, onSubscribed) => {
       const channel = supabase.channel(`social-messages:${conversationId}`, { config: { private: true } })
         .on("broadcast", { event: "message" }, onInvalidate)
@@ -139,7 +146,7 @@ function MessageAttachments({ attachments }: { attachments: NonNullable<DirectMe
 
 export function ConversationView({ conversationId, friendName, friendAvatarUrl, className = "", onMessageReceived, onConversationRead }: { conversationId: string; friendName?: string | null; friendAvatarUrl?: string | null; className?: string; onMessageReceived?: () => void; onConversationRead?: () => void }) {
   const { avatarUrl: ownAvatarUrl, displayName } = useDisplayName();
-  const [state, setState] = useState<ConversationState>({ messages: [], loading: true, loadingOlder: false, sending: false, error: "", hasOlder: true, currentUserId: null });
+  const [state, setState] = useState<ConversationState>({ messages: [], typing: { state: "unknown", users: [] }, loading: true, loadingOlder: false, sending: false, error: "", hasOlder: true, currentUserId: null });
   const [body, setBody] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
@@ -147,6 +154,7 @@ export function ConversationView({ conversationId, friendName, friendAvatarUrl, 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef(new Set<string>());
   const controllerRef = useRef<ReturnType<typeof createConversationController> | null>(null);
+  const typingControllerRef = useRef<ReturnType<typeof createTypingController> | null>(null);
   const stickToBottom = useRef(true);
   const previousHeight = useRef<number | null>(null);
   const reconcile = useCallback(() => { void controllerRef.current?.reconcile(); }, []);
@@ -154,11 +162,12 @@ export function ConversationView({ conversationId, friendName, friendAvatarUrl, 
   useEffect(() => {
     const controller = createConversationController({ conversationId, transport: browserTransport(), onChange: setState, onMessageReceived, onConversationRead });
     controllerRef.current = controller;
+    typingControllerRef.current = createTypingController(conversationId);
     void controller.start();
     const visible = () => { if (document.visibilityState === "visible") reconcile(); };
     window.addEventListener("focus", reconcile);
     document.addEventListener("visibilitychange", visible);
-    return () => { window.removeEventListener("focus", reconcile); document.removeEventListener("visibilitychange", visible); controller.stop(); controllerRef.current = null; };
+    return () => { window.removeEventListener("focus", reconcile); document.removeEventListener("visibilitychange", visible); typingControllerRef.current?.stop(); typingControllerRef.current = null; controller.stop(); controllerRef.current = null; };
   }, [conversationId, onConversationRead, onMessageReceived, reconcile]);
 
   useEffect(() => () => {
@@ -224,8 +233,9 @@ export function ConversationView({ conversationId, friendName, friendAvatarUrl, 
       {!state.messages.length ? <p className="pt-12 text-center text-sm text-muted-foreground">{state.loading ? "Đang tải tin nhắn…" : state.error || "Chưa có tin nhắn."}</p> : null}
     </div>
     <div className="shrink-0 border-t border-border bg-card p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
+      <TypingIndicator snapshot={state.typing} currentUserId={state.currentUserId} />
       <label className="sr-only" htmlFor={`direct-message-${conversationId}`}>Tin nhắn</label>
-      <Textarea autoFocus id={`direct-message-${conversationId}`} value={body} maxLength={2000} disabled={state.sending || state.loading} onChange={(event) => setBody(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }} placeholder="Viết tin nhắn…" className="min-h-16 resize-none" />
+      <Textarea autoFocus id={`direct-message-${conversationId}`} value={body} maxLength={2000} disabled={state.sending || state.loading} onChange={(event) => { setBody(event.target.value); typingControllerRef.current?.input(event.target.value); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); typingControllerRef.current?.stop(); void send(); } }} placeholder="Viết tin nhắn…" className="min-h-16 resize-none" />
       {selectedFiles.length ? <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Tệp đính kèm đã chọn">{selectedFiles.map(({ file, previewUrl }, index) => <figure key={`${file.name}-${index}`} className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-muted"><div className="aspect-video overflow-hidden">{file.type.startsWith("video/") ? <video src={previewUrl} muted playsInline className="size-full object-cover" aria-label={file.name} /> : <img src={previewUrl} alt={file.name} className="size-full object-cover" />}</div><figcaption className="truncate px-2 py-1 text-xs">{file.name}</figcaption><Button type="button" variant="destructive" size="icon-xs" className="absolute right-1 top-1" onClick={() => removeFile(index)} aria-label={`Xóa ${file.name}`}>×</Button></figure>)}</div> : null}
       <div className="mt-2 flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={state.sending || state.loading || selectedFiles.length >= DIRECT_MESSAGE_ATTACHMENT_MAX_COUNT} onClick={() => fileInputRef.current?.click()}>Ảnh/video</Button><input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="sr-only" aria-label="Chọn ảnh hoặc video" disabled={state.sending || state.loading} onChange={selectFiles} /><p className="text-xs text-destructive" aria-live="polite">{attachmentError || state.error}</p></div><Button type="button" size="sm" disabled={state.sending || state.loading || (!body.trim() && selectedFiles.length === 0)} onClick={() => void send()}>{state.sending ? "Đang gửi…" : "Gửi"}</Button></div>
     </div>

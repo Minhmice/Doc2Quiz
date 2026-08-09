@@ -98,7 +98,7 @@ describe("shared conversation controller", () => {
     expect(api.read).toHaveBeenCalled();
   });
 
-  it("reconciles missed events, focus, visibility, send, and cleans up", async () => {
+  it("reconciles stale realtime invalidations through authenticated HTTP", async () => {
     const api = transport([[message("a", "2026-07-31T10:01:00Z")], [message("b", "2026-07-31T10:02:00Z")], [], []]);
     const controller = createConversationController({ conversationId: CONVERSATION_ID, transport: api, onChange: vi.fn() });
     await controller.start();
@@ -111,6 +111,7 @@ describe("shared conversation controller", () => {
     expect(api.list).toHaveBeenCalledTimes(4);
     expect(api.send).toHaveBeenCalledWith(CONVERSATION_ID, "hello", []);
     expect(controller.snapshot().messages.map(({ id }) => id)).toEqual(["a", "b", "sent"]);
+    expect(api.connect).toHaveBeenCalledWith(CONVERSATION_ID, expect.any(Function), expect.any(Function));
     expect(api.removed()).toBe(true);
   });
 
