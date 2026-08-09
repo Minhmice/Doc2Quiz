@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { getRedis, type SocialRedis } from "@/lib/server/redis/client";
+import { socialObservability } from "@/lib/server/social/observability";
 
 export const ACTIVITY_STREAM_KEY = "d2q:activity";
 export const ACTIVITY_STREAM_MAX_LENGTH = 10_000;
@@ -62,13 +63,18 @@ export function parseActivityEvent(value: unknown): ActivityEvent {
 export async function enqueueActivity(input: ActivityInput, dependencies: { redis?: SocialRedis | null; now?: () => number } = {}): Promise<ActivityEvent | null> {
   const event = createActivityEvent(input, dependencies.now);
   const redis = dependencies.redis ?? (await getRedis()).redis;
-  if (!redis) return null;
+  if (!redis) {
+    socialObservability.count("activity_batch_failures", { outcome: "redis_unavailable" });
+    return null;
+  }
   try {
     await redis.xAdd(ACTIVITY_STREAM_KEY, "*", event, {
       TRIM: { strategy: "MAXLEN", strategyModifier: "~", threshold: ACTIVITY_STREAM_MAX_LENGTH },
     });
+    socialObservability.count("activity_events_queued", { activityKind: event.activityKind });
     return event;
   } catch {
+    socialObservability.count("activity_batch_failures", { outcome: "enqueue_failed" });
     return null;
   }
 }

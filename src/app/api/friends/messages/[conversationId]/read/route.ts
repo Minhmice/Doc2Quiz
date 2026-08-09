@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireApiUser } from "@/lib/api/requireApiUser";
+import { enqueueActivity } from "@/lib/server/social/activityQueue";
 
 const idSchema = z.string().uuid();
 type RpcClient = { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
@@ -15,6 +16,7 @@ export async function POST(_request: Request, ctx: { params: Promise<{ conversat
   if (result.error || (result.data as { ok?: unknown } | null)?.ok !== true) {
     return NextResponse.json({ error: "social_unavailable" }, { status: 404 });
   }
+  await enqueueActivity({ userId: auth.user.id, activityKind: "conversation_read", source: "client" });
   return NextResponse.json({ data: { ok: true } });
 }
 

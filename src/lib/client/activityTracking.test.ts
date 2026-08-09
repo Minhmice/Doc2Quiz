@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -50,6 +52,14 @@ vi.mock("@/lib/client/supabase", () => ({
 vi.mock("@/lib/ids/createRandomUuid", () => ({
   createRandomUuid: vi.fn(() => "session-uuid-1"),
 }));
+
+describe("study completion social activity exclusion", () => {
+  it("does not import or emit social queue events", () => {
+    const source = readFileSync(new URL("./activityTracking.ts", import.meta.url), "utf8");
+    expect(source).not.toContain("activityQueue");
+    expect(source).not.toContain("study_action");
+  });
+});
 
 describe("recordQuizCompletion", () => {
   beforeEach(() => {

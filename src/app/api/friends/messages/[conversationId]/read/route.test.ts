@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
 const requireApiUserMock = vi.fn();
+const enqueueActivityMock = vi.fn();
 vi.mock("@/lib/api/requireApiUser", () => ({
   requireApiUser: () => requireApiUserMock(),
+}));
+vi.mock("@/lib/server/social/activityQueue", () => ({
+  enqueueActivity: (...args: unknown[]) => enqueueActivityMock(...args),
 }));
 
 import { POST } from "./route";
@@ -17,7 +21,10 @@ function call(id = conversationId) {
 }
 
 describe("POST /api/friends/messages/[conversationId]/read", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    enqueueActivityMock.mockResolvedValue(null);
+  });
 
   it("marks only caller participant read via guarded RPC", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
@@ -28,6 +35,15 @@ describe("POST /api/friends/messages/[conversationId]/read", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ data: { ok: true } });
     expect(rpc).toHaveBeenCalledWith("mark_direct_conversation_read", { p_conversation_id: conversationId });
+    expect(enqueueActivityMock).toHaveBeenCalledWith({ userId: "user-1", activityKind: "conversation_read", source: "client" });
+  });
+
+  it("does not enqueue when read RPC fails", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "no" } });
+    requireApiUserMock.mockResolvedValue({ supabase: { rpc }, user: { id: "user-1" } });
+
+    expect(((await call()) as Response).status).toBe(404);
+    expect(enqueueActivityMock).not.toHaveBeenCalled();
   });
 
   it("rejects malformed conversation ids before RPC", async () => {

@@ -4,7 +4,9 @@ export type SocialMetricName =
   | "presence_snapshot_redis_errors"
   | "redis_latency_ms"
   | "redis_reconnects"
-  | "social_route_5xx";
+  | "social_route_5xx"
+  | "activity_events_queued"
+  | "activity_batch_failures";
 
 type SocialMetricFields = Record<string, string | number | boolean | undefined>;
 type SocialMetric = { name: SocialMetricName; fields: SocialMetricFields };

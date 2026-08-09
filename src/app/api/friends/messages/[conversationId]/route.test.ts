@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireApiUserMock = vi.fn();
 const broadcastSocialEventMock = vi.fn();
 const createSupabaseAdminClientMock = vi.fn();
+const enqueueActivityMock = vi.fn();
 
 vi.mock("@/lib/api/requireApiUser", () => ({ requireApiUser: () => requireApiUserMock() }));
 vi.mock("@/lib/server/friends/realtimeBroadcast", () => ({ broadcastSocialEvent: (...args: unknown[]) => broadcastSocialEventMock(...args) }));
 vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: () => createSupabaseAdminClientMock() }));
+vi.mock("@/lib/server/social/activityQueue", () => ({ enqueueActivity: (...args: unknown[]) => enqueueActivityMock(...args) }));
 
 import { GET, POST } from "./route";
 
@@ -28,6 +30,7 @@ describe("direct message attachment contracts", () => {
     vi.clearAllMocks();
     requireApiUserMock.mockResolvedValue({ user: { id: "00000000-0000-4000-8000-000000000001" }, supabase: { rpc: vi.fn() } });
     broadcastSocialEventMock.mockResolvedValue(true);
+    enqueueActivityMock.mockResolvedValue(null);
   });
 
   it("keeps text-only POST shape while using new RPC signature and invalidation-only broadcast", async () => {
@@ -37,8 +40,18 @@ describe("direct message attachment contracts", () => {
     const response = responseOf(await POST(request("POST", { body: " hello " }), context()));
     expect(response.status).toBe(200);
     expect(rpc).toHaveBeenCalledWith("send_direct_message", { p_conversation_id: conversationId, p_body: "hello", p_attachment_ids: [] });
+    expect(enqueueActivityMock).toHaveBeenCalledTimes(1);
+    expect(enqueueActivityMock).toHaveBeenCalledWith({ userId: "00000000-0000-4000-8000-000000000001", activityKind: "message_sent", source: "message" });
     expect(broadcastSocialEventMock).toHaveBeenCalledWith(`social-messages:${conversationId}`, "message", { source: "message" });
     expect(JSON.stringify(await response.json())).not.toContain("path");
+  });
+
+  it("does not enqueue when durable message send fails", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "no" } });
+    requireApiUserMock.mockResolvedValue({ user: { id: "00000000-0000-4000-8000-000000000001" }, supabase: { rpc } });
+
+    expect(responseOf(await POST(request("POST", { body: "hello" }), context())).status).toBe(404);
+    expect(enqueueActivityMock).not.toHaveBeenCalled();
   });
 
   it("accepts attachment-only and multiple attachment ids", async () => {

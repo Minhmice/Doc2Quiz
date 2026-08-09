@@ -9,6 +9,7 @@ import {
   parseDirectMessageAttachmentPath,
 } from "@/lib/server/messages/attachmentPaths";
 import { broadcastSocialEvent } from "@/lib/server/friends/realtimeBroadcast";
+import { enqueueActivity } from "@/lib/server/social/activityQueue";
 
 const idSchema = z.string().uuid();
 const sendSchema = z.object({
@@ -102,6 +103,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ conversati
   }
   try {
     const message = await signMessage(result.data, conversationId);
+    await enqueueActivity({ userId: auth.user.id, activityKind: "message_sent", source: "message" });
     await broadcastSocialEvent(`social-messages:${conversationId}`, "message", { source: "message" });
     const recipientUserId = (result.data as RawMessage).recipientUserId;
     if (typeof recipientUserId === "string") await broadcastSocialEvent(`social-counts:${recipientUserId}`, "invalidate", { source: "message" });
