@@ -14,7 +14,7 @@ affects: [15-02, 15-03, 15-04, 15-05]
 actuals:
   tokens: 7000
   tasks: 4
-  commits: 4
+  commits: 5
 tech-stack:
   added: [redis@6.2.0]
   patterns: [server-only Redis adapter, bounded exact-key presence reads, Redis-only social degradation]
@@ -97,6 +97,7 @@ status: complete
 2. **Task 2: Add heartbeat endpoint and owned route test** — `63f5d9e` (`feat`)
 3. **Task 3: Convert activity route to Redis-only compatibility seam** — `b15f3ec` (`feat`)
 4. **Task 1 correction: isolate Redis rate counters** — `435ca03` (`fix`)
+5. **Final hardening: clear Redis command timeouts and normalize compatibility IPs** — `d3bd6c4` (`fix`)
 
 ## Files Created/Modified
 
@@ -127,7 +128,17 @@ status: complete
 
 ---
 
-**Total deviations:** 1 auto-fixed (1 bug). **Impact:** Required correctness fix; no scope expansion.
+**2. [Rule 1 - Bug] Redis timeout race left successful timers pending**
+- **Found during:** Final review
+- **Issue:** Successful commands did not clear their timeout timer; activity compatibility IP parsing also lacked heartbeat's normalization.
+- **Fix:** Clear command timers on settlement and share equivalent IP normalization behavior.
+- **Files modified:** `src/lib/server/redis/client.ts`, `src/app/api/friends/activity/route.ts`
+- **Verification:** Focused Vitest, lint, and `npm run typecheck` pass.
+- **Committed in:** `d3bd6c4`
+
+---
+
+**Total deviations:** 2 auto-fixed (2 bugs). **Impact:** Required correctness fixes; no scope expansion.
 
 ## Verification
 
@@ -139,7 +150,7 @@ status: complete
 
 ## Issues Encountered
 
-- `npm install redis@6.2.0` reported 17 existing dependency audit vulnerabilities; no unapproved package was installed.
+- `npm install redis@6.2.0` reported 17 dependency audit vulnerabilities; no unapproved package was installed.
 - External Redis proof is unavailable without approved disposable target; captured in `15-USER-SETUP.md` and deferred to Plan 15-05 evidence.
 
 ## User Setup Required
